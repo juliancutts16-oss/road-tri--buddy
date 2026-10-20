@@ -102,6 +102,8 @@ h2.h{font-family:var(--display);font-size:calc(1.15rem*var(--ds));margin:0 0 10p
 .kid-gear{position:absolute;top:10px;right:10px;width:42px;height:42px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font-size:1.25rem;cursor:pointer;box-shadow:var(--shadow)}
 :root[data-style="pixel"] .kid-gear{border-radius:0}
 .progress{margin-top:12px}
+#map{display:block;width:100%;aspect-ratio:3/1;max-width:100%;border-radius:var(--radius);border:var(--frame);box-shadow:var(--shadow);background:var(--soft)}
+@media (max-width:560px){#map{aspect-ratio:2.4/1}}
 .bar{height:16px;background:var(--track);border-radius:var(--pill);overflow:hidden;border:1px solid var(--line)}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent))}
 .ends{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);font-weight:600;margin-top:5px}
@@ -358,7 +360,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media (min-width:1000px) and (orientation:landscape){
   .app{max-width:1500px}
   #view-kid:not([hidden]){display:grid;grid-template-columns:minmax(0,1.75fr) minmax(320px,1fr);gap:24px;align-items:start}
-  #view-kid #scene{aspect-ratio:auto;height:min(62vh,640px)}
+  #view-kid #scene{aspect-ratio:auto;height:min(50vh,560px)}
+  #view-kid #map{aspect-ratio:auto;height:min(24vh,260px)}
   .kid-side{display:flex;flex-direction:column;gap:14px}
   .kid-side > *{margin-top:0!important}
   .kid-side .spot-items{grid-template-columns:repeat(2,1fr)}
@@ -405,7 +408,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="mic-badge" id="mic-badge" hidden role="status"><span class="mic-dot"></span>🎤 Listening…</div>
       </div>
       <div class="progress">
-        <div class="bar"><i id="k-bar"></i></div>
+        <canvas id="map" aria-label="Map of the journey showing how far the car has come"></canvas>
         <div class="ends"><span id="k-from">Home</span><span id="k-pct">0%</span><span id="k-to">Grandma's</span></div>
       </div>
       </div>
@@ -738,7 +741,16 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,
 /* ================= Listening for answers ================= */
 // Uses the phone's own speech recognition (on Android this is Google's). Only the words heard are used;
 // with AI stories on, that text goes to your server so Claude can reply to it. No audio is kept.
-let micDenied=false;
+let micDenied=false,micState='unknown';
+function micStatusText(){return{granted:'✅ Microphone allowed. Listening is ready.',denied:'🚫 <b>Microphone blocked.</b> Allow it in the phone’s settings: long-press the AWTY icon → App info → Permissions → Microphone → Allow. If it’s still blocked, also allow it for this site in Chrome (Settings → Site settings → Microphone).',unsupported:'This phone or browser can’t share its microphone with the app. Try the installed app or Chrome on Android.',error:'Couldn’t reach the microphone. Check nothing else is using it, then tap Test again.'}[micState]||'Tap <b>Test the microphone</b>. The phone will ask to allow the microphone, so tap <b>Allow</b>.'}
+// Android only shows the "Allow microphone?" pop-up for a request made straight from a tap, so this is called
+// from the Listen toggle, the Test button and "Let's go", never from the middle of a story.
+async function askMic(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){micState='unsupported';return false}
+  try{const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop());micState='granted';micDenied=false;return true}
+  catch(e){micState=e.name==='NotAllowedError'||e.name==='SecurityError'?'denied':'error';micDenied=micState==='denied';return false}
+}
+if(navigator.permissions&&navigator.permissions.query)navigator.permissions.query({name:'microphone'}).then(p=>{micState=p.state;micDenied=p.state==='denied';p.onchange=()=>{micState=p.state;micDenied=p.state==='denied'}}).catch(()=>{});
 const Ear={rec:null,
   ok(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)&&!micDenied},
   active(){return S.landmark.listen&&this.ok()},
@@ -747,7 +759,7 @@ const Ear={rec:null,
     let done=false,alts=[];const r=new R();this.rec=r;r.lang='en-GB';r.interimResults=false;r.maxAlternatives=3;r.continuous=false;
     const fin=()=>{if(done)return;done=true;clearTimeout(t);try{r.abort()}catch(_){}this.rec=null;$('#mic-badge').hidden=true;res(alts.length?{text:alts[0],alts}:null)};
     r.onresult=e=>{alts=[...e.results[0]].map(a=>a.transcript.trim()).filter(Boolean)};
-    r.onend=fin;r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')micDenied=true;fin()};
+    r.onend=fin;r.onerror=e=>{if((e.error==='not-allowed'||e.error==='service-not-allowed')&&micState==='denied')micDenied=true;fin()}; // only give up for good if the phone really says "blocked"
     const t=setTimeout(fin,ms);
     Snd.tone(880,.12,'sine',.12);setTimeout(()=>{if(done)return;try{r.start();$('#mic-badge').hidden=false}catch(e){fin()}},250)})},
   stop(){if(this.rec)try{this.rec.abort()}catch(e){}}
@@ -770,33 +782,93 @@ if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{const sel=$(
 /* ================= Drawing: cars & houses ================= */
 function poly(ctx,pts,w){ctx.beginPath();pts.forEach((p,i)=>{const X=(p[0]-.5)*w,Y=-p[1]*w;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)});ctx.closePath()}
 function circle(ctx,x,y,r,fill){ctx.beginPath();ctx.arc(x,y,Math.max(.1,r),0,Math.PI*2);ctx.fillStyle=fill;ctx.fill()}
+// Each age style has its own car artwork, built from the same body outline so every body type and unlockable works:
+// Playful = chubby toy car with a face, Adventure = leaning comic racer with spoiler and flames,
+// Neon = glowing wireframe, Pixel = the plain classic drawing.
 function drawCar(ctx,x,gy,w,bodyId,color,facing=1,o={}){
   const B=BODIES[bodyId]||BODIES.saloon;const sty=o.style||S.displayStyle;
-  ctx.save();ctx.translate(x,gy);if(o.rot)ctx.rotate(o.rot);ctx.scale(facing,1);
-  if(B.ufo){drawUfo(ctx,w,color,o,sty);ctx.restore();return}
+  ctx.save();ctx.translate(x,gy);if(o.rot)ctx.rotate(o.rot);ctx.scale(facing,1);ctx.lineJoin='round';ctx.lineCap='round';
+  if(B.ufo)drawUfo(ctx,w,color,o,sty);
+  else if(sty==='playful')toyCar(ctx,B,w,color,o);
+  else if(sty==='explorer')racerCar(ctx,B,w,color,o,facing);
+  else if(sty==='teen')neonCar(ctx,B,w,color,o);
+  else classicCar(ctx,B,w,color,o);
+  ctx.restore();
+}
+const winBox=B=>{const xs=B.win.map(p=>p[0]),ys=B.win.map(p=>p[1]);return{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}};
+function carWheel(ctx,cx,cy,r,o,{tyre='#22242B',rim='#C9CED6',spokes=2,ol=null,olw=0}={}){
+  if(ol)circle(ctx,cx,cy,r+olw/2,ol);circle(ctx,cx,cy,r,tyre);circle(ctx,cx,cy,r*.55,rim);
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(o.spin||0);ctx.strokeStyle=tyre;ctx.lineWidth=r*.14;ctx.beginPath();
+  for(let i=0;i<spokes;i++){const a=i*Math.PI/spokes,c=Math.cos(a)*r*.52,s=Math.sin(a)*r*.52;ctx.moveTo(c,s);ctx.lineTo(-c,-s)}ctx.stroke();ctx.restore()}
+function classicCar(ctx,B,w,color,o){
   ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,0,w*.5,w*.035,0,0,Math.PI*2);ctx.fill();
-  ctx.lineJoin='round';
-  if(sty==='teen'){ctx.save();ctx.fillStyle='rgba(34,211,238,.55)';ctx.shadowColor='#22D3EE';ctx.shadowBlur=w*.25;ctx.beginPath();ctx.ellipse(0,-w*.02,w*.42,w*.035,0,0,Math.PI*2);ctx.fill();ctx.restore()} // underglow
-  if(sty==='playful'||sty==='explorer'){poly(ctx,B.body,w);ctx.lineWidth=w*(sty==='explorer'?.09:.08);ctx.strokeStyle=sty==='explorer'?'#1A1A2E':'#1E2A4A';ctx.stroke()}
-  if(sty==='teen'){ctx.shadowColor=color;ctx.shadowBlur=w*.2}
-  poly(ctx,B.body,w);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=w*.045;ctx.strokeStyle=color;ctx.stroke();ctx.shadowBlur=0;
+  poly(ctx,B.body,w);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=w*.045;ctx.strokeStyle=color;ctx.stroke();
   ctx.save();poly(ctx,B.body,w);ctx.clip();ctx.fillStyle=shade(color,-.2);ctx.fillRect(-w,-w*.2,w*2,w*.2);
-  if(B.stripes){ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(-w,-w*.33,w*2,w*.035);ctx.fillRect(-w,-w*.275,w*2,w*.02)}
-  ctx.restore();
-  const glass=sty==='teen'?'#8AF4FF':sty==='explorer'?'#D7E8EE':'#CDEBFF';
-  poly(ctx,B.win,w);ctx.fillStyle=glass;ctx.fill();
+  if(B.stripes){ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(-w,-w*.33,w*2,w*.035);ctx.fillRect(-w,-w*.275,w*2,w*.02)}ctx.restore();
+  poly(ctx,B.win,w);ctx.fillStyle='#CDEBFF';ctx.fill();
   if(B.pillar){ctx.save();poly(ctx,B.win,w);ctx.clip();ctx.fillStyle=color;ctx.fillRect((B.pillar-.5)*w-w*.015,-w,w*.03,w);ctx.restore()}
-  (B.extraWin||[]).forEach(r=>{ctx.fillStyle=glass;ctx.fillRect((r[0]-.5)*w,-r[3]*w,(r[2]-r[0])*w,(r[3]-r[1])*w)});
-  if(sty==='explorer'&&o.number!==false){const nx=((B.wheels[0]+B.wheels[1])/2-.5)*w,ny=-w*.27,nr=w*.065; // racing number on the door
-    circle(ctx,nx,ny,nr,'#FFFFFF');ctx.lineWidth=w*.014;ctx.strokeStyle='#1A1A2E';ctx.beginPath();ctx.arc(nx,ny,nr,0,Math.PI*2);ctx.stroke();
-    ctx.save();ctx.scale(facing,1);ctx.fillStyle='#1A1A2E';ctx.font=`${Math.round(nr*1.5)}px 'Lilita One', sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('7',nx*facing,ny+nr*.08);ctx.restore()}
+  (B.extraWin||[]).forEach(r=>{ctx.fillStyle='#CDEBFF';ctx.fillRect((r[0]-.5)*w,-r[3]*w,(r[2]-r[0])*w,(r[3]-r[1])*w)});
   const front=B.body[B.body.length-2][1],rear=B.body[1][1];
-  ctx.fillStyle=sty==='teen'?'#FFF6B0':'#FFE27A';ctx.fillRect(w*.455,-(front-.04)*w,w*.05,w*.05);
-  ctx.fillStyle='#E0302B';ctx.fillRect(-w*.505,-(Math.min(rear,.4)-.04)*w,w*.035,w*.06);
-  for(const wx of B.wheels){const cx=(wx-.5)*w,r=B.r*w,cy=-r;
-    circle(ctx,cx,cy,r*1.13,shade(color,-.5));circle(ctx,cx,cy,r,'#22242B');circle(ctx,cx,cy,r*.52,sty==='teen'?'#3FE0D0':'#C9CED6');
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(o.spin||0);ctx.strokeStyle='#22242B';ctx.lineWidth=r*.16;ctx.beginPath();ctx.moveTo(-r*.5,0);ctx.lineTo(r*.5,0);ctx.moveTo(0,-r*.5);ctx.lineTo(0,r*.5);ctx.stroke();ctx.restore()}
+  ctx.fillStyle='#FFE27A';ctx.fillRect(w*.455,-(front-.04)*w,w*.05,w*.05);ctx.fillStyle='#E0302B';ctx.fillRect(-w*.505,-(Math.min(rear,.4)-.04)*w,w*.035,w*.06);
+  for(const wx of B.wheels){const r=B.r*w;circle(ctx,(wx-.5)*w,-r,r*1.13,shade(color,-.5));carWheel(ctx,(wx-.5)*w,-r,r,o)}
+}
+// 4–5: a chubby toy car, lifted on oversized wheels, with eyes in the windscreen and a smile on the bumper
+function toyCar(ctx,B,w,color,o){
+  const ol='#1E2A4A',r=B.r*w*1.4;
+  ctx.fillStyle='rgba(30,42,74,.18)';ctx.beginPath();ctx.ellipse(0,0,w*.46,w*.04,0,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.translate(0,-r*.45);ctx.scale(.9,1.25);
+  poly(ctx,B.body,w);ctx.lineWidth=w*.16;ctx.strokeStyle=ol;ctx.stroke();ctx.lineWidth=w*.1;ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.fill(); // fat rounded edge = soft toy shape
+  ctx.save();poly(ctx,B.body,w);ctx.clip();ctx.fillStyle='rgba(255,255,255,.35)';ctx.beginPath();ctx.ellipse(-w*.05,-w*.52,w*.36,w*.08,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  poly(ctx,B.win,w);ctx.lineWidth=w*.05;ctx.strokeStyle='#E8F6FF';ctx.stroke();ctx.fillStyle='#E8F6FF';ctx.fill();
+  const wb=winBox(B),er=Math.min((wb.y1-wb.y0)*w*.3,w*.05),ex=(wb.x1-.5)*w-Math.max(er*2.4,(wb.x1-wb.x0)*w*.28),ey=-((wb.y0+wb.y1)/2)*w;
+  for(const dx of[-er*1.2,er*1.2]){circle(ctx,ex+dx,ey,er,'#FFFFFF');ctx.lineWidth=w*.012;ctx.strokeStyle=ol;ctx.beginPath();ctx.arc(ex+dx,ey,er,0,Math.PI*2);ctx.stroke();
+    circle(ctx,ex+dx+er*.3,ey+er*.08,er*.52,ol);circle(ctx,ex+dx+er*.45,ey-er*.15,er*.18,'#FFFFFF')}
+  const front=B.body[B.body.length-2][1];
+  ctx.strokeStyle=ol;ctx.lineWidth=w*.022;ctx.beginPath();ctx.arc(w*.38,-(front*.62)*w,w*.055,.15*Math.PI,.85*Math.PI);ctx.stroke();
+  circle(ctx,w*.47,-(front-.05)*w,w*.035,'#FFE27A');
   ctx.restore();
+  for(const wx of B.wheels)carWheel(ctx,(wx-.5)*w*.9,-r,r,o,{rim:'#FFD23F',spokes:3,ol,olw:w*.03});
+}
+// 6–7: a comic racer, lower and longer, leaning forward, with a rear wing, flame decals and chunky yellow wheels
+function racerCar(ctx,B,w,color,o,facing){
+  const ol='#1A1A2E',rearTop=B.body[1][1],front=B.body[B.body.length-2][1];
+  ctx.fillStyle='rgba(26,26,46,.35)';ctx.beginPath();ctx.ellipse(w*.02,0,w*.53,w*.045,0,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.scale(1.06,.88);ctx.transform(1,0,-.14,1,0,0);
+  ctx.fillStyle=ol;ctx.fillRect(-w*.47,-(rearTop+.1)*w,w*.035,w*.13);
+  ctx.beginPath();ctx.moveTo(-w*.57,-(rearTop+.15)*w);ctx.lineTo(-w*.31,-(rearTop+.13)*w);ctx.lineTo(-w*.33,-(rearTop+.08)*w);ctx.lineTo(-w*.57,-(rearTop+.09)*w);ctx.closePath();
+  ctx.fillStyle=shade(color,-.25);ctx.fill();ctx.lineWidth=w*.025;ctx.strokeStyle=ol;ctx.stroke();
+  poly(ctx,B.body,w);ctx.lineWidth=w*.1;ctx.strokeStyle=ol;ctx.stroke();ctx.fillStyle=color;ctx.fill();
+  ctx.save();poly(ctx,B.body,w);ctx.clip();ctx.fillStyle=shade(color,-.28);ctx.fillRect(-w,-w*.2,w*2,w*.2);
+  const F=(x,y)=>[(x-.5)*w,-y*w];
+  if(B.stripes){ctx.fillStyle='#FFFFFF';ctx.fillRect(-w,-w*.34,w*2,w*.04);ctx.fillRect(-w,-w*.28,w*2,w*.025)}
+  else{const flame=(col,s)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...F(1.02,.18));for(let k=0;k<4;k++){ctx.lineTo(...F(.86-k*.1*s,.28-k*.012));ctx.lineTo(...F(.88-k*.1*s,.22))}ctx.lineTo(...F(.9-4*.1*s,.2));ctx.lineTo(...F(1.02,.15));ctx.closePath();ctx.fill()};
+    flame('#FF8A1F',1);flame('#FFD23F',.65)}
+  ctx.fillStyle='rgba(255,255,255,.45)';ctx.fillRect(-w,-(Math.min(rearTop,front+.12)-.03)*w,w*2,w*.02);ctx.restore();
+  poly(ctx,B.win,w);ctx.fillStyle='#22304A';ctx.fill();ctx.lineWidth=w*.025;ctx.strokeStyle=ol;ctx.stroke();
+  ctx.save();poly(ctx,B.win,w);ctx.clip();ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=w*.022;ctx.beginPath();ctx.moveTo(-w*.05,-w*.3);ctx.lineTo(w*.15,-w*.75);ctx.stroke();ctx.restore();
+  if(o.number!==false){const nx=((B.wheels[0]+B.wheels[1])/2-.5)*w,ny=-w*.27,nr=w*.068;circle(ctx,nx,ny,nr,'#FFFFFF');ctx.lineWidth=w*.016;ctx.strokeStyle=ol;ctx.beginPath();ctx.arc(nx,ny,nr,0,Math.PI*2);ctx.stroke();
+    ctx.save();ctx.translate(nx,ny);ctx.scale(facing,1);ctx.fillStyle=ol;ctx.font=`${Math.round(nr*1.5)}px 'Lilita One', sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('7',0,nr*.08);ctx.restore()}
+  ctx.fillStyle='#FFF3A0';ctx.fillRect(w*.43,-(front-.03)*w,w*.07,w*.04);
+  ctx.restore();
+  const r=B.r*w*1.12;for(const wx of B.wheels)carWheel(ctx,(wx-.5)*w*1.06,-r,r,o,{tyre:'#14141F',rim:'#FFD23F',spokes:3,ol,olw:w*.035});
+}
+// 8+: a dark wireframe car glowing in its paint colour, with a light strip, headlight beam, neon rims and underglow
+function neonCar(ctx,B,w,color,o){
+  const glow=color==='#2B2D33'||color==='#AEB4BE'?'#22D3EE':color==='#F4F5F7'?'#EEEAFF':color;
+  const front=B.body[B.body.length-2][1],rear=B.body[1][1];
+  ctx.save();ctx.fillStyle='rgba(34,211,238,.5)';ctx.shadowColor='#22D3EE';ctx.shadowBlur=w*.25;ctx.beginPath();ctx.ellipse(0,-w*.02,w*.42,w*.03,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  const bg=ctx.createLinearGradient(w*.5,0,w*.98,0);bg.addColorStop(0,'rgba(238,234,255,.4)');bg.addColorStop(1,'rgba(238,234,255,0)');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(w*.5,-(front-.02)*w);ctx.lineTo(w*.98,-(front+.06)*w);ctx.lineTo(w*.98,-(front-.18)*w);ctx.lineTo(w*.5,-(front-.07)*w);ctx.closePath();ctx.fill();
+  ctx.save();ctx.shadowColor=glow;ctx.shadowBlur=w*.12;
+  poly(ctx,B.body,w);ctx.fillStyle='#0D0824';ctx.fill();ctx.lineWidth=w*.022;ctx.strokeStyle=glow;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-w*.44,-w*.24);ctx.lineTo(w*.44,-w*.24);if(B.stripes){ctx.moveTo(-w*.44,-w*.3);ctx.lineTo(w*.44,-w*.3)}ctx.lineWidth=w*.012;ctx.stroke();
+  poly(ctx,B.win,w);ctx.fillStyle='rgba(34,211,238,.14)';ctx.fill();ctx.strokeStyle='#22D3EE';ctx.shadowColor='#22D3EE';ctx.lineWidth=w*.014;ctx.stroke();
+  ctx.fillStyle='#EEEAFF';ctx.shadowColor='#EEEAFF';ctx.fillRect(w*.44,-(front-.03)*w,w*.065,w*.025);
+  ctx.fillStyle='#FF3DCB';ctx.shadowColor='#FF3DCB';ctx.fillRect(-w*.51,-(Math.min(rear,.4)-.05)*w,w*.03,w*.07);
+  ctx.restore();
+  for(const wx of B.wheels){const cx=(wx-.5)*w,r=B.r*w;circle(ctx,cx,-r,r,'#05030F');
+    ctx.save();ctx.shadowColor=glow;ctx.shadowBlur=w*.08;ctx.strokeStyle=glow;ctx.lineWidth=w*.014;ctx.beginPath();ctx.arc(cx,-r,r*.92,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(cx,-r,r*.42,0,Math.PI*2);ctx.stroke();
+    ctx.translate(cx,-r);ctx.rotate(o.spin||0);ctx.beginPath();for(let i=0;i<3;i++){const a=i*Math.PI*2/3;ctx.moveTo(Math.cos(a)*r*.42,Math.sin(a)*r*.42);ctx.lineTo(Math.cos(a)*r*.88,Math.sin(a)*r*.88)}ctx.stroke();ctx.restore()}
 }
 function drawUfo(ctx,w,color,o,sty){
   const bob=S.access.reduceMotion?0:Math.sin((o.t||0)*3)*w*.03;
@@ -811,8 +883,71 @@ function drawUfo(ctx,w,color,o,sty){
   ctx.fillStyle=shade(color,-.25);ctx.beginPath();ctx.ellipse(0,w*.03,w*.42,w*.05,0,0,Math.PI*2);ctx.fill();
   for(let i=0;i<6;i++){const a=i/5;circle(ctx,lerp(-w*.36,w*.36,a),w*.0,w*.028,((i+Math.floor((o.t||0)*4))%2)?'#FFE27A':'#FFFFFF')}
 }
+// House shapes in house-width units (y is negative going up). Each age style draws these its own way.
+const HOUSE_SPEC={
+  cottage:{wall:[-.4,-.5,.8,.5],roof:[[-.5,-.48],[0,-.92],[.5,-.48]],chim:[.16,-.88,.1,.3],wins:[[-.32,-.4,.16,.14],[.16,-.4,.16,.14]],door:[-.08,-.3,.16,.3],top:-.92},
+  terrace:{wall:[-.32,-.95,.64,.95],roof:[[-.37,-.93],[0,-1.14],[.37,-.93]],chim:[.14,-1.12,.09,.22],wins:[[-.22,-.82,.16,.16],[.06,-.82,.16,.16],[.06,-.44,.16,.16]],door:[-.22,-.36,.15,.36],top:-1.14},
+  bungalow:{wall:[-.5,-.4,1,.4],roof:[[-.57,-.38],[-.3,-.68],[.3,-.68],[.57,-.38]],wins:[[-.38,-.3,.18,.14],[.2,-.3,.18,.14]],door:[-.07,-.28,.14,.28],top:-.68},
+  flats:{wall:[-.3,-1.3,.6,1.3],roof:[[-.34,-1.3],[-.34,-1.37],[.34,-1.37],[.34,-1.3]],wins:[...Array(15)].map((_,i)=>[-.24+(i%3)*.18,-1.2+Math.floor(i/3)*.2,.12,.12]),door:[-.08,-.22,.16,.22],top:-1.37},
+  farm:{wall:[-.45,-.55,.9,.55],roof:[[-.53,-.53],[-.2,-.9],[.2,-.9],[.53,-.53]],chim:[-.3,-.92,.09,.24],wins:[[-.36,-.42,.16,.14],[.2,-.42,.16,.14]],door:[-.08,-.3,.16,.3],fence:true,top:-.9}
+};
 function drawHouse(ctx,x,gy,w,type,color,o={}){
-  const sty=o.style||S.displayStyle;const roof=sty==='teen'?'#140C33':'#C2523B';const door=sty==='teen'?'#0D0824':'#5B3A29';const win=sty==='teen'?'#FF3DCB':'#CDEBFF';
+  const sty=o.style||S.displayStyle,H=HOUSE_SPEC[type]||HOUSE_SPEC.cottage;
+  if(sty==='pixel')return classicHouse(ctx,x,gy,w,type,color,o);
+  ctx.save();ctx.translate(x,gy);ctx.lineJoin='round';ctx.lineCap='round';
+  if(sty==='playful')toyHouse(ctx,H,w,color);else if(sty==='teen')neonHouse(ctx,H,w,color,type);else comicHouse(ctx,H,w,color);
+  if(o.flag){const top=H.top-(sty==='teen'&&type==='flats'?.05:0);ctx.shadowBlur=0;ctx.strokeStyle=sty==='teen'?'#EEEAFF':'#1E2A4A';ctx.lineWidth=w*.025;ctx.beginPath();ctx.moveTo(0,top*w);ctx.lineTo(0,(top-.38)*w);ctx.stroke();
+    ctx.fillStyle=sty==='teen'?'#FF3DCB':'#F0484E';ctx.beginPath();ctx.moveTo(0,(top-.38)*w);ctx.lineTo(.24*w,(top-.3)*w);ctx.lineTo(0,(top-.22)*w);ctx.closePath();ctx.fill()}
+  ctx.restore();
+}
+const roofPath=(ctx,pts,w,dx=0,dy=0)=>{ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo((p[0]+dx)*w,(p[1]+dy)*w):ctx.moveTo((p[0]+dx)*w,(p[1]+dy)*w));ctx.closePath()};
+// 4–5: storybook house with soft rounded walls, a scalloped roof, round windows, flower boxes, an arched door and chimney smoke
+function toyHouse(ctx,H,w,color){
+  const ol='#1E2A4A',roof='#E8594A',t=scene.t;
+  const rr=(b,rad,fill)=>{ctx.beginPath();ctx.roundRect?ctx.roundRect(b[0]*w,b[1]*w,b[2]*w,b[3]*w,rad*w):ctx.rect(b[0]*w,b[1]*w,b[2]*w,b[3]*w);ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=w*.03;ctx.strokeStyle=ol;ctx.stroke()};
+  if(H.chim){rr(H.chim,.02,'#B65A44');const cx=(H.chim[0]+H.chim[2]/2)*w,cy=H.chim[1]*w;
+    if(!S.access.reduceMotion)for(let i=0;i<3;i++){const k=(t*.35+i/3)%1;ctx.globalAlpha=(1-k)*.75;circle(ctx,cx+Math.sin(k*6+i)*w*.04,cy-k*w*.4,w*(.035+k*.05),'#FFFFFF')}ctx.globalAlpha=1}
+  rr(H.wall,.08,color);
+  roofPath(ctx,H.roof,w);ctx.lineWidth=w*.1;ctx.strokeStyle=ol;ctx.stroke();ctx.lineWidth=w*.06;ctx.strokeStyle=roof;ctx.stroke();ctx.fillStyle=roof;ctx.fill();
+  const a=H.roof[0],b=H.roof[H.roof.length-1],n=6,span=(b[0]-a[0])/n;ctx.fillStyle=shade(roof,-.18); // scalloped tiles along the eave
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.arc((a[0]+span*(i+.5))*w,(a[1]-.01)*w,span*.48*w,Math.PI,0);ctx.fill()}
+  for(const [x,y,ww,hh] of H.wins){const cx=(x+ww/2)*w,cy=(y+hh/2)*w,r=Math.min(ww,hh)*.62*w;
+    circle(ctx,cx,cy,r,'#CDEBFF');ctx.lineWidth=w*.025;ctx.strokeStyle=ol;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();
+    if(H.wins.length<5){ctx.fillStyle='#5BAA4A';ctx.fillRect(cx-r,cy+r*.95,r*2,r*.45);['#FF6FA8','#FFD23F','#FFFFFF'].forEach((c,i)=>circle(ctx,cx-r*.6+i*r*.6,cy+r*.9,r*.22,c))}}
+  const [dx,dy,dw,dh]=H.door;ctx.beginPath();ctx.moveTo(dx*w,(dy+dh)*w);ctx.lineTo(dx*w,(dy+dw/2)*w);ctx.arc((dx+dw/2)*w,(dy+dw/2)*w,dw/2*w,Math.PI,0);ctx.lineTo((dx+dw)*w,(dy+dh)*w);ctx.closePath();
+  ctx.fillStyle='#8A5534';ctx.fill();ctx.lineWidth=w*.03;ctx.strokeStyle=ol;ctx.stroke();circle(ctx,(dx+dw*.75)*w,(dy+dh*.6)*w,w*.015,'#FFD23F');
+  ctx.strokeStyle='#4E9A3A';ctx.lineWidth=w*.025;for(const gx of[H.wall[0]+.05,H.wall[0]+H.wall[2]-.05]){ctx.beginPath();ctx.moveTo((gx-.04)*w,0);ctx.lineTo((gx-.02)*w,-.06*w);ctx.moveTo(gx*w,0);ctx.lineTo(gx*w,-.08*w);ctx.moveTo((gx+.04)*w,0);ctx.lineTo((gx+.02)*w,-.06*w);ctx.stroke()}
+}
+// 6–7: comic-book house drawn in 3D, with a shaded side wall, bold outlines, stripy tiled roof and lit windows
+function comicHouse(ctx,H,w,color){
+  const ol='#1A1A2E',d=.17,dy=-d*.55,roofC='#E8352B',[x,y,ww,hh]=H.wall,lw=w*.035;
+  const P=(pts,fill)=>{ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0]*w,p[1]*w):ctx.moveTo(p[0]*w,p[1]*w));ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=lw;ctx.strokeStyle=ol;ctx.stroke()};
+  P([[x+ww,y],[x+ww+d,y+dy],[x+ww+d,y+hh+dy],[x+ww,y+hh]],shade(color,-.32));
+  ctx.save();ctx.beginPath();ctx.moveTo((x+ww)*w,y*w);ctx.lineTo((x+ww+d)*w,(y+dy)*w);ctx.lineTo((x+ww+d)*w,(y+hh+dy)*w);ctx.lineTo((x+ww)*w,(y+hh)*w);ctx.clip();
+  ctx.fillStyle='rgba(26,26,46,.18)';for(let i=0;i<40;i++)circle(ctx,(x+ww+.02+(i%4)*.045)*w,(y+.03+Math.floor(i/4)*.07)*w,w*.012,'rgba(26,26,46,.2)');ctx.restore();
+  P([[x,y],[x+ww,y],[x+ww,y+hh],[x,y+hh]],color);
+  const a=H.roof[H.roof.length-2],b=H.roof[H.roof.length-1];P([a,[a[0]+d,a[1]+dy],[b[0]+d,b[1]+dy],b],shade(roofC,-.3));
+  roofPath(ctx,H.roof,w);ctx.fillStyle=roofC;ctx.fill();ctx.save();ctx.clip();ctx.strokeStyle='rgba(26,26,46,.35)';ctx.lineWidth=w*.015;
+  for(let yy=H.top;yy<H.roof[0][1];yy+=.07){ctx.beginPath();ctx.moveTo(-w,yy*w);ctx.lineTo(w,yy*w);ctx.stroke()}ctx.restore();roofPath(ctx,H.roof,w);ctx.lineWidth=lw;ctx.strokeStyle=ol;ctx.stroke();
+  if(H.chim)P([[H.chim[0],H.chim[1]],[H.chim[0]+H.chim[2],H.chim[1]],[H.chim[0]+H.chim[2],H.chim[1]+H.chim[3]*.7],[H.chim[0],H.chim[1]+H.chim[3]*.7]],'#8E4A3A');
+  H.wins.forEach(([wx,wy,w2,h2],i)=>{P([[wx,wy],[wx+w2,wy],[wx+w2,wy+h2],[wx,wy+h2]],i%3===1?'#8FD3FF':'#FFE88A');ctx.lineWidth=w*.015;ctx.beginPath();ctx.moveTo((wx+w2/2)*w,wy*w);ctx.lineTo((wx+w2/2)*w,(wy+h2)*w);ctx.stroke()});
+  const [dx,dy2,dw,dh]=H.door;P([[dx,dy2],[dx+dw,dy2],[dx+dw,dy2+dh],[dx,dy2+dh]],'#2F6FDE');circle(ctx,(dx+dw*.78)*w,(dy2+dh*.55)*w,w*.016,'#FFD23F');
+  if(H.fence){ctx.strokeStyle='#FFFFFF';ctx.lineWidth=w*.03;ctx.beginPath();for(let i=0;i<4;i++){ctx.moveTo((.58+i*.1)*w,0);ctx.lineTo((.58+i*.1)*w,-.16*w)}ctx.moveTo(.55*w,-.11*w);ctx.lineTo(.9*w,-.11*w);ctx.stroke()}
+}
+// 8+: modern glass-and-neon building with glowing windows and a blinking aerial
+function neonHouse(ctx,H,w,color,type){
+  const c1='#22D3EE',c2='#FF3DCB',[x,y,ww,hh]=H.wall,t=scene.t;
+  ctx.shadowColor=c1;ctx.shadowBlur=w*.08;ctx.lineWidth=w*.014;
+  ctx.fillStyle='#0F0A2A';ctx.fillRect(x*w,y*w,ww*w,hh*w);ctx.strokeStyle=c1;ctx.strokeRect(x*w,y*w,ww*w,hh*w);
+  roofPath(ctx,H.roof,w);ctx.fillStyle='#120B2E';ctx.fill();ctx.strokeStyle=c2;ctx.shadowColor=c2;ctx.stroke();
+  H.wins.forEach(([wx,wy,w2,h2],i)=>{const r=rnd(i*7+Math.round(x*100),3);if(r<.25)return;const col=r<.6?c2:r<.85?'#FFD23F':c1;ctx.shadowColor=col;ctx.fillStyle=col;ctx.globalAlpha=.85;ctx.fillRect(wx*w,wy*w,w2*w,h2*w);ctx.globalAlpha=1});
+  const [dx,dy,dw,dh]=H.door;ctx.shadowColor=c1;ctx.fillStyle='#1B1540';ctx.fillRect(dx*w,dy*w,dw*w,dh*w);ctx.strokeStyle=c1;ctx.strokeRect(dx*w,dy*w,dw*w,dh*w);
+  const ax=(x+ww*.8)*w,top=H.top*w;ctx.beginPath();ctx.moveTo(ax,(H.roof[0][1]-.02)*w);ctx.lineTo(ax,top-.22*w);ctx.strokeStyle=c1;ctx.stroke();
+  if(S.access.reduceMotion||Math.sin(t*4)>0){ctx.shadowColor='#FF4040';circle(ctx,ax,top-.22*w,w*.025,'#FF4040')}
+  if(type==='farm'){ctx.strokeStyle=c1;ctx.beginPath();ctx.moveTo(.5*w,-.12*w);ctx.lineTo(.85*w,-.12*w);ctx.stroke()}
+}
+function classicHouse(ctx,x,gy,w,type,color,o={}){
+  const sty='pixel';const roof='#C2523B';const door=sty==='teen'?'#0D0824':'#5B3A29';const win=sty==='teen'?'#FF3DCB':'#CDEBFF';
   const OL=sty!=='pixel',olc=sty==='teen'?'#22D3EE':sty==='explorer'?'#1A1A2E':'#1E2A4A',olw=sty==='teen'?.014:sty==='explorer'?.035:.025;
   if(sty==='teen')color=mix(color,'#120B2E',.85);
   ctx.save();ctx.translate(x,gy);ctx.lineJoin='round';if(sty==='teen'){ctx.shadowColor='#22D3EE';ctx.shadowBlur=w*.08}
@@ -874,6 +1009,14 @@ function tree(g,x,gy,s,p,kind){
   if(kind==='pine'){g.fillStyle=p.trunk;g.fillRect(x-s*.06,gy-s*.25,s*.12,s*.25);g.fillStyle=shade(p.tree,-.12);
     for(let i=0;i<3;i++){g.beginPath();g.moveTo(x-s*(.42-i*.08),gy-s*(.2+i*.28));g.lineTo(x,gy-s*(.75+i*.28));g.lineTo(x+s*(.42-i*.08),gy-s*(.2+i*.28));g.closePath();g.fill();if(OL){g.lineWidth=s*lw;g.strokeStyle=inkLine();g.stroke()}}}
   else if(kind==='cactus'){g.fillStyle=S.displayStyle==='teen'?p.tree:'#4E9A57';g.fillRect(x-s*.08,gy-s*.8,s*.16,s*.8);g.fillRect(x-s*.3,gy-s*.55,s*.12,s*.3);g.fillRect(x-s*.3,gy-s*.36,s*.25,s*.1);g.fillRect(x+s*.18,gy-s*.65,s*.12,s*.35);g.fillRect(x+s*.05,gy-s*.4,s*.25,s*.1)}
+  else if(S.displayStyle==='playful'){ // lollipop tree: thin stick, one big round top with a shine
+    g.lineCap='round';g.strokeStyle=inkLine();g.lineWidth=s*.13;g.beginPath();g.moveTo(x,gy);g.lineTo(x,gy-s*.5);g.stroke();g.strokeStyle=p.trunk;g.lineWidth=s*.07;g.stroke();
+    g.beginPath();g.arc(x,gy-s*.66,s*.3,0,Math.PI*2);g.fillStyle=p.tree;g.fill();g.lineWidth=s*.05;g.strokeStyle=inkLine();g.stroke();
+    g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(x-s*.1,gy-s*.76,s*.09,0,Math.PI*2);g.fill()}
+  else if(S.displayStyle==='explorer'){ // spiky comic tree with a shaded side
+    g.fillStyle=p.trunk;g.fillRect(x-s*.06,gy-s*.36,s*.12,s*.36);g.lineWidth=s*.05;g.strokeStyle=inkLine();g.strokeRect(x-s*.06,gy-s*.36,s*.12,s*.36);
+    const cy=gy-s*.62,spike=k=>{g.beginPath();for(let i=0;i<14;i++){const a=i/14*Math.PI*2,rr=(i%2?.22:.34)*s*k;g.lineTo(x+Math.cos(a)*rr,cy+Math.sin(a)*rr*1.1)}g.closePath()};
+    spike(1);g.fillStyle=p.tree;g.fill();g.lineWidth=s*.06;g.stroke();g.save();spike(1);g.clip();g.fillStyle='rgba(26,26,46,.22)';g.fillRect(x,cy-s,s,s*2);g.restore()}
   else{g.fillStyle=p.trunk;g.fillRect(x-s*.06,gy-s*.4,s*.12,s*.4);g.beginPath();g.arc(x,gy-s*.62,s*.3,0,Math.PI*2);g.arc(x-s*.18,gy-s*.48,s*.2,0,Math.PI*2);g.arc(x+s*.18,gy-s*.48,s*.2,0,Math.PI*2);g.fillStyle=p.tree;g.fill();if(OL){g.lineWidth=s*lw;g.strokeStyle=inkLine();g.stroke()}}
   g.restore();
 }
@@ -925,7 +1068,10 @@ function skyAndFar(g,zone,W,H,horizon,bottom,alpha){
     const sx=W*.86,sy=H*.15,sr=H*.065*A.decoSize,spin=rm?0:t*.4;g.save();g.translate(sx,sy);g.rotate(spin);g.fillStyle='#FFB020';
     for(let i=0;i<10;i++){g.rotate(Math.PI/5);g.beginPath();g.moveTo(-sr*.25,-sr*1.1);g.lineTo(0,-sr*1.75);g.lineTo(sr*.25,-sr*1.1);g.closePath();g.fill();g.lineWidth=sr*.1;g.strokeStyle='#1A1A2E';g.stroke()}g.restore();
     circle(g,sx,sy,sr,p.sun);g.lineWidth=sr*.14;g.strokeStyle='#1A1A2E';g.beginPath();g.arc(sx,sy,sr,0,7);g.stroke()}
-  else circle(g,W*.86,H*.14,H*.07*A.decoSize,p.sun);
+  else{const sx=W*.86,sy=H*.14,sr=H*.07*A.decoSize;circle(g,sx,sy,sr,p.sun);
+    if(st==='playful'){g.fillStyle='#1E2A4A';circle(g,sx-sr*.32,sy-sr*.12,sr*.11,'#1E2A4A');circle(g,sx+sr*.32,sy-sr*.12,sr*.11,'#1E2A4A'); // smiling sun
+      g.strokeStyle='#1E2A4A';g.lineWidth=sr*.1;g.lineCap='round';g.beginPath();g.arc(sx,sy+sr*.05,sr*.42,.2*Math.PI,.8*Math.PI);g.stroke();
+      circle(g,sx-sr*.55,sy+sr*.25,sr*.13,'rgba(255,120,120,.6)');circle(g,sx+sr*.55,sy+sr*.25,sr*.13,'rgba(255,120,120,.6)')}}
   {const n=Math.round(4*A.decoAmount);for(let i=0;i<n;i++){const cx=((rnd(i,3)*W*1.4+(rm?0:t*W*.006*(1+i%2)))%(W*1.4))-W*.2,cy=H*(.08+rnd(i,4)*.2),s=W*.045*A.decoSize*(.8+rnd(i,5)*.5);
     g.fillStyle=p.cloud;g.globalAlpha=alpha*.95;g.beginPath();g.arc(cx,cy,s,0,7);g.arc(cx+s*1.1,cy+s*.2,s*.8,0,7);g.arc(cx-s*1.05,cy+s*.25,s*.72,0,7);g.fill();
     if(st==='explorer'){g.lineWidth=s*.09;g.strokeStyle='#1A1A2E';g.stroke();g.fillStyle=p.cloud;g.beginPath();g.arc(cx,cy,s*.94,0,7);g.arc(cx+s*1.1,cy+s*.2,s*.74,0,7);g.arc(cx-s*1.05,cy+s*.25,s*.66,0,7);g.fill()}g.globalAlpha=alpha}}
@@ -1033,6 +1179,53 @@ function renderScene(dt){
   if(px){ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(scene.off,0,0,cv.width,cv.height)}
 }
 
+/* ================= Journey map ================= */
+// The real route (or a made-up winding one for demo and timer trips), turned so it always runs left to right,
+// with the driven part filled in, landmarks along the way and the car moving along it.
+const jmap={key:'',pts:null,cum:null};
+function mapPath(r,W,H){
+  const key=`${r.id}|${W}x${H}|${r.points?r.points.length:0}|${r.miles}`;if(jmap.key===key)return jmap;
+  let raw=[],cum=[];
+  if(r.points&&r.points.length>1){const step=Math.max(1,Math.floor(r.points.length/220)),kx=Math.cos(r.points[0][0]*Math.PI/180),last=r.points.length-1;
+    for(let i=0;i<=last;i+=step){raw.push([r.points[i][1]*kx,-r.points[i][0]]);cum.push(r.cum[i])}
+    if(last%step){raw.push([r.points[last][1]*kx,-r.points[last][0]]);cum.push(r.cum[last])}}
+  else{const rng=mulberry(hashStr(String(r.id||r.to))),ph=rng()*6,ph2=rng()*6;
+    for(let i=0;i<=80;i++){const t=i/80;raw.push([t,.12*Math.sin(t*Math.PI*2.2+ph)+.05*Math.sin(t*Math.PI*5+ph2)])}
+    let acc=0;cum.push(0);for(let i=1;i<raw.length;i++){acc+=Math.hypot(raw[i][0]-raw[i-1][0],raw[i][1]-raw[i-1][1]);cum.push(acc)}cum=cum.map(c=>c/acc*r.miles)}
+  const [sx,sy]=raw[0],[ex,ey]=raw[raw.length-1],ang=Math.atan2(ey-sy,ex-sx),ca=Math.cos(-ang),sa=Math.sin(-ang);
+  const rot=raw.map(([x,y])=>[(x-sx)*ca-(y-sy)*sa,(x-sx)*sa+(y-sy)*ca]);
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;rot.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)});
+  // stretch to the full width so the journey always reads left to right; keep the bends no steeper than real life
+  const padX=W*.1,padY=H*.26,scX=(W-padX*2)/Math.max(1e-9,x1-x0),scY=Math.min((H-padY*2)/Math.max(1e-9,y1-y0),scX),ox=W/2-(x0+x1)/2*scX,oy=H/2-(y0+y1)/2*scY+H*.06;
+  return Object.assign(jmap,{key,pts:rot.map(([x,y])=>[ox+x*scX,oy+y*scY]),cum});
+}
+function mapAt(m,mile){const c=m.cum,last=c.length-1;if(mile<=c[0])return{i:0,p:m.pts[0]};if(mile>=c[last])return{i:last,p:m.pts[last]};
+  let lo=0,hi=last;while(hi-lo>1){const mid=(lo+hi)>>1;if(c[mid]<=mile)lo=mid;else hi=mid}const f=(mile-c[lo])/Math.max(1e-9,c[hi]-c[lo]);
+  return{i:lo,p:[lerp(m.pts[lo][0],m.pts[hi][0],f),lerp(m.pts[lo][1],m.pts[hi][1],f)]}}
+function renderMap(){
+  const cv=$('#map');if(!cv)return;sizeCanvas(cv);const W=cv.width,H=cv.height;if(!W||!H)return;
+  const g=cv.getContext('2d'),st=S.displayStyle,u=Math.min(W*.4,H)/100,r=T.route,m=mapPath(r,W,H),mile=T.miles/T.total*r.miles,here=mapAt(m,mile),n=m.pts.length-1;
+  g.clearRect(0,0,W,H);g.imageSmoothingEnabled=st!=='pixel';
+  if(st==='teen'){g.fillStyle='#0B0820';g.fillRect(0,0,W,H);g.strokeStyle='rgba(34,211,238,.12)';g.lineWidth=1;g.beginPath();const gs=W/24;for(let x=0;x<W;x+=gs){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<H;y+=gs){g.moveTo(0,y);g.lineTo(W,y)}g.stroke()}
+  else if(st==='explorer'){const bg=g.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,W*.65);bg.addColorStop(0,'#F7E7BE');bg.addColorStop(1,'#D9B77A');g.fillStyle=bg;g.fillRect(0,0,W,H); // treasure map with a compass
+    const cx=W-u*12,cy=u*12,cr=u*7;g.strokeStyle='#5B3A1A';g.lineWidth=u*.7;g.beginPath();g.arc(cx,cy,cr,0,Math.PI*2);g.stroke();
+    g.fillStyle='#B3261E';g.beginPath();g.moveTo(cx,cy-cr);g.lineTo(cx+cr*.3,cy);g.lineTo(cx-cr*.3,cy);g.closePath();g.fill();g.fillStyle='#5B3A1A';g.beginPath();g.moveTo(cx,cy+cr);g.lineTo(cx+cr*.3,cy);g.lineTo(cx-cr*.3,cy);g.closePath();g.fill()}
+  else{g.fillStyle='#BDE8A5';g.fillRect(0,0,W,H);const rng=mulberry(7);for(let i=0;i<16;i++)circle(g,rng()*W,rng()*H,u*(4+rng()*7),i%4===0?'#9ED0E6':'rgba(63,154,74,.3)')} // park map with ponds and trees
+  const path=(a,b)=>{g.beginPath();for(let i=a;i<=b;i++){const p=m.pts[i];i===a?g.moveTo(p[0],p[1]):g.lineTo(p[0],p[1])}};
+  g.lineJoin='round';g.lineCap='round';
+  const remCol=st==='teen'?'#4A3C86':st==='explorer'?'#7A4E22':'#FFFFFF',doneCol=st==='teen'?'#22D3EE':st==='explorer'?'#C62828':'#F0484E';
+  if(st!=='teen'){path(0,n);g.strokeStyle=st==='explorer'?'rgba(91,58,26,.25)':'#1E2A4A';g.lineWidth=u*(st==='explorer'?3:4);g.stroke()}
+  path(here.i,n);g.setLineDash([u*2.4,u*2.2]);g.strokeStyle=remCol;g.lineWidth=u*(st==='explorer'?1.8:2.4);g.stroke();g.setLineDash([]);
+  if(mile>0){path(0,here.i);g.lineTo(here.p[0],here.p[1]);if(st==='teen'){g.shadowColor=doneCol;g.shadowBlur=u*3;const gr=g.createLinearGradient(m.pts[0][0],0,Math.max(m.pts[0][0]+1,here.p[0]),0);gr.addColorStop(0,'#FF3DCB');gr.addColorStop(1,'#22D3EE');g.strokeStyle=gr}else g.strokeStyle=doneCol;g.lineWidth=u*3.4;g.stroke();g.shadowBlur=0}
+  r.landmarks.forEach(lm=>{const q=mapAt(m,lm.mile).p;emoji(g,lmInfo(lm).emoji,q[0],q[1]-u*2.5,u*15,mile>lm.mile?.5:1)});
+  const s0=m.pts[0],s1=m.pts[n];drawHouse(g,s0[0],s0[1]+u*5,u*16,S.houseStart.type,S.houseStart.color);
+  if(st==='explorer'){const xs=u*4.5;g.strokeStyle='#C62828';g.lineWidth=u*1.8;g.beginPath();g.moveTo(s1[0]-xs,s1[1]+u*9-xs);g.lineTo(s1[0]+xs,s1[1]+u*9+xs);g.moveTo(s1[0]+xs,s1[1]+u*9-xs);g.lineTo(s1[0]-xs,s1[1]+u*9+xs);g.stroke()}
+  drawHouse(g,s1[0],s1[1]+u*5,u*16,S.houseEnd.type,S.houseEnd.color,{flag:true});
+  const pulse=S.access.reduceMotion?0:(scene.t*1.2)%1;g.strokeStyle=st==='teen'?`rgba(34,211,238,${1-pulse})`:`rgba(240,72,78,${1-pulse})`;g.lineWidth=u*.9;g.beginPath();g.arc(here.p[0],here.p[1],u*(3+pulse*8),0,Math.PI*2);g.stroke();
+  const ahead=mapAt(m,Math.min(r.miles,mile+r.miles*.02)).p,facing=ahead[0]<here.p[0]-1?-1:1;
+  drawCar(g,here.p[0],here.p[1]+u*3,u*18,S.car.body,COLORS[S.car.color]||S.car.color,facing,{spin:scene.spin,t:scene.t,number:false});
+}
+
 /* ================= Trip engine ================= */
 function newTrip(){
   const route=currentRoute();Voice.stop();Spot.end(true);Bonus.hide();Geo.stop();Geo.idx=0;
@@ -1076,7 +1269,7 @@ function hud(force){
   else if(S.displayStyle==='teen'){const d=new Date(Date.now()+minsLeft*60000);extra=T.arrived?'':`Arrive ${d.toTimeString().slice(0,5)}${liveGps()&&Geo.speed!=null?` · ${Math.round(Geo.speed)} mph`:''}`}
   ex.hidden=!extra;set('#k-extra',extra);if(!S.demoMode)renderTripPanel();
   set('#k-score',T.score.toLocaleString());
-  const pct=Math.round(T.miles/T.total*100);$('#k-bar').style.width=pct+'%';set('#k-pct',pct+'%');
+  const pct=Math.round(T.miles/T.total*100);set('#k-pct',T.arrived?'Arrived! 🎉':pct>=50&&pct<55?'Halfway! ⭐':`${pct}% of the way`);
   set('#k-from',r.from||'Home');set('#k-to',shortName(r.to));
 }
 
@@ -1392,7 +1585,7 @@ function renderSettings(){
     <div class="grid2">${select('landmark.sentences','Length',[[3,'3 sentences'],[5,'5 sentences'],[7,'7 sentences']])}<div><label class="lbl" for="voiceSel">Voice</label>${voiceSelect()}</div>
     ${select('landmark.rate','Reading speed',[[.8,'Slow'],[.9,'Relaxed'],[1,'Normal'],[1.1,'Quick']])}${select('landmark.lang','Language',[['simple','Simple words'],['academic','Richer vocabulary']])}${select('landmark.interactive','Interactive style',[['none','Just listen'],['repeat','Repeat after me'],['question','Ask a question']])}</div>
     ${toggle('landmark.listen','🎤 Listen for answers',(window.SpeechRecognition||window.webkitSpeechRecognition)?'Uses the microphone after each question or “repeat after me”, then says whether they got it right. Right answers earn 100 points.':'This phone or browser can’t listen. Try Chrome on Android.')}
-    ${S.landmark.listen?`<p class="note">The phone’s own speech recognition turns the answer into words (on Android that’s Google’s). ${API.ai?'Those words, not the recording, are sent to your server so the AI can reply to what was said.':'The app checks the words itself.'} Nothing is saved. ${micDenied?'<b>Microphone access was refused.</b> Allow it for this app in the phone’s settings.':'The phone will ask for microphone permission the first time.'}</p><button class="btn ghost" data-act="testmic">🎤 Test the microphone</button>`:''}
+    ${S.landmark.listen?`<p class="note">The phone’s own speech recognition turns the answer into words (on Android that’s Google’s). ${API.ai?'Those words, not the recording, are sent to your server so the AI can reply to what was said.':'The app checks the words itself.'} Nothing is saved.</p><div class="status">${micStatusText()}</div><button class="btn ghost" data-act="testmic">🎤 Test the microphone</button>`:''}
     <button class="btn ghost" data-act="previewlm">▶ Preview next landmark</button>
     <p class="note">Story and fact text is pre-written for this demo. In the app these settings would shape a prompt sent to an AI story and fact writer.</p>`;
   const accBody=`${range('access.decoSize','Decoration size',.6,1.4,.05)}${range('access.decoAmount','Amount of decoration',.2,1,.05)}${range('access.saturation','Colour intensity',.3,1.2,.05)}${toggle('access.reduceMotion','Calm motion','No bouncing, drifting clouds, stars or confetti')}
@@ -1516,6 +1709,7 @@ function renderStart(){
         <div><label class="lbl" for="s-reason">What’s the trip for?</label><input type="text" id="s-reason" data-p="profile.reason" value="${esc(P.reason)}" placeholder="e.g. Grandma’s birthday"></div>
       </div>
       <p class="note">${API.ai?'The AI writer weaves these into the stories and fun facts for each landmark.':'These go into the built-in stories now, and into AI-written ones once AI stories are switched on.'}</p>
+      ${(window.SpeechRecognition||window.webkitSpeechRecognition)?toggle('landmark.listen','🎤 Listen for their answers','After each question the app listens and says if they got it right. The phone will ask to use the microphone.')+(S.landmark.listen&&micState==='denied'?`<div class="status">${micStatusText()}</div>`:''):''}
     </div>
     ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
     <p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p>
@@ -1535,6 +1729,7 @@ function greet(){
 }
 async function startTrip(){
   if(startBusy)return;Snd.ready();
+  if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
   if(S.tripMode==='connected'){
     if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
     if(!routeFresh()){startBusy=true;startMsg=API.maps?'Finding the route…':'';renderStart();
@@ -1548,7 +1743,9 @@ const VSt=$('#view-start');
 VSt.addEventListener('input',e=>{const el=e.target,p=el.dataset.p;if(!p)return;setP(S,p,el.value);saveS();
   if(p==='to'&&API.maps){clearTimeout(acTimer);const v=el.value.trim();if(v.length>=3)acTimer=setTimeout(()=>api('places',{input:v},8000).then(j=>{const dl=$('#s-dest-list');if(dl)dl.innerHTML=(j.suggestions||[]).map(s=>`<option value="${esc(s)}"></option>`).join('')}).catch(()=>{}),300)}});
 VSt.addEventListener('change',e=>{const el=e.target;if(el.dataset.p&&(el.dataset.p==='to'||el.dataset.p==='from')){startMsg='';renderStart();return}
-  if(el.dataset.bind){setAndApply(el.dataset.bind,el.type==='checkbox'?el.checked:parseVal(el.value));renderStart()}});
+  if(el.dataset.bind){const v=el.type==='checkbox'?el.checked:parseVal(el.value);setAndApply(el.dataset.bind,v);
+    if(el.dataset.bind==='landmark.listen'&&v)askMic().then(()=>renderStart()); // ask while this tap still counts as a tap
+    renderStart()}});
 VSt.addEventListener('click',e=>{
   if(e.target.closest('#s-go')){startTrip();return}
   if(e.target.closest('#s-more')){showTab('settings');return}
@@ -1617,7 +1814,7 @@ VS.addEventListener('toggle',e=>{const d=e.target;if(!d.dataset||!d.dataset.sec)
 VS.addEventListener('click',e=>{
   const s=e.target.closest('[data-set]');if(s){setAndApply(s.dataset.set,parseVal(s.dataset.val));renderSettings();return}
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;Snd.ready();
-  if(a==='testmic'){Voice.stop();Voice.say(['Say the word rainbow!',{listen:{kind:'repeat',question:'',answers:['rainbow']}}]);return}
+  if(a==='testmic'){Voice.stop();askMic().then(ok=>{renderSettings();if(ok)Voice.say(['Say the word rainbow!',{listen:{kind:'repeat',question:'',answers:['rainbow']}}])});return}
   if(a==='menu'){resetAsk='';showTab('start');return}
   if(a==='ask-settings'||a==='ask-all'){resetAsk=a.slice(4);renderSettings();return}
   if(a==='reset-cancel'){resetAsk='';renderSettings();return}
@@ -1653,6 +1850,7 @@ VS.addEventListener('change',e=>{const el=e.target;
   const p=el.dataset.bind;if(!p||el.type==='range')return;
   const v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?parseVal(el.value):el.value;
   setAndApply(p,v);
+  if(p==='landmark.listen'&&v){askMic().then(()=>renderSettings())} // ask while this tap still counts as a tap
   if(p==='to'||p==='from'){routeMsg='Destination changed. Press “Get route” to load it.';}
   if(el.type!=='text')renderSettings();else{const st=VS.querySelector('.status');if(st&&routeMsg)st.innerHTML=routeMsg}
 });
@@ -1665,7 +1863,7 @@ function loop(now){
     if(T.running){scene.scroll+=dt*(scene.cv.width||600)*.12;scene.spin+=dt*14;scene.spawn-=dt;if(scene.spawn<=0){scene.traffic.push({x:1.12,body:['hatchback','saloon','suv','van','estate','sports'][Math.floor(Math.random()*6)],color:Object.values(COLORS)[Math.floor(Math.random()*9)],v:.12+Math.random()*.08});scene.spawn=(S.access.reduceMotion?5:2.2)+Math.random()*3}}
     scene.traffic.forEach(c=>c.x-=(T.running?c.v:c.v*.5)*dt*(S.roadStyle==='winding'?.6:1));scene.traffic=scene.traffic.filter(c=>c.x>-.15);
     Spot.tick(dt);Bonus.tick(dt);
-    if(!$('#view-kid').hidden){renderScene(dt);hudT-=dt;if(hudT<=0){hud();hudT=.2}}
+    if(!$('#view-kid').hidden){renderScene(dt);renderMap();hudT-=dt;if(hudT<=0){hud();hudT=.2}}
   }
   requestAnimationFrame(loop);
 }

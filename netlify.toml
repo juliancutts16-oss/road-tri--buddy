@@ -1,0 +1,18 @@
+# Netlify reads this when you connect the project.
+# The app itself is the "public" folder; the secret-key helpers are in netlify/functions.
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Make sure phones always pick up new versions of the app and its offline worker.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"

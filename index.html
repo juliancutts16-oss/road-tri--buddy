@@ -136,6 +136,23 @@ h2.h{font-family:var(--display);font-size:calc(1.15rem*var(--ds));margin:0 0 10p
 .mini{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--pill);padding:6px 11px;font-size:.8rem;font-weight:600;cursor:pointer}
 .speedv{font-variant-numeric:tabular-nums;font-weight:700;min-width:3.2em;text-align:right}
 
+/* ---------- Start screen ---------- */
+.start{display:grid;gap:14px}
+.start-hero{display:grid;gap:4px}
+.start-hero h1{font-family:var(--display);font-weight:var(--dw);font-size:calc(clamp(1.9rem,7.5vw,2.7rem)*var(--ds));line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.015em}
+.start-hero p{color:var(--muted);margin:0;max-width:52ch}
+#start-cv{display:block;width:100%;height:auto;aspect-ratio:5/1;max-width:100%;margin-top:6px}
+.start .card{display:grid;gap:14px}
+.start .card > h2.h{margin:0}
+.dest{font-size:1.15rem!important;padding:15px 14px!important;font-weight:600!important}
+.start .sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.start .opt{font-size:.8rem;color:var(--muted);font-weight:500;margin-left:6px;text-transform:none;letter-spacing:0}
+.chips-row.small .chip-btn{padding:7px 11px;font-size:.85rem}
+.go{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.s-msg{min-height:1.2em;font-size:.9rem;color:var(--muted);text-align:center;margin:0}
+.s-msg.err{color:var(--accent)}
+.linkish{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.88rem;justify-self:center;padding:6px}
+
 /* ---------- Settings ---------- */
 .settings{display:flex;flex-direction:column;gap:10px}
 .lbl{display:block;font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 7px}
@@ -282,7 +299,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   </header>
 
   <main>
-    <section id="view-kid">
+    <section id="view-start" class="start" hidden></section>
+    <section id="view-kid" hidden>
       <div class="trip-head">
         <div>
           <div class="route-line" id="k-route">Home → Grandma's</div>
@@ -326,6 +344,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
           <button class="mini" data-demo="bonus">Bonus game prompt</button>
           <button class="mini" data-demo="restart">Restart trip</button>
         </div>
+        <div class="demo-btns"><button class="mini" id="d-new">🗺️ Plan a new trip</button></div>
         <p class="note" style="margin-top:8px" id="d-note">Turn off “Demo driving” in Settings to drive for real: the car then follows the phone’s GPS, or the trip timer in offline mode.</p>
       </div>
     </section>
@@ -461,7 +480,7 @@ const AGE={
   '8+':{displayStyle:'teen',landmark:{type:'fact',sentences:5,lang:'academic',interactive:'question'},spot:{time:45,count:5,every:3},cats:['animals','vehicles','nature','places'],bonus:true,access:{decoSize:.9},child:{color:true,bg:true,road:true,sound:true,style:true,spotNow:true}}
 };
 const DEFAULTS={
-  age:'6-7',demoMode:true,passcode:'',tripMode:'connected',from:'',to:"Grandma's House, Oakville",route:null,offlineMins:90,offlineRouteId:'',
+  age:'6-7',demoMode:true,passcode:'',profile:{names:'',animal:'',likes:'',buddy:'',reason:''},tripMode:'connected',from:'',to:"Grandma's House, Oakville",route:null,offlineMins:90,offlineRouteId:'',
   roadStyle:'straight',car:{body:'saloon',color:'red'},plate:'',
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
@@ -524,32 +543,40 @@ async function api(path,body,timeout=25000){
   catch(e){throw new Error(e.name==='AbortError'?'The server took too long to answer.':e.message)}
   finally{clearTimeout(t)}
 }
-function checkServices(){if(location.protocol==='file:'){API.checked=true;return}api('health',null,8000).then(j=>{Object.assign(API,j,{checked:true});if(!$('#view-settings').hidden)renderSettings()}).catch(()=>{API.checked=true})}
+function checkServices(){if(location.protocol==='file:'){API.checked=true;return}api('health',null,8000).then(j=>{Object.assign(API,j,{checked:true});if(!$('#view-settings').hidden)renderSettings();if(!$('#view-start').hidden&&!startBusy&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view-start')))renderStart()}).catch(()=>{API.checked=true})}
 function getPosition(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error('This device has no location service.'));
   navigator.geolocation.getCurrentPosition(p=>res(p.coords),e=>rej(new Error(e.code===1?'Location permission was refused. Allow location for this app in the phone’s settings.':'Couldn’t get your location. Check location is turned on and try again.')),{enableHighAccuracy:true,timeout:15000,maximumAge:60000})})}
 const lmKey=lm=>lm.id||lm.name;
-const genKey=()=>`${S.landmark.type}|${S.landmark.sentences}|${S.landmark.lang}|${S.age}`;
+const genKey=()=>`${S.landmark.type}|${S.landmark.sentences}|${S.landmark.lang}|${S.age}|${hashStr(JSON.stringify(S.profile))}`;
+// "Mia", "Mia and Leo", "Mia, Leo and Sam"
+function kidNames(){const n=String(S.profile.names||'').split(/\s*(?:,|&|\band\b)\s*/i).map(s=>s.trim()).filter(Boolean).slice(0,4);return n.length<2?(n[0]||''):n.slice(0,-1).join(', ')+' and '+n[n.length-1]}
 let storyStatus='';
 async function prepareStories(route){
   if(!API.ai||!route||!route.landmarks.length)return;
   const key=genKey();const todo=route.landmarks.filter(lm=>!lm.gen||lm.gen.key!==key);if(!todo.length){storyStatus='';return}
   let done=0,failed=0;const total=todo.length;const upd=()=>{storyStatus=`Writing ${S.landmark.type==='fact'?'fun facts':'stories'}… ${done} of ${total}`;const el=$('#storyStatus');if(el)el.textContent=storyStatus};upd();
   const L=lm=>lmInfo(lm);
-  const work=async lm=>{try{const g=await api('story',{name:L(lm).name,kind:lm.kind||'landmark',summary:lm.summary||'',type:S.landmark.type,sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age},60000);lm.gen={key,sentences:g.sentences,question:g.question,word:g.word}}catch(e){failed++}done++;upd()};
+  const work=async lm=>{try{const g=await api('story',{name:L(lm).name,kind:lm.kind||'landmark',summary:lm.summary||'',type:S.landmark.type,sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:{...S.profile,names:kidNames()}},60000);lm.gen={key,sentences:g.sentences,question:g.question,word:g.word}}catch(e){failed++}done++;upd()};
   const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
   storyStatus=failed?`${total-failed} of ${total} ready. The rest will use the built-in stories.`:`${S.landmark.type==='fact'?'Fun facts':'Stories'} ready for all ${total} landmarks.`;
   saveS();saveRoutes();const el=$('#storyStatus');if(el)el.textContent=storyStatus;
 }
+// Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
+async function loadRoute(){
+  if(!S.to.trim())throw new Error('Enter where you’re going first.');
+  if(!API.maps){S.route=makeRoute(S.from.trim()||'Home',S.to.trim());saveS();return S.route}
+  let origin;if(!S.from.trim()){const c=await getPosition();origin={lat:c.latitude,lng:c.longitude}}else origin={address:S.from.trim()};
+  const r=await api('route',{origin,destination:S.to.trim()});
+  S.route={...r,id:'g'+Date.now(),name:'',from:S.from.trim()||'Home',to:S.to.trim()};saveS();prepareStories(S.route);return S.route;
+}
+// Reuse the loaded route if it matches what's typed and (for Google routes) is from the last few hours.
+function routeFresh(){const r=S.route;if(!r||r.to!==S.to.trim()||r.from!==(S.from.trim()||'Home'))return false;if(API.maps&&!r.points)return false;
+  return !r.points||(/^g\d+$/.test(r.id)&&Date.now()-Number(r.id.slice(1))<3*3600e3)}
 async function fetchRoute(){
   if(!S.to.trim()){routeMsg='Enter a destination first.';renderSettings();return}
-  if(!API.maps){S.route=makeRoute(S.from||'Home',S.to);routeMsg='';saveS();if(T&&!T.running)newTrip();renderSettings();return}
-  routeMsg='Finding the route…';renderSettings();
-  try{let origin;if(!S.from.trim()){const c=await getPosition();origin={lat:c.latitude,lng:c.longitude}}else origin={address:S.from.trim()};
-    const r=await api('route',{origin,destination:S.to.trim()});
-    S.route={...r,id:'g'+Date.now(),name:'',from:S.from.trim()||'Home',to:S.to.trim()};saveS();routeMsg='';
-    if(T&&!T.running)newTrip();renderSettings();prepareStories(S.route);return;
-  }catch(e){routeMsg='Couldn’t get the route. '+esc(e.message)}
-  renderSettings();
+  if(API.maps){routeMsg='Finding the route…';renderSettings()}
+  try{await loadRoute();routeMsg=''}catch(e){routeMsg='Couldn’t get the route. '+esc(e.message)}
+  if(T&&!T.running)newTrip();renderSettings();
 }
 const mapsLink=()=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(S.to||'')}&travelmode=driving&dir_action=navigate`;
 
@@ -912,11 +939,13 @@ function lmInfo(lm){
 }
 function buildSpeech(lm){
   const L=lmInfo(lm),st=S.landmark,acad=st.lang==='academic',n=st.sentences,out=[];const g=lm.gen&&lm.gen.key===genKey()?lm.gen:null;const word=g&&g.word||L.word;
-  out.push(st.type==='fact'?`Look out! We're getting close to ${L.name}.`:`Coming up soon, we'll pass ${L.name}!`);
+  const who=kidNames();
+  out.push(st.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}!`);
   if(st.interactive==='repeat')out.push(`Can you say ${word}? Say it with me. ${word}!`,{pause:2600},'Brilliant!');
   if(g){out.push(...g.sentences)}
   else if(st.type==='fact'){const f=(acad?L.factsA:L.facts).slice();f.push(acad?'Keep watching from the window, because it should come into view very soon.':'Keep your eyes peeled, we will see it very soon!');out.push(acad?'Here are some interesting facts.':'Here are some fun facts.',...f.slice(0,n))}
-  else{const rng=mulberry(hashStr(lmKey(lm))+T.seed);const hero=HEROES[Math.floor(rng()*HEROES.length)],friend=FRIENDS[Math.floor(rng()*FRIENDS.length)];
+  else{const rng=mulberry(hashStr(lmKey(lm))+T.seed);const pa=String(S.profile.animal||'').trim().toLowerCase(),pb=String(S.profile.buddy||'').trim();
+    const hero=pa||HEROES[Math.floor(rng()*HEROES.length)],friend=FRIENDS[Math.floor(rng()*FRIENDS.length)]+(pb&&rng()<.7?` called ${pb}`:'');
     const idx={3:[0,3,6],5:[0,1,3,4,6],7:[0,1,2,3,4,5,6]}[n]||[0,1,3,4,6];
     out.push(...idx.map(i=>STORY[acad?'academic':'simple'][i].replace(/\{hero\}/g,hero).replace(/\{friend\}/g,friend).replace(/\{name\}/g,L.name).replace(/\{sight\}/g,L.sight).replace(/\{bit\}/g,acad?L.bitA:L.bit)))}
   if(st.interactive==='question')out.push(g&&g.question||L.q[acad?1:0],{pause:5500},'Great thinking!');
@@ -1152,9 +1181,92 @@ function renderKidTools(){
 const currentZoneSafe=()=>T?currentZone():S.bgManual;
 
 /* ================= Tabs & events ================= */
+/* ================= Start screen ================= */
+const ANIMALS=[['dog','🐶'],['cat','🐱'],['unicorn','🦄'],['dinosaur','🦖'],['rabbit','🐰'],['lion','🦁'],['dragon','🐉'],['penguin','🐧']];
+const LIKES=[['space','🚀'],['football','⚽'],['superheroes','🦸'],['princesses','👑'],['trains','🚂'],['robots','🤖'],['music','🎵'],['the seaside','🏖️'],['pirates','🏴‍☠️'],['fairies','🧚']];
+let startMsg='',startBusy=false;
+function likesList(){return String(S.profile.likes||'').split(',').map(s=>s.trim()).filter(Boolean)}
+function renderStart(){
+  const P=S.profile,teen=S.displayStyle==='teen',likes=likesList().map(s=>s.toLowerCase());
+  const title=teen?'Where to?':S.age==='4-5'?'Where are we going today?':'Where are we going?';
+  const fresh=routeFresh();
+  $('#view-start').innerHTML=`
+    <div class="start-hero"><h1>${title}</h1><p>${kidNames()?`Hi ${esc(kidNames())}! `:''}Tell me where we’re heading and a little about who’s coming, and I’ll make the trip stories just for you.</p><canvas id="start-cv" width="1000" height="200" aria-hidden="true"></canvas></div>
+    <div class="card">
+      ${S.tripMode==='connected'?`
+      <div><label class="lbl" for="s-to">Destination</label><input class="dest" type="text" id="s-to" data-p="to" value="${esc(S.to)}" list="s-dest-list" autocomplete="off" placeholder="Grandma’s house, the beach, a town…"><datalist id="s-dest-list"></datalist></div>
+      <div><label class="lbl" for="s-from">Starting from <span class="opt">(blank = where you are now)</span></label><input type="text" id="s-from" data-p="from" value="${esc(S.from)}" placeholder="Current location"></div>
+      ${fresh&&S.route?`<p class="note">Route ready: <b>${S.route.miles} miles · ${fmtMins(S.route.mins)}</b>${S.route.landmarks.length?` · ${S.route.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`:''}</p>`:''}`
+      :`<div class="grid2">${select('offlineMins','How long is the drive?',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}</div>
+      <p class="note">No signal needed: the car moves along the road by the clock.</p>`}
+      ${routes.length?`<div><span class="lbl">Or pick a saved trip</span><div class="chips-row small">${routes.map(r=>`<button type="button" class="chip-btn ${S.route&&S.route.savedFrom===r.id&&S.tripMode==='connected'?'on':''}" data-start="route" data-id="${r.id}">${esc(r.name)}</button>`).join('')}</div></div>`:''}
+      <div class="sub">${chips('tripMode',[['connected','📍 Use maps'],['offline','✈️ No signal: set the time']],S.tripMode,'small')}</div>
+    </div>
+    <div class="card">
+      <h2 class="h">Who’s coming?</h2>
+      <div><label class="lbl" for="s-names">Children’s names</label><input type="text" id="s-names" data-p="profile.names" value="${esc(P.names)}" placeholder="e.g. Mia, Leo" autocomplete="off"></div>
+      <div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}</div>
+      ${savedCars.length?`<div><span class="lbl">Which car are we in?</span><div class="chips-row small">${savedCars.map((c,i)=>`<button type="button" class="chip-btn ${c.body===S.car.body&&c.color===S.car.color?'on':''}" data-start="car" data-i="${i}">${esc(c.name)}</button>`).join('')}</div></div>`:''}
+    </div>
+    <div class="card">
+      <h2 class="h">Make the stories theirs <span class="opt">optional</span></h2>
+      <div><label class="lbl" for="s-animal">Favourite animal</label><div class="chips-row small" style="margin-bottom:8px">${ANIMALS.map(([a,e])=>`<button type="button" class="chip-btn ${String(P.animal).toLowerCase()===a?'on':''}" data-start="animal" data-val="${a}">${e} ${a}</button>`).join('')}</div><input type="text" id="s-animal" data-p="profile.animal" value="${esc(P.animal)}" placeholder="Or type one: hedgehog, shark…"></div>
+      <div><label class="lbl" for="s-likes">Things they love</label><div class="chips-row small" style="margin-bottom:8px">${LIKES.map(([l,e])=>`<button type="button" class="chip-btn ${likes.includes(l)?'on':''}" data-start="like" data-val="${l}">${e} ${l}</button>`).join('')}</div><input type="text" id="s-likes" data-p="profile.likes" value="${esc(P.likes)}" placeholder="Or type: tractors, ballet, Minecraft…"></div>
+      <div class="grid2">
+        <div><label class="lbl" for="s-buddy">Travel buddy’s name</label><input type="text" id="s-buddy" data-p="profile.buddy" value="${esc(P.buddy)}" placeholder="A toy or teddy, e.g. Mr Bun"></div>
+        <div><label class="lbl" for="s-reason">What’s the trip for?</label><input type="text" id="s-reason" data-p="profile.reason" value="${esc(P.reason)}" placeholder="e.g. Grandma’s birthday"></div>
+      </div>
+      <p class="note">${API.ai?'The AI writer weaves these into the stories and fun facts for each landmark.':'These go into the built-in stories now, and into AI-written ones once AI stories are switched on.'}</p>
+    </div>
+    ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
+    <p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p>
+    <button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':teen?'Start trip':'Let’s go! 🚗'}</button>
+    <button class="linkish" id="s-more">More settings</button>`;
+  drawStartArt();
+}
+function drawStartArt(){const cv=$('#start-cv');if(!cv)return;const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.clearRect(0,0,W,H);
+  const teen=S.displayStyle==='teen';g.fillStyle=teen?'#252C36':S.displayStyle==='playful'?'#B9DBF1':'#D3DCCD';g.fillRect(0,H*.82,W,H*.06);
+  g.strokeStyle=teen?'#5EEAD4':S.displayStyle==='playful'?'#F0484E':'#2F6B4F';g.setLineDash([W*.02,W*.015]);g.lineWidth=H*.025;g.beginPath();g.moveTo(W*.16,H*.66);g.lineTo(W*.82,H*.66);g.stroke();g.setLineDash([]);
+  drawHouse(g,W*.07,H*.84,H*.6,S.houseStart.type,S.houseStart.color);drawHouse(g,W*.93,H*.84,H*.6,S.houseEnd.type,S.houseEnd.color,{flag:true});
+  drawCar(g,W*.36,H*.84,H*.95,S.car.body,COLORS[S.car.color]||S.car.color,1,{t:1})}
+function greet(){
+  const who=kidNames(),r=T.route,reason=String(S.profile.reason||'').trim();
+  const where=r.timerOnly?`Our drive takes about ${fmtMins(r.mins)}.`:`We’re going to ${shortName(r.to)}, which is ${Math.round(r.miles)} miles away.`;
+  Voice.say([`Hello ${who||'everyone'}! ${reason?`Today’s adventure is ${reason}! `:''}${where} Watch the car on the road to see how far we’ve got. Let’s go!`]);
+}
+async function startTrip(){
+  if(startBusy)return;Snd.ready();
+  if(S.tripMode==='connected'){
+    if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
+    if(!routeFresh()){startBusy=true;startMsg=API.maps?'Finding the route…':'';renderStart();
+      try{await loadRoute();startMsg=''}catch(e){startBusy=false;startMsg='!Couldn’t get the route. '+e.message;renderStart();return}
+      startBusy=false}
+    else prepareStories(S.route);
+  }
+  saveS();newTrip();showTab('kid');setPlay(true);greet();
+}
+const VSt=$('#view-start');
+VSt.addEventListener('input',e=>{const el=e.target,p=el.dataset.p;if(!p)return;setP(S,p,el.value);saveS();
+  if(p==='to'&&API.maps){clearTimeout(acTimer);const v=el.value.trim();if(v.length>=3)acTimer=setTimeout(()=>api('places',{input:v},8000).then(j=>{const dl=$('#s-dest-list');if(dl)dl.innerHTML=(j.suggestions||[]).map(s=>`<option value="${esc(s)}"></option>`).join('')}).catch(()=>{}),300)}});
+VSt.addEventListener('change',e=>{const el=e.target;if(el.dataset.p&&(el.dataset.p==='to'||el.dataset.p==='from')){startMsg='';renderStart();return}
+  if(el.dataset.bind){setAndApply(el.dataset.bind,el.type==='checkbox'?el.checked:parseVal(el.value));renderStart()}});
+VSt.addEventListener('click',e=>{
+  if(e.target.closest('#s-go')){startTrip();return}
+  if(e.target.closest('#s-more')){showTab('settings');return}
+  const s=e.target.closest('[data-set]');if(s){setAndApply(s.dataset.set,parseVal(s.dataset.val));renderStart();return}
+  const b=e.target.closest('[data-start]');if(!b)return;const k=b.dataset.start;
+  if(k==='animal'){S.profile.animal=String(S.profile.animal).toLowerCase()===b.dataset.val?'':b.dataset.val}
+  if(k==='like'){const l=likesList(),i=l.findIndex(x=>x.toLowerCase()===b.dataset.val);if(i>=0)l.splice(i,1);else l.push(b.dataset.val);S.profile.likes=l.join(', ')}
+  if(k==='car'){const c=savedCars[+b.dataset.i];if(c&&!(BODIES[c.body].unlock!==undefined&&!unlockedSet().has(c.body))){S.car.body=c.body;S.car.color=c.color}}
+  if(k==='route'){const r=routes.find(x=>x.id===b.dataset.id);if(r){S.route={...JSON.parse(JSON.stringify(r)),id:r.points?'g'+Date.now():r.id,savedFrom:r.id};S.to=r.to;S.from=r.from==='Home'?'':r.from;S.tripMode='connected';startMsg=''}}
+  saveS();applyLive();renderStart();
+});
+$('#d-new').addEventListener('click',()=>{setPlay(false);Voice.stop();showTab('start')});
+
 function showTab(tab){
   $$('.tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===tab)));
-  $('#view-kid').hidden=tab!=='kid';$('#view-stats').hidden=tab!=='stats';$('#view-settings').hidden=tab!=='settings';
+  $('#view-start').hidden=tab!=='start';$('#view-kid').hidden=tab!=='kid';$('#view-stats').hidden=tab!=='stats';$('#view-settings').hidden=tab!=='settings';
+  if(tab==='start')renderStart();
   if(tab==='settings'){plateMsg='';lockMsg='';renderSettings()}if(tab==='stats'){confirmReset=false;renderStats()}
   $('#tabHint').textContent='';window.scrollTo({top:0});
 }
@@ -1179,7 +1291,7 @@ $('#lm-badge').addEventListener('click',()=>{if(lastLm){Voice.stop();Voice.say(b
 $('#view-settings').addEventListener('input',e=>{if(e.target.id!=='f-to'||!API.maps)return;clearTimeout(acTimer);const v=e.target.value.trim();if(v.length<3)return;
   acTimer=setTimeout(()=>api('places',{input:v},8000).then(j=>{const dl=$('#dest-list');if(dl)dl.innerHTML=(j.suggestions||[]).map(s=>`<option value="${esc(s)}"></option>`).join('')}).catch(()=>{}),300)});
 let acTimer=0;
-$('#arrive').addEventListener('click',e=>{if(e.target.dataset.act==='newtrip')newTrip()});
+$('#arrive').addEventListener('click',e=>{if(e.target.dataset.act==='newtrip'){newTrip();showTab('start')}});
 $('#kid-tools').addEventListener('click',e=>{const b=e.target.closest('[data-kid]');if(!b)return;const k=b.dataset.kid;Snd.ready();
   if(k==='color'){const ks=Object.keys(COLORS);S.car.color=ks[(ks.indexOf(S.car.color)+1)%ks.length]}
   if(k==='bg'){const ks=Object.keys(ZONES);T.kidZone=ks[(ks.indexOf(currentZone())+1)%ks.length]}
@@ -1222,7 +1334,7 @@ VS.addEventListener('click',e=>{
   if(a==='commonlist'){S.spot.off={};Object.keys(S.spot.cats).forEach(k=>S.spot.cats[k]=k!=='shapes'||S.age==='4-5')}
   if(a==='testgame'){showTab('kid');Game.start();return}
   if(a==='previewlm'){const lm=T.route.landmarks.find(l=>!T.announced.has(l.id))||T.route.landmarks[0]||{id:'castle',mile:0};Voice.stop();Voice.say(buildSpeech(lm));return}
-  if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);return}
+  if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);greet();return}
   saveS();applyLive();renderSettings();
 });
 VS.addEventListener('input',e=>{const el=e.target;if(el.type==='range'&&el.dataset.bind){setP(S,el.dataset.bind,+el.value);const o=VS.querySelector(`[data-out="${el.dataset.bind}"]`);if(o)o.textContent=Math.round(el.value*100)+'%';saveS();applyLive()}});
@@ -1249,7 +1361,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 scene.cv=$('#scene');scene.ctx=scene.cv.getContext('2d');
-applyStyle();newTrip();applyLive();checkServices();
+applyStyle();newTrip();applyLive();checkServices();showTab('start');
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 requestAnimationFrame(loop);
 </script>

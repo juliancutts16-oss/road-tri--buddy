@@ -1,13 +1,14 @@
 {
-  "name": "Road Trip Buddy",
-  "short_name": "Trip Buddy",
+  "id": "./",
+  "name": "AWTY – Are We There Yet?",
+  "short_name": "AWTY",
   "description": "Shows children how far there is to go on a car journey, with spotting games, landmark stories and a bonus driving game.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#E9EEE6",
-  "theme_color": "#2F6B4F",
+  "background_color": "#1E3A8A",
+  "theme_color": "#1E3A8A",
   "categories": ["kids", "travel", "games"],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -1,4 +1,9 @@
-<title>Road Trip Buddy</title>
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AWTY – Are We There Yet?</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#2F6B4F">
 <meta name="mobile-web-app-capable" content="yes">
@@ -55,7 +60,10 @@ button{font-family:inherit}
 .app{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 48px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px}
 .brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:var(--dw);font-size:calc(1.5rem*var(--ds));letter-spacing:-.01em;line-height:1.1}
-.brand svg{width:34px;height:20px;flex:none}
+.brand svg{width:42px;height:42px;flex:none}
+.brand-text{display:flex;flex-direction:column;line-height:1}
+.brand-text b{font-weight:inherit;letter-spacing:.04em}
+.brand-text small{font-family:var(--body);font-weight:600;font-size:.72rem;letter-spacing:.02em;color:var(--muted);margin-top:3px}
 .tabs{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:var(--pill);padding:4px;gap:2px}
 .tab{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:.95rem;padding:8px 15px;border-radius:var(--pill);cursor:pointer;position:relative;overflow:hidden}
 .tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
@@ -318,13 +326,54 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .calm .lm-badge .em,.calm .waves i{animation:none}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 @media (max-width:420px){.tab{padding:8px 11px}.brand{font-size:calc(1.3rem*var(--ds))}}
+/* Phones: tabs span the full width under the name, and sit in a bar that stays at the top while scrolling */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (max-width:560px){
+  .top{position:sticky;top:0;z-index:20;background:var(--bg);margin:0 calc(-1*max(16px,env(safe-area-inset-right,0px))) 12px calc(-1*max(16px,env(safe-area-inset-left,0px)));padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+  .top > div:last-child{width:100%}
+  .tabs{width:100%}
+  .tab{flex:1;padding:10px 4px;font-size:.92rem}
+  .hint{text-align:center}
+  .app{padding-block:4px 40px}
+  .trip-head{gap:8px}
+  .score{min-width:74px;padding:6px 10px}
+  .demo-btns .mini{padding:8px 11px}
+  #scene{aspect-ratio:4/3}
+}
+/* Tablets: everything scales up. Forms (start, stats, settings) keep a comfortable reading width;
+   the driving screen uses the full width, and in landscape puts the road on the left and the games and controls on the right. */
+@media (min-width:700px){
+  body{font-size:16px}
+  :root[data-age="4-5"] body{font-size:18px}
+  .app{max-width:1000px}
+  #view-start,#view-stats,#view-settings{max-width:820px;margin-inline:auto}
+  .tab{padding:10px 20px;font-size:1rem}
+  .brand svg{width:48px;height:48px}
+  .spot-item .e{font-size:3rem}
+  .game-ctrl button{height:110px;font-size:3rem}
+  .mg-btn{min-height:110px;font-size:calc(2.6rem*var(--ds))}
+  .mg-opts{max-width:760px}
+}
+@media (min-width:1000px) and (orientation:landscape){
+  .app{max-width:1500px}
+  #view-kid:not([hidden]){display:grid;grid-template-columns:minmax(0,1.75fr) minmax(320px,1fr);gap:24px;align-items:start}
+  #view-kid #scene{aspect-ratio:auto;height:min(62vh,640px)}
+  .kid-side{display:flex;flex-direction:column;gap:14px}
+  .kid-side > *{margin-top:0!important}
+  .kid-side .spot-items{grid-template-columns:repeat(2,1fr)}
+  :root[data-style="teen"] .kid-side .spot-items{grid-template-columns:1fr}
+}
+@media (min-width:700px) and (orientation:portrait){
+  #view-kid #scene{aspect-ratio:4/3}
+}
 </style>
 
 <div class="app" id="app">
   <header class="top">
     <div class="brand">
-      <svg viewBox="0 0 34 20" aria-hidden="true"><path d="M2 13v-3l5-1 5-6h11l6 6 3 1v3z" fill="var(--accent)"/><path d="M13 4h4v5h-8zM19 4h3.5l4.5 5h-8z" fill="var(--surface)"/><circle cx="9" cy="15" r="3.3" fill="var(--ink)"/><circle cx="25" cy="15" r="3.3" fill="var(--ink)"/></svg>
-      Road Trip Buddy
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M13 33A19 19 0 1 1 47 35C43 41 32 40 32 47L32 50" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="58" r="4" fill="var(--accent)"/><path d="M20 29v-3.5l3-.8 3.2-4h8.6l3.6 4 2.6.8V29z" fill="var(--ink)"/><path d="M27 21.6h3.3v3.6h-6zM31.6 21.6h2.6l3.1 3.6h-5.7z" fill="var(--surface)"/><circle cx="24.5" cy="29.5" r="2.5" fill="var(--ink)"/><circle cx="35.5" cy="29.5" r="2.5" fill="var(--ink)"/></svg>
+      <span class="brand-text"><b>AWTY</b><small>Are we there yet?</small></span>
     </div>
     <div>
       <div class="tabs" role="tablist" aria-label="Screens">
@@ -340,6 +389,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <main>
     <section id="view-start" class="start" hidden></section>
     <section id="view-kid" hidden>
+      <div class="kid-main">
       <div class="trip-head">
         <div>
           <div class="route-line" id="k-route">Home → Grandma's</div>
@@ -358,6 +408,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         <div class="bar"><i id="k-bar"></i></div>
         <div class="ends"><span id="k-from">Home</span><span id="k-pct">0%</span><span id="k-to">Grandma's</span></div>
       </div>
+      </div>
+      <div class="kid-side">
 
       <div class="card spot" id="spot" hidden>
         <div class="spot-head"><b>Can you spot…</b><span id="spot-left">60s</span></div>
@@ -386,6 +438,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         </div>
         <div class="demo-btns"><button class="mini" id="d-new">🗺️ Plan a new trip</button></div>
         <p class="note" style="margin-top:8px" id="d-note">Turn off “Demo driving” in Settings to drive for real: the car then follows the phone’s GPS, or the trip timer in offline mode.</p>
+      </div>
       </div>
     </section>
 
@@ -1371,14 +1424,14 @@ function dataBody(){
 let backupMsg='';
 function exportData(){
   const blob=new Blob([JSON.stringify({app:'road-trip-buddy',v:1,saved:new Date().toISOString(),settings:S,cars:savedCars,routes,stats})],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`road-trip-buddy-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`awty-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);backupMsg='Backup file saved to your downloads.';
 }
 function importData(file){
   const fr=new FileReader();fr.onload=()=>{try{const d=JSON.parse(fr.result);if(d.app!=='road-trip-buddy')throw new Error('wrong file');
     S=deepMerge(DEFAULTS,d.settings||{});savedCars=Array.isArray(d.cars)?d.cars:savedCars;routes=Array.isArray(d.routes)?d.routes:routes;stats=d.stats&&Array.isArray(d.stats.trips)?d.stats:stats;
     saveS();saveCars();saveRoutes();saveStats();applyStyle();newTrip();applyLive();backupMsg=`Restored ${stats.trips.length} trips, ${savedCars.length} cars and ${routes.length} routes.`}
-    catch(e){backupMsg='That file isn’t a Road Trip Buddy backup.'}renderSettings()};fr.readAsText(file);
+    catch(e){backupMsg='That file isn’t an AWTY backup.'}renderSettings()};fr.readAsText(file);
 }
 function drawThumbs(){$$('canvas[data-thumb]').forEach(cv=>{const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);const W=cv.width,H=cv.height;
   if(cv.dataset.thumb==='car'){const locked=cv.dataset.locked==='true';const col=locked?'#B8BCC6':COLORS[cv.dataset.color||S.car.color];g.fillStyle='rgba(0,0,0,.06)';g.fillRect(0,H*.82,W,H*.18);drawCar(g,W/2,H*.86,W*.6,cv.dataset.body,col,1,{t:1})}

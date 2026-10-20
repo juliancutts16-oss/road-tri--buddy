@@ -583,7 +583,7 @@ const DEFAULTS={
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
   displayStyle:'explorer',bgAuto:true,bgManual:'countryside',
-  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true},
+  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true,music:true,musicVol:.25},
   spot:{enabled:true,every:2,time:60,count:4,cats:{animals:true,vehicles:true,nature:true,places:true,shapes:false},off:{}},
   bonus:{count:2,length:40,off:{}},
   landmark:{enabled:true,type:'story',sentences:5,voice:'',rate:1,lang:'simple',interactive:'question',listen:false},
@@ -648,9 +648,11 @@ const lmKey=lm=>lm.id||lm.name;
 const genKey=()=>`${S.landmark.type}|${S.landmark.sentences}|${S.landmark.lang}|${S.age}|${hashStr(JSON.stringify(S.profile))}`;
 // "Mia", "Mia and Leo", "Mia, Leo and Sam"
 function kidNames(){const n=String(S.profile.names||'').split(/\s*(?:,|&|\band\b)\s*/i).map(s=>s.trim()).filter(Boolean).slice(0,4);return n.length<2?(n[0]||''):n.slice(0,-1).join(', ')+' and '+n[n.length-1]}
-let storyStatus='';
+let storyStatus='',storyPending=false;
 async function prepareStories(route){
-  if(!API.ai||!route||!route.landmarks.length)return;
+  if(!API.ai||!route)return;
+  if(S.landmark.type==='story')return prepareSaga(route);
+  if(!route.landmarks.length)return;
   const key=genKey();const todo=route.landmarks.filter(lm=>!lm.gen||lm.gen.key!==key);if(!todo.length){storyStatus='';return}
   let done=0,failed=0;const total=todo.length;const upd=()=>{storyStatus=`Writing ${S.landmark.type==='fact'?'fun facts':'stories'}… ${done} of ${total}`;const el=$('#storyStatus');if(el)el.textContent=storyStatus};upd();
   const L=lm=>lmInfo(lm);
@@ -658,6 +660,54 @@ async function prepareStories(route){
   const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
   storyStatus=failed?`${total-failed} of ${total} ready. The rest will use the built-in stories.`:`${S.landmark.type==='fact'?'Fun facts':'Stories'} ready for all ${total} landmarks.`;
   saveS();saveRoutes();const el=$('#storyStatus');if(el)el.textContent=storyStatus;
+}
+
+/* ================= Trip story: one adventure for the whole drive ================= */
+// An opening as you set off, a chapter as you near each landmark, and an ending on arrival.
+// The AI writes the opening first (with a short "story so far" summary), then each chapter using that summary.
+const sagaKey=route=>genKey()+'|'+route.landmarks.map(l=>l.id).join(',');
+const pickN=(s,n)=>n>=s.length?s:n===3?[s[0],s[1],s[s.length-1]]:s.slice(0,n);
+const CONNECT=['Before long','After a little while','Soon','A bit further on','Next','Then','Later'];
+function sagaHero(){return String(S.profile.animal||'').trim().toLowerCase()||HEROES[(T?T.seed:0)%HEROES.length]}
+async function prepareSaga(route){
+  const key=sagaKey(route);let sg=route.saga&&route.saga.key===key?route.saga:null;if(sg&&sg.done)return;
+  storyPending=true;const upd=t=>{storyStatus=t;const el=$('#storyStatus');if(el)el.textContent=t};
+  const common={sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:{...S.profile,names:kidNames()}},to=shortName(route.to),stops=route.landmarks.map(l=>lmInfo(l).name);
+  try{
+    if(!sg||!sg.intro){upd('Writing the start of your trip story…');
+      const g=await api('story',{...common,mode:'intro',from:route.from||'Home',to,stops},60000);
+      sg={key,intro:g.intro,ending:g.ending,bible:g.bible,chapters:{}};route.saga=sg;saveS();saveRoutes();if(T&&T.route===route&&T.running)tellIntro()}
+    const todo=route.landmarks.map((lm,i)=>({lm,i})).filter(x=>!sg.chapters[x.lm.id]);let done=0,failed=0;
+    const work=async({lm,i})=>{const L=lmInfo(lm);try{sg.chapters[lm.id]=await api('story',{...common,mode:'chapter',bible:sg.bible,index:i,total:stops.length,name:L.name,kind:lm.kind||L.word.toLowerCase(),summary:lm.summary||'',prev:i?stops[i-1]:'',next:stops[i+1]||'',to},60000)}catch(e){failed++}
+      done++;upd(`Writing the story’s chapters… ${done} of ${todo.length}`)};
+    const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
+    sg.done=!failed;upd(failed?`Trip story ready. ${failed} chapter${failed>1?'s':''} will use the built-in story.`:`Trip story ready: an opening, ${stops.length} landmark chapter${stops.length===1?'':'s'} and an ending.`)}
+  catch(e){upd('Couldn’t write the trip story just now, so the built-in story will be used.')}
+  storyPending=false;saveS();saveRoutes();
+}
+// Built-in version of the same trip story, for when the AI isn't set up or there's no signal.
+function sagaFallback(route){
+  const hero=sagaHero(),dest=shortName(route.to),buddy=String(S.profile.buddy||'').trim(),reason=String(S.profile.reason||'').trim(),likes=likesList(),n=S.landmark.sentences,who=kidNames();
+  const intro=[`${who?who+', are':'Are'} you ready for a story? Today, a little ${hero} is coming with us on our trip to ${dest}!`,
+    reason?`The ${hero} is very excited, because today’s adventure is ${reason}.`:`The ${hero} has heard that ${dest} is the most wonderful place.`,
+    buddy?`And guess who is coming too? ${buddy}, the ${hero}’s best friend!`:`The ${hero} has packed a bag full of snacks and a big map.`,
+    `Every time we pass somewhere special, the ${hero} will have a new adventure.`,`So keep watching out of the window, and let’s see what happens!`];
+  const chapters={};route.landmarks.forEach((lm,i)=>{const L=lmInfo(lm),fr=FRIENDS[(i+hashStr(lm.id||''))%FRIENDS.length];
+    chapters[lm.id]={sentences:pickN([`${CONNECT[i%CONNECT.length]}, the ${hero} spotted ${L.name} ${L.sight}.`,`The ${hero} ${L.bit}.`,
+      [`A friendly ${fr} came to say hello, and they became friends straight away.`,`Whoosh! The wind blew the ${hero}’s hat right off, and everyone laughed.`,`There, the ${hero} found a shiny clue pointing the way to ${dest}.`][i%3],
+      likes.length?`It reminded the ${hero} of ${likes[i%likes.length]}, which made it smile.`:`It was the best part of the adventure so far!`,
+      `${buddy||'Everyone'} cheered as they set off again.`,`I wonder what we’ll see next?`,`Then the ${hero} hopped back in the car, ready for the next stop.`],n)}});
+  return{intro:pickN(intro,n),chapters,ending:[`And at last, the ${hero} arrived at ${dest}, just like us!`,'What an amazing journey it had been.',`Thank you for helping the ${hero} on the adventure.`,'The end!']};
+}
+// The AI story where it's ready, filling any missing parts from the built-in one.
+function sagaFor(route){if(S.landmark.type!=='story')return null;const fb=sagaFallback(route),s=route.saga;if(!s||s.key!==sagaKey(route))return fb;
+  const chapters={};route.landmarks.forEach(l=>chapters[l.id]=s.chapters[l.id]||fb.chapters[l.id]);
+  return{intro:s.intro&&s.intro.length?s.intro:fb.intro,ending:s.ending&&s.ending.length?s.ending:fb.ending,chapters}}
+// Tells the opening once per trip. Waits briefly for the AI version unless forced (Story time, a landmark arriving, or a timeout).
+function tellIntro(force){
+  if(!T||T.introTold||S.landmark.type!=='story'||!S.landmark.enabled)return;
+  const ready=T.route.saga&&T.route.saga.key===sagaKey(T.route)&&T.route.saga.intro;if(!force&&API.ai&&storyPending&&!ready)return;
+  T.introTold=true;Voice.say(['Here’s our story for this trip.',...sagaFor(T.route).intro]);
 }
 // Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
 async function loadRoute(){
@@ -718,10 +768,49 @@ const Snd={ac:null,out:null,
   arrive(){const a=S.sound.arrival;if(a==='off')return;this.fanfare();if(a==='hooray')setTimeout(()=>Voice.say(['Hooray! We made it!'],true),700)}
 };
 
+/* ================= Background music ================= */
+// Gentle tunes made on the phone (no files, nothing copyrighted), one per age style. Four chords loop under an
+// eight-bar melody that repeats, so it settles into the background. It dips whenever the voice is speaking.
+const Music={on:false,timer:0,next:0,step:0,gain:null,style:null,noiseBuf:null,
+  start(){if(!S.sound.on||!S.sound.music||!Snd.ready())return;const ac=Snd.ac;
+    if(!this.gain){this.gain=ac.createGain();this.gain.gain.value=0;this.gain.connect(Snd.out)}
+    if(this.on&&this.style===S.displayStyle)return;this.stop(true);this.on=true;this.style=S.displayStyle;this.build();this.step=0;this.next=ac.currentTime+.15;
+    this.gain.gain.setTargetAtTime(this.level(),ac.currentTime,.8);this.timer=setInterval(()=>this.tick(),100)},
+  stop(quick){if(!this.on)return;this.on=false;clearInterval(this.timer);if(this.gain)this.gain.gain.setTargetAtTime(0,Snd.ac.currentTime,quick?.05:.6)},
+  level(){return S.sound.musicVol*(Voice.busy||('speechSynthesis' in window&&speechSynthesis.speaking)?.3:1)},
+  duck(){if(this.on&&this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.25)},
+  build(){const st=this.style;
+    this.bpm={playful:96,explorer:112,teen:100,pixel:120}[st]||100;
+    this.chords={playful:[[60,64,67],[55,59,62],[57,60,64],[53,57,60]],explorer:[[55,59,62],[62,66,69],[52,55,59],[60,64,67]],teen:[[57,60,64],[53,57,60],[60,64,67],[55,59,62]]}[st]||[[60,64,67],[55,59,62],[57,60,64],[53,57,60]];
+    const rng=mulberry(hashStr(st)+11),scale=st==='teen'?[69,72,74,76,79,81]:st==='explorer'?[67,69,71,74,76,79]:[72,74,76,79,81,84],rest=st==='teen'?.5:.4;
+    const bar=b=>Array.from({length:8},(_,e)=>rng()<rest&&e%2?null:(e%4===0?this.chords[b%4][Math.floor(rng()*3)]+12:scale[Math.floor(rng()*scale.length)]));
+    const A=[0,1,2,3].map(bar),B=bar(3);this.melody=[...A,A[0],A[1],A[2],B].flat();}, // phrase, then the phrase again with a new last bar
+  note(t,m,dur,type,vol,cut){const ac=Snd.ac,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=440*Math.pow(2,(m-69)/12);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    if(cut){const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=cut;o.connect(f);f.connect(g)}else o.connect(g);g.connect(this.gain);o.start(t);o.stop(t+dur+.05)},
+  kick(t,vol){const ac=Snd.ac,o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+.16);o.connect(g);g.connect(this.gain);o.start(t);o.stop(t+.2)},
+  hat(t,vol,freq=6000,dur=.03){const ac=Snd.ac;if(!this.noiseBuf){const n=ac.sampleRate*.3|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;this.noiseBuf=b}
+    const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=this.noiseBuf;f.type='highpass';f.frequency.value=freq;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(f);f.connect(g);g.connect(this.gain);s.start(t);s.stop(t+dur+.02)},
+  tick(){if(!this.on)return;const ac=Snd.ac,eighth=60/this.bpm/2;while(this.next<ac.currentTime+.35){this.play(this.step,this.next,eighth);this.step=(this.step+1)%64;this.next+=eighth}},
+  play(step,t,len){const b=Math.floor(step/8)%8,e=step%8,ch=this.chords[b%4],m=this.melody[step],st=this.style;
+    if(st==='explorer'){ // 6–7 adventure: bouncy bass, light kick and shaker, plucky tune
+      if(e%4===0)this.kick(t,.32);if(e%2)this.hat(t,.05);if(e===0||e===3||e===6)this.note(t,ch[0]-24,len*1.6,'triangle',.24);
+      if(m)this.note(t,m,len*1.8,'triangle',.13)}
+    else if(st==='teen'){ // 8+ synthwave: rolling arpeggio, pulsing bass, soft pad and beat
+      this.note(t,ch[e%3]+12*((e>>1)%2),len*1.4,'sawtooth',.05,1500);this.note(t,ch[0]-24,len*.9,'sawtooth',.1,420);
+      if(e===0)ch.forEach(n=>this.note(t,n,len*8,'triangle',.035));if(e%4===0)this.kick(t,.28);if(e===4)this.hat(t,.06,1800,.12);
+      if(m&&e%2===0)this.note(t,m+12,len*2.5,'square',.025,2200)}
+    else{ // 4–5 playful (and pixel): music-box tune over a soft bass
+      const wave=st==='pixel'?'square':'sine';if(e===0)this.note(t,ch[0]-24,len*3,'triangle',.22);if(e===4)this.note(t,ch[2]-24,len*3,'triangle',.18);
+      if(m){this.note(t,m,len*3,wave,st==='pixel'?.06:.16);this.note(t,m+12,len*2,'sine',.035)}}}
+};
+
 /* ================= Read-aloud ================= */
 const Voice={queue:[],busy:false,token:0,cur:null,held:null,
   ok(){return 'speechSynthesis' in window&&S.sound.on},
-  pick(){const vs=speechSynthesis.getVoices();return vs.find(v=>v.name===S.landmark.voice)||vs.find(v=>/^en[-_]GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null},
+  // Voices stored on the phone start speaking straight away and work with no signal; online voices can lag by seconds.
+  pick(){const vs=speechSynthesis.getVoices(),gb=v=>/^en[-_]GB/i.test(v.lang),en=v=>/^en/i.test(v.lang);
+    return vs.find(v=>v.name===S.landmark.voice)||vs.find(v=>gb(v)&&v.localService)||vs.find(v=>en(v)&&v.localService)||vs.find(gb)||vs.find(en)||null},
   say(items,priority){if(!this.ok())return false;if(priority)this.stop();this.queue.push(...items);if(!this.busy)this.next();return true},
   next(){const it=this.queue.shift();const tok=++this.token;this.cur=it;
     if(it===undefined){this.busy=false;return}this.busy=true;
@@ -731,7 +820,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,
     const u=new SpeechSynthesisUtterance(it);const v=this.pick();if(v){u.voice=v;u.lang=v.lang}
     u.rate=S.landmark.rate*(S.age==='4-5'?.92:1);u.pitch=1.05;u.volume=S.sound.volume;
     let done=false;const fin=()=>{if(done||tok!==this.token)return;done=true;this.next()};
-    u.onend=fin;u.onerror=fin;setTimeout(fin,it.length*95+4000);speechSynthesis.speak(u)},
+    u.onend=fin;u.onerror=fin;setTimeout(fin,it.length*75/Math.max(.5,u.rate)+2500);speechSynthesis.speak(u)}, // safety net if the phone never reports the sentence finished
   stop(){this.queue=[];this.held=null;this.cur=null;this.token++;this.busy=false;Ear.stop();try{speechSynthesis.cancel()}catch(e){}},
   // Pause keeps the sentence being spoken plus everything after it, so ▶ carries on from there.
   // (speechSynthesis.pause() is unreliable on Android, so it cancels and re-queues instead.)
@@ -1237,7 +1326,7 @@ function newTrip(){
 }
 function setPlay(on){if(!T)return;const was=T.running;T.running=on&&!T.arrived;
   if(was&&!T.running)Voice.pause();else if(!was&&T.running)Voice.resume();const b=$('#d-play');b.textContent=T.running?'❚❚':'▶';b.setAttribute('aria-label',T.running?'Pause trip':'Start trip');
-  if(T.running&&liveGps())Geo.start();else Geo.stop();keepAwake(T.running);renderTripPanel()}
+  if(T.running&&liveGps())Geo.start();else Geo.stop();keepAwake(T.running);if(T.running)Music.start();else Music.stop();renderTripPanel()}
 function step(dt){
   if(!T.running||T.arrived)return;
   if(liveGps())return; // the GPS watcher moves the car
@@ -1253,7 +1342,9 @@ function events(){
   T.milesR=T.miles/T.total*T.route.miles;
   const mb=Math.floor(T.miles/S.sound.mileEvery);if(mb>T.mileBucket){T.mileBucket=mb;if(T.miles<T.total-.05)Snd.mile()}
   const sb=Math.floor(T.miles/S.spot.every);if(sb>T.spotBucket&&!Spot.active&&!gameOpen()&&!Bonus.open){T.spotBucket=sb;Spot.start()}
-  if(S.landmark.enabled)T.route.landmarks.forEach(lm=>{if(!T.announced.has(lm.id)&&T.milesR>=lm.mile-.8&&T.milesR<lm.mile+.3)announce(lm)});
+  // start each story about 1½ minutes' drive before the landmark, so it finishes as you go past
+  const lead=clamp(T.route.miles/Math.max(1,T.route.mins)*1.5,.8,2.5);
+  if(S.landmark.enabled)T.route.landmarks.forEach(lm=>{if(!T.announced.has(lm.id)&&T.milesR>=lm.mile-lead&&T.milesR<lm.mile+.3)announce(lm)});
   if(T.bonusIdx<T.bonusAts.length&&T.miles>=T.bonusAts[T.bonusIdx]&&!gameOpen()&&!Spot.active&&!Bonus.open){T.bonusIdx++;Bonus.show()}
   if(T.miles>=T.total&&!T.arrived)arrive();
 }
@@ -1309,12 +1400,15 @@ function lmInfo(lm){
     factsA:[lm.summary||`${name} is a well-known ${kind} close to our route.`,'It attracts many visitors throughout the year.','Watch carefully from the window and see whether you can spot it.']};
 }
 function buildSpeech(lm){
-  const L=lmInfo(lm),st=S.landmark,acad=st.lang==='academic',n=st.sentences,out=[];const g=lm.gen&&lm.gen.key===genKey()?lm.gen:null;const word=g&&g.word||L.word;
+  const L=lmInfo(lm),st=S.landmark,acad=st.lang==='academic',n=st.sentences,out=[];
+  const sg=st.type==='story'&&T?sagaFor(T.route):null,ch=sg&&sg.chapters[lm.id]; // story mode: this landmark's chapter of the trip story
+  const g=!ch&&lm.gen&&lm.gen.key===genKey()?lm.gen:null,src=ch||g,word=src&&src.word||L.word;
   const who=kidNames();
-  out.push(st.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}!`);
+  out.push(st.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}! Here comes the next part of our story.`);
   const ear=Ear.active();let quiz=null;
   if(st.interactive==='repeat')out.push(`Can you say ${word}? Say it with me. ${word}!`,...(ear?[{listen:{kind:'repeat',question:'',answers:[word]}}]:[{pause:2600},'Brilliant!']));
-  if(g){out.push(...g.sentences);if(g.quiz&&g.quiz.question&&g.quiz.answers&&g.quiz.answers.length)quiz=g.quiz}
+  if(ch){out.push(...(ch.sentences||[]));quiz=ch.quiz&&ch.quiz.question&&ch.quiz.answers&&ch.quiz.answers.length?ch.quiz:{question:'Which animal is the hero of our story?',answers:[sagaHero()]}}
+  else if(g){out.push(...g.sentences);if(g.quiz&&g.quiz.question&&g.quiz.answers&&g.quiz.answers.length)quiz=g.quiz}
   else if(st.type==='fact'){const f=(acad?L.factsA:L.facts).slice();f.push(acad?'Keep watching from the window, because it should come into view very soon.':'Keep your eyes peeled, we will see it very soon!');out.push(acad?'Here are some interesting facts.':'Here are some fun facts.',...f.slice(0,n))}
   else{const rng=mulberry(hashStr(lmKey(lm))+T.seed);const pa=String(S.profile.animal||'').trim().toLowerCase(),pb=String(S.profile.buddy||'').trim();
     const hero=pa||HEROES[Math.floor(rng()*HEROES.length)],friend=FRIENDS[Math.floor(rng()*FRIENDS.length)]+(pb&&rng()<.7?` called ${pb}`:'');
@@ -1323,12 +1417,13 @@ function buildSpeech(lm){
     quiz={question:'Which animal was the hero of our story?',answers:[hero]}}
   if(st.interactive==='question'){
     if(ear){const q=quiz||{question:`Can you remember the name of the place we’re passing?`,answers:[L.name.replace(/^the /i,''),word]};out.push(q.question,{listen:{kind:'quiz',question:q.question,answers:q.answers}})}
-    else out.push(g&&g.question||L.q[acad?1:0],{pause:5500},'Great thinking!')}
+    else out.push(src&&src.question||L.q[acad?1:0],{pause:5500},'Great thinking!')}
   if(st.interactive==='repeat')out.push(`Say it after me: ${word}!`,...(ear?[{listen:{kind:'repeat',question:'',answers:[word]}}]:[{pause:2400},'Well done!']));
   return out;
 }
 let badgeTimer=0,lastLm=null;
 function announce(lm){
+  if(S.landmark.type==='story'&&!T.introTold)tellIntro(true); // the story always starts with its opening
   T.announced.add(lm.id);lastLm=lm;const L=lmInfo(lm);const b=$('#lm-badge');$('#lm-em').textContent=L.emoji;b.hidden=false;
   const spoke=Voice.say([...buildSpeech(lm),{fn:()=>{clearTimeout(badgeTimer);badgeTimer=setTimeout(()=>b.hidden=true,2500)}}]);
   b.classList.toggle('quiet',!spoke);clearTimeout(badgeTimer);if(!spoke)badgeTimer=setTimeout(()=>b.hidden=true,8000);
@@ -1496,6 +1591,7 @@ function showNextCel(){if(!$('#celebrate').hidden||!celQueue.length)return;const
   $('#celebrate').hidden=false;Snd.unlock();confetti(90)}
 function arrive(){
   T.arrived=true;T.running=false;setPlay(false);Spot.end();Snd.arrive();confetti();
+  if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)Voice.say(end)},3000)} // finish the trip story
   const n=Object.values(T.spotted).reduce((a,b)=>a+b,0);
   $('#arrive').innerHTML=`<p class="big">We made it to ${esc(shortName(T.route.to))}!</p><div class="arrive-stats"><span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span></div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>`;
   $('#arrive').hidden=false;
@@ -1532,7 +1628,8 @@ function select(path,label,opts){const cur=getP(S,path);return`<div><label class
 function range(path,label,min,max,step){const v=getP(S,path);return`<div class="rng"><label for="${idFor(path)}">${label}<b data-out="${path}">${Math.round(v*100)}%</b></label><input type="range" id="${idFor(path)}" data-bind="${path}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`}
 function sec(id,icon,title,body,sub=''){return`<details class="sec" data-sec="${id}" ${openSecs.has(id)?'open':''}><summary><span class="sec-ico" aria-hidden="true">${icon}</span>${title}${sub?`<span class="sec-sub">${sub}</span>`:''}<span class="chev"></span></summary><div class="sec-body">${body}</div></details>`}
 function voiceSelect(){const vs='speechSynthesis' in window?speechSynthesis.getVoices():[];const en=vs.filter(v=>/^en/i.test(v.lang)),other=vs.filter(v=>!/^en/i.test(v.lang));
-  return`<select id="voiceSel" data-bind="landmark.voice"><option value="">Automatic (English)</option>${en.map(v=>`<option value="${esc(v.name)}" ${S.landmark.voice===v.name?'selected':''}>${esc(v.name)} (${v.lang})</option>`).join('')}${other.length?`<optgroup label="Other languages">${other.map(v=>`<option value="${esc(v.name)}" ${S.landmark.voice===v.name?'selected':''}>${esc(v.name)} (${v.lang})</option>`).join('')}</optgroup>`:''}</select>`}
+  en.sort((a,b)=>(b.localService-a.localService)||(/GB/i.test(b.lang)-/GB/i.test(a.lang)));
+  return`<select id="voiceSel" data-bind="landmark.voice"><option value="">Automatic (quickest English voice)</option>${en.map(v=>`<option value="${esc(v.name)}" ${S.landmark.voice===v.name?'selected':''}>${esc(v.name)} (${v.lang})${v.localService?'':' · needs internet, slower'}</option>`).join('')}${other.length?`<optgroup label="Other languages">${other.map(v=>`<option value="${esc(v.name)}" ${S.landmark.voice===v.name?'selected':''}>${esc(v.name)} (${v.lang})</option>`).join('')}</optgroup>`:''}</select>`}
 let plateMsg='',routeMsg='',lockMsg='',resetAsk='';
 function renderSettings(){
   const unl=unlockedSet(),R=S.route||makeRoute(S.from,S.to),th=S.thresholds[S.unlockMetric],mv=metricValue(S.unlockMetric);
@@ -1542,7 +1639,7 @@ function renderSettings(){
       <div><label class="lbl" for="f-to">Destination</label><input type="text" id="f-to" data-bind="to" value="${esc(S.to)}" list="dest-list" autocomplete="off" placeholder="Type an address or place"><datalist id="dest-list"></datalist></div>
       <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="connect">📍 ${API.maps?'Get route from Google Maps':'Make a demo route'}</button><a class="btn ghost" href="${mapsLink()}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>
       <div class="status">${routeMsg||`${R.points?'Route from Google Maps':'Demo route'}: <b>${R.miles} miles · ${fmtMins(R.mins)}</b> · ${R.landmarks.length} landmarks ${R.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`}</div>
-      ${API.ai&&R.landmarks.length?`<div class="row" style="align-items:center;flex-wrap:wrap"><button class="btn ghost" data-act="stories">✍️ Write stories for this route</button><span class="note" id="storyStatus">${storyStatus}</span></div>`:''}
+      ${API.ai&&(R.landmarks.length||S.landmark.type==='story')?`<div class="row" style="align-items:center;flex-wrap:wrap"><button class="btn ghost" data-act="stories">✍️ ${S.landmark.type==='story'?'Write the trip story':'Write fun facts'} for this route</button><span class="note" id="storyStatus">${storyStatus}</span></div>`:''}
       <p class="note">Google Maps doesn’t share its navigation with other apps, so set the destination here. “Open in Google Maps” starts the same trip in Maps for the driver.</p>
       <div class="row"><input type="text" id="routeName" placeholder="Name this route, e.g. Grandma’s" aria-label="Route name"><button class="btn" data-act="saveroute">💾 Save offline</button></div></div>`
     :`<div class="stack"><p class="note">No signal needed. Pick a saved route (keeps its scenery and landmarks) or just set how long the drive takes.</p>
@@ -1566,6 +1663,7 @@ function renderSettings(){
   const bgBody=`${toggle('bgAuto','Auto: match scenery to where you are','Uses the route’s location data (town, motorway, coast…)')}
     <div><span class="lbl">${S.bgAuto?'Used when there’s no location data':'Background'}</span>${chips('bgManual',Object.entries(ZONES).map(([k,[l,e]])=>[k,`${l} ${e}`]),S.bgManual)}</div>`;
   const soundBody=`${toggle('sound.on','Sound effects & read-aloud')}${range('sound.volume','Volume',0,1,.05)}
+    ${toggle('sound.music','🎵 Background music','A gentle tune while you drive, matched to the display style. It goes quieter whenever the story is being read.')}${S.sound.music?range('sound.musicVol','Music volume',.05,.6,.05):''}
     <div class="grid2">${select('sound.mileSound','Distance sound',[['vroom','Vroom'],['beep','Beep beep'],['choo','Choo choo'],['off','Off']])}${select('sound.mileEvery','Play it every',[[1,'1 mile'],[2,'2 miles'],[5,'5 miles'],[10,'10 miles'],[20,'20 miles']])}${select('sound.arrival','On arrival',[['hooray','Hooray + fanfare'],['fanfare','Fanfare only'],['off','Off']])}</div>
     ${toggle('sound.chime','Chime for each thing spotted')}${toggle('sound.tick','Ticking on the bonus-game timer')}
     <div class="row" style="flex-wrap:wrap"><button class="btn ghost" data-act="test" data-snd="mile">Test distance sound</button><button class="btn ghost" data-act="test" data-snd="chime">Test chime</button><button class="btn ghost" data-act="test" data-snd="arrive">Test arrival</button></div>`;
@@ -1581,7 +1679,7 @@ function renderSettings(){
     <div><span class="lbl">Try any game (all ages)</span>${['4-5','6-7','8+'].map(ag=>`<div style="margin-bottom:8px"><small class="note">Ages ${ag.replace('-','–')}</small><div class="chips-row small" style="margin-top:4px">${gamesFor(ag).map(g=>`<button type="button" class="chip-btn" data-act="trygame" data-id="${g.id}">${g.emoji} ${g.name}</button>`).join('')}</div></div>`).join('')}</div>
     ${select('bonus.length','Length of the racing games',[[30,'30 seconds'],[40,'40 seconds'],[60,'60 seconds']])}`;
   const lmBody=`${toggle('landmark.enabled','Read out upcoming landmarks','Only a picture shows on screen. The words are spoken.')}
-    <div><span class="lbl">Content type</span>${chips('landmark.type',[['story','📚 Story'],['fact','💡 Fun facts']],S.landmark.type)}</div>
+    <div><span class="lbl">Content type</span>${chips('landmark.type',[['story','📚 Trip story'],['fact','💡 Fun facts']],S.landmark.type)}<p class="note" style="margin-top:6px">${S.landmark.type==='story'?'One adventure for the whole drive: it begins as you set off, each landmark brings a new chapter, and it ends when you arrive.':'Fun facts about each landmark as you get close.'}</p></div>
     <div class="grid2">${select('landmark.sentences','Length',[[3,'3 sentences'],[5,'5 sentences'],[7,'7 sentences']])}<div><label class="lbl" for="voiceSel">Voice</label>${voiceSelect()}</div>
     ${select('landmark.rate','Reading speed',[[.8,'Slow'],[.9,'Relaxed'],[1,'Normal'],[1.1,'Quick']])}${select('landmark.lang','Language',[['simple','Simple words'],['academic','Richer vocabulary']])}${select('landmark.interactive','Interactive style',[['none','Just listen'],['repeat','Repeat after me'],['question','Ask a question']])}</div>
     ${toggle('landmark.listen','🎤 Listen for answers',(window.SpeechRecognition||window.webkitSpeechRecognition)?'Uses the microphone after each question or “repeat after me”, then says whether they got it right. Right answers earn 100 points.':'This phone or browser can’t listen. Try Chrome on Android.')}
@@ -1655,7 +1753,7 @@ function setAndApply(path,v){
 }
 let storyTimer=0;
 function applyStyle(){const r=document.documentElement;r.dataset.style=S.displayStyle;r.dataset.age=S.age;scene.zone=null;const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(r).getPropertyValue('--bg').trim()||'#2F6B4F'}
-function applyLive(){$('#view-kid').style.filter=S.access.saturation===1?'':`saturate(${S.access.saturation})`;document.body.classList.toggle('calm',S.access.reduceMotion);renderKidTools();hud(true)}
+function applyLive(){if(T&&T.running&&S.sound.on&&S.sound.music)Music.start();else Music.stop(true);Music.duck();$('#view-kid').style.filter=S.access.saturation===1?'':`saturate(${S.access.saturation})`;document.body.classList.toggle('calm',S.access.reduceMotion);renderKidTools();hud(true)}
 
 /* ================= Kid tools ================= */
 function renderKidTools(){
@@ -1666,6 +1764,7 @@ function renderKidTools(){
   if(c.style)b.push(`<button class="ktool" data-kid="style">🎨 ${STYLES[S.displayStyle].label}</button>`);
   if(c.sound)b.push(`<button class="ktool" data-kid="sound">${S.sound.on?'🔊 Sound on':'🔇 Sound off'}</button>`);
   if(c.spotNow&&S.spot.enabled)b.push(`<button class="ktool" data-kid="spot">🔍 Spot-it!</button>`);
+  if(S.landmark.enabled&&T&&(T.route.landmarks.length||S.landmark.type==='story'))b.push(`<button class="ktool" data-kid="story">📖 Story time</button>`);
   $('#kid-tools').innerHTML=b.join('');
 }
 const currentZoneSafe=()=>T?currentZone():S.bgManual;
@@ -1737,8 +1836,10 @@ async function startTrip(){
       startBusy=false}
     else prepareStories(S.route);
   }
-  saveS();newTrip();showTab('kid');setPlay(true);greet();
+  saveS();newTrip();showTab('kid');setPlay(true);greet();beginStory();
 }
+// After the greeting, the trip story's opening: straight away if it's written, or within 12 seconds either way.
+function beginStory(){tellIntro();const t=T;setTimeout(()=>{if(T===t&&T.running)tellIntro(true)},12000)}
 const VSt=$('#view-start');
 VSt.addEventListener('input',e=>{const el=e.target,p=el.dataset.p;if(!p)return;setP(S,p,el.value);saveS();
   if(p==='to'&&API.maps){clearTimeout(acTimer);const v=el.value.trim();if(v.length>=3)acTimer=setTimeout(()=>api('places',{input:v},8000).then(j=>{const dl=$('#s-dest-list');if(dl)dl.innerHTML=(j.suggestions||[]).map(s=>`<option value="${esc(s)}"></option>`).join('')}).catch(()=>{}),300)}});
@@ -1796,6 +1897,9 @@ $('#kid-tools').addEventListener('click',e=>{const b=e.target.closest('[data-kid
   if(k==='style'){const ks=Object.keys(STYLES);S.displayStyle=ks[(ks.indexOf(S.displayStyle)+1)%ks.length];applyStyle()}
   if(k==='sound'){S.sound.on=!S.sound.on;if(!S.sound.on)Voice.stop()}
   if(k==='spot'){if(!Spot.active)Spot.start()}
+  if(k==='story'){ // the story's opening if it hasn't been heard yet, otherwise the next landmark's chapter (or the last one again)
+    if(S.landmark.type==='story'&&!T.introTold){Voice.stop();tellIntro(true);return}
+    const next=T.route.landmarks.find(l=>!T.announced.has(l.id)&&l.mile>=T.milesR-.3);const lm=next||lastLm||T.route.landmarks[0];if(lm){Voice.stop();announce(lm)}}
   saveS();applyLive()});
 $('#bonus-go').addEventListener('click',()=>{Snd.ready();startGame(Bonus.game||nextGame())});
 $('#g-quit').addEventListener('click',closeGame);
@@ -1840,7 +1944,7 @@ VS.addEventListener('click',e=>{
   if(a==='trygame'){showTab('kid');Snd.ready();startGame(b.dataset.id);return}
   if(a==='gameoff'){const id=b.dataset.id;S.bonus.off[id]=!S.bonus.off[id]}
   if(a==='previewlm'){const lm=T.route.landmarks.find(l=>!T.announced.has(l.id))||T.route.landmarks[0]||{id:'castle',mile:0};Voice.stop();Voice.say(buildSpeech(lm));return}
-  if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);greet();return}
+  if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);greet();beginStory();return}
   saveS();applyLive();renderSettings();
 });
 VS.addEventListener('input',e=>{const el=e.target;if(el.type==='range'&&el.dataset.bind){setP(S,el.dataset.bind,+el.value);const o=VS.querySelector(`[data-out="${el.dataset.bind}"]`);if(o)o.textContent=Math.round(el.value*100)+'%';saveS();applyLive()}});
@@ -1863,7 +1967,7 @@ function loop(now){
     if(T.running){scene.scroll+=dt*(scene.cv.width||600)*.12;scene.spin+=dt*14;scene.spawn-=dt;if(scene.spawn<=0){scene.traffic.push({x:1.12,body:['hatchback','saloon','suv','van','estate','sports'][Math.floor(Math.random()*6)],color:Object.values(COLORS)[Math.floor(Math.random()*9)],v:.12+Math.random()*.08});scene.spawn=(S.access.reduceMotion?5:2.2)+Math.random()*3}}
     scene.traffic.forEach(c=>c.x-=(T.running?c.v:c.v*.5)*dt*(S.roadStyle==='winding'?.6:1));scene.traffic=scene.traffic.filter(c=>c.x>-.15);
     Spot.tick(dt);Bonus.tick(dt);
-    if(!$('#view-kid').hidden){renderScene(dt);renderMap();hudT-=dt;if(hudT<=0){hud();hudT=.2}}
+    if(!$('#view-kid').hidden){renderScene(dt);renderMap();hudT-=dt;if(hudT<=0){hud();hudT=.2;Music.duck()}}
   }
   requestAnimationFrame(loop);
 }

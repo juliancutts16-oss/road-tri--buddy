@@ -13,7 +13,7 @@ It is a **web app you install on an Android phone** (a "progressive web app"). O
 | `netlify.toml`, `package.json` | Settings Netlify reads when it puts the app online. |
 | `.env.example` | The names of the secret keys you'll add on Netlify. Don't put real keys in this file. |
 
-The app runs without any keys. Anything not set up falls back to the built-in demo (pretend routes, pretend plate matches, pre-written stories), and **Settings → Data & services** shows what is connected.
+The app runs without any keys. Anything not set up falls back to the built-in demo (pretend routes, pre-written stories) or, for the number plate lookup, is hidden.  **Settings → Data & services** shows what is connected.
 
 ---
 
@@ -44,7 +44,7 @@ From then on, whenever you change a file on GitHub, Netlify updates the app auto
 | Variable | What it switches on | How to get it |
 |---|---|---|
 | `GOOGLE_MAPS_API_KEY` | Real routes, destination suggestions, landmarks along the way, scenery that matches the road | [Google Cloud Console](https://console.cloud.google.com/): create a project, add a billing account, then under **APIs & Services → Library** enable **Routes API** and **Places API (New)**. Create a key under **Credentials**, then **restrict** it to just those two APIs. Google includes a monthly free allowance, and one route costs a few pence at most. |
-| `DVLA_API_KEY` | Real number plate lookup (gives make, colour and year) | Register for the **Vehicle Enquiry Service API** on the [DVLA developer portal](https://developer-portal.driver-vehicle-licensing.api.gov.uk/). It's free. The key is emailed to you and approval can take a few days. |
+| `DVLA_API_KEY` *(optional)* | Number plate lookup (gives make, colour and year). Without it, the plate box is hidden and you pick the car shape and colour yourself. | Register for the **Vehicle Enquiry Service API** on the [DVLA developer portal](https://developer-portal.driver-vehicle-licensing.api.gov.uk/). It's free. The key is emailed to you and approval can take a few days. |
 | `ANTHROPIC_API_KEY` | AI-written stories and fun facts for each landmark, shaped by your age, length, voice-style and vocabulary settings | [console.anthropic.com](https://console.anthropic.com/) → **API keys**. Set a monthly **spend limit** under Billing. Stories use the `claude-opus-5-5` model at low effort (to keep it quick and cheap). Set `CLAUDE_MODEL` if you want a different model. |
 | `APP_PASSCODE` *(recommended)* | Stops strangers who find your web address from using your keys | Make up any passcode. Then type it into the app under **Settings → Data & services → Server passcode**. |
 

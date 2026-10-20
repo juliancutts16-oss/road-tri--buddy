@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.roadtripbuddy.twa",
+        "sha256_cert_fingerprints": ["BC:55:D1:63:22:F1:31:F8:A4:CB:46:54:79:A4:11:7B:9C:C1:19:1E:33:C5:0C:2A:84:3A:88:55:C1:E6:24:07"]
+      }
+    }]

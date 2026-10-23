@@ -6,6 +6,10 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.1.2 (hotfix)
+- No more maths questions. Setting up the parent PIN goes straight to choosing it.
+- "Forgot PIN?" now has to be held down for 10 seconds (it counts down) before a new PIN can be chosen. Trips and settings are kept.
+
 ## 0.1.1 (fixes)
 - Search screen: "Trip details" and "Who's coming?" are now fold-away boxes. When closed, each shows a one-line summary (where you're starting from; names, age and games).
 - Search screen: the whole mountain now fits on every phone, instead of being cut off at the bottom.

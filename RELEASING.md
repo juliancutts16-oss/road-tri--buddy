@@ -17,7 +17,7 @@
    ```
    powershell -ExecutionPolicy Bypass -File tools\snapshot-release.ps1
    ```
-4. **One big upload to GitHub**: drag the `public` and `netlify` folders (plus `package.json` and `CHANGELOG.md` if they changed) into the repository in a **single commit**, so Netlify only builds once. Use a commit message like `Release 0.2.0`.
+4. **Upload**: say "deploy" in the hub session. It shows you what's changing and, once you say yes, pushes it as one commit with Git, and Netlify then builds automatically. The manual way still works: drag the `public` and `netlify` folders (plus `package.json` and `CHANGELOG.md` if they changed) into the repository in a **single commit**, so Netlify only builds once. Use a commit message like `Release 0.2.0`.
 5. **Check it's live**: open the site, go to Settings, and check the bottom says the new version.
 6. *(Optional)* On GitHub: **Releases → Draft a new release**, with tag `v0.2.0` and the changelog section pasted in.
 7. **APK (only when you rebuild it in PWABuilder)**:

@@ -317,7 +317,6 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring .num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:calc(2.4rem*var(--ds));font-weight:800;color:var(--ink)}
 .ring .num span{font-size:2.2rem}
-.gate-in{width:8rem;margin:4px auto 0;display:block;text-align:center;font-size:2rem!important;font-weight:700;letter-spacing:.1em;padding:10px!important}
 .gate-err{color:var(--accent);font-weight:600;margin:10px 0 0!important}
 .consent{max-width:560px;text-align:left;max-height:calc(100vh - 32px);overflow-y:auto}
 .consent h3{text-align:left}
@@ -520,14 +519,14 @@ body.kid-locked #demo{display:none}
 .pin-dots i{width:18px;height:18px;border-radius:50%;border:3px solid var(--navy)}
 .pin-dots i.on{background:var(--navy)}
 .pin-dots.shake{animation:shake .35s}
-.gate-sum{font-family:var(--display);font-size:calc(1.8rem*var(--ds));text-align:center;margin:16px 0 6px!important;color:var(--ink)!important}
+#gate-forgot{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+#gate-forgot.holding{color:var(--red);text-decoration:none;font-weight:700}
 .pin-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
 .pin-pad button{height:58px;border:0;border-radius:18px;background:var(--soft);color:var(--navy);font:700 1.5rem var(--body);cursor:pointer}
 .pin-pad button.blank{visibility:hidden}
 .pin-pad button:active{transform:scale(.96)}
 .pin-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
 #gate .gate-err{text-align:center}
-#gate .gate-in{width:8rem}
 @media (max-width:420px){.v3-head h1{font-size:calc(1.25rem*var(--ds))}}
 
 /* Spot-it slides up as a sheet over the trip */
@@ -737,14 +736,9 @@ body.kid-locked #demo{display:none}
     <div class="pin-head"><span class="pin-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
       <div><h3 id="gate-q">Parent PIN</h3><p id="gate-why">Enter your PIN to continue.</p></div></div>
     <div class="pin-dots" id="pin-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <form id="gate-form" autocomplete="off" hidden>
-      <p class="gate-sum" id="gate-sum">What is 14 × 7?</p>
-      <input id="gate-in" class="gate-in" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" aria-label="Your answer">
-      <div class="row" style="justify-content:center;margin-top:12px"><button type="submit" class="btn primary">Continue</button></div>
-    </form>
     <p class="gate-err" id="gate-err" role="alert" hidden></p>
     <div class="pin-pad" id="pin-pad"></div>
-    <div class="pin-foot"><button type="button" class="linkish" id="gate-forgot">Forgot PIN?</button><button type="button" class="btn ghost" id="gate-cancel">Cancel</button></div>
+    <div class="pin-foot"><button type="button" class="linkish" id="gate-forgot">Forgot PIN? Hold for 10 seconds</button><button type="button" class="btn ghost" id="gate-cancel">Cancel</button></div>
   </div>
 </div>
 
@@ -956,7 +950,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.1.1';
+const APP_VERSION='0.1.2';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -2736,25 +2730,28 @@ $('#consent').addEventListener('click',e=>{if(e.target.id==='c-agree')saveConsen
 
 /* ================= Parent PIN ================= */
 // A 4-digit parent PIN guards the kids' lock, links that leave the app, privacy choices and (later) purchases.
-// The first time it's needed, a grown-up sum (too hard for young children) comes first and then the PIN is chosen;
-// "Forgot PIN?" uses the same sum to set a new one, keeping trips and settings. Once entered it stays open for 5 minutes,
+// The first time it's needed, the grown-up chooses the PIN. "Forgot PIN?" has to be held down for 10 seconds (too long
+// for a curious child to stumble through) before a new one can be chosen, keeping trips and settings. Once entered it stays open for 5 minutes,
 // except that locking the kids' screen always closes it again. Only a scrambled copy of the PIN is kept on the phone.
 let gateUntil=0,gatePass=null;
-const Gate={mode:'pin',entry:'',first:'',answer:0,purpose:''};
+const Gate={mode:'pin',entry:'',first:'',purpose:''};
 const pinHash=p=>'p'+hashStr('awty-pin:'+p).toString(36);
 function grownUpGate(onPass,why='to continue'){
   if(Date.now()<gateUntil){onPass();return}
-  gatePass=onPass;Gate.why=why;gateShow(S.pin?'pin':'sum','create');$('#gate').hidden=false;
+  gatePass=onPass;Gate.why=why;gateShow(S.pin?'pin':'new1',S.pin?'':'create');$('#gate').hidden=false;
 }
-function gateShow(mode,purpose){Gate.mode=mode;Gate.entry='';if(purpose)Gate.purpose=purpose;$('#gate-err').hidden=true;
-  const q=$('#gate-q'),w=$('#gate-why'),sum=mode==='sum';
+function gateShow(mode,purpose){Gate.mode=mode;Gate.entry='';if(purpose)Gate.purpose=purpose;$('#gate-err').hidden=true;forgotStop();
+  const q=$('#gate-q'),w=$('#gate-why');
   if(mode==='pin'){q.textContent='Parent PIN';w.textContent=`Enter your PIN ${Gate.why}.`}
-  if(sum){const a=rint(12,19),b=rint(6,9);Gate.answer=a*b;q.textContent=Gate.purpose==='create'?'Set up a parent PIN':'Forgot your PIN?';
-    w.textContent=Gate.purpose==='create'?'First, a grown-up question. Then choose a 4-digit PIN.':'Answer this grown-up question, then choose a new PIN. Your trips and settings are kept.';
-    $('#gate-sum').textContent=`What is ${a} × ${b}?`;const inp=$('#gate-in');inp.value='';setTimeout(()=>inp.focus(),60)}
-  if(mode==='new1'){q.textContent='Choose a parent PIN';w.textContent='4 numbers the children won’t guess. You’ll need it to unlock their screen.'}
+  if(mode==='new1'){q.textContent=Gate.purpose==='create'?'Set up a parent PIN':Gate.purpose==='reset'?'Choose a new PIN':'Choose a parent PIN';
+    w.textContent=Gate.purpose==='reset'?'Your trips and settings are kept.':'4 numbers the children won’t guess. You’ll need it to unlock their screen.'}
   if(mode==='new2'){q.textContent='Type it again';w.textContent='Just to check.'}
-  $('#gate-form').hidden=!sum;$('#pin-pad').hidden=sum;$('#pin-dots').hidden=sum;$('#gate-forgot').hidden=mode!=='pin';gateDots()}
+  $('#gate-forgot').hidden=mode!=='pin';gateDots()}
+// "Forgot PIN?": keep holding it for 10 seconds (the button counts down), then a new PIN can be chosen.
+let forgotTimer=null;const FORGOT_HOLD=10;
+function forgotStop(){clearInterval(forgotTimer);forgotTimer=null;const b=$('#gate-forgot');b.textContent='Forgot PIN? Hold for 10 seconds';b.classList.remove('holding')}
+function forgotStart(e){if(e)e.preventDefault();if(forgotTimer)return;let left=FORGOT_HOLD;const b=$('#gate-forgot');b.classList.add('holding');b.textContent=`Keep holding… ${left}`;
+  forgotTimer=setInterval(()=>{left--;if(left>0){b.textContent=`Keep holding… ${left}`;return}forgotStop();gateShow('new1','reset')},1000)}
 function gateDots(){$$('#pin-dots i').forEach((d,i)=>d.classList.toggle('on',i<Gate.entry.length))}
 function gateErr(t){const e=$('#gate-err');e.textContent=t;e.hidden=false;const d=$('#pin-dots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake')}
 function gateDone(){$('#gate').hidden=true;gateUntil=Date.now()+5*60e3;const f=gatePass;gatePass=null;if(f)f()}
@@ -2767,11 +2764,10 @@ function gateKey(k){
     else if(Gate.mode==='new2'){if(p===Gate.first){S.pin=pinHash(p);saveS();gateDone()}else{gateShow('new1');gateErr('Those didn’t match. Choose your PIN again.')}}},180)}
 $('#pin-pad').innerHTML=['1','2','3','4','5','6','7','8','9','','0','del'].map(k=>k?`<button type="button" data-k="${k}" aria-label="${k==='del'?'Delete':k}">${k==='del'?'⌫':k}</button>`:'<button type="button" class="blank" tabindex="-1" aria-hidden="true"></button>').join('');
 $('#pin-pad').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b)gateKey(b.dataset.k)});
-document.addEventListener('keydown',e=>{if($('#gate').hidden||Gate.mode==='sum')return;if(/^\d$/.test(e.key))gateKey(e.key);else if(e.key==='Backspace')gateKey('del');else if(e.key==='Escape')$('#gate-cancel').click()});
-$('#gate-form').addEventListener('submit',e=>{e.preventDefault();const v=parseInt($('#gate-in').value,10);
-  if(v===Gate.answer)gateShow('new1');else{gateShow('sum');gateErr('Not quite. Here’s another one.')}});
-$('#gate-forgot').addEventListener('click',()=>gateShow('sum','reset'));
-$('#gate-cancel').addEventListener('click',()=>{$('#gate').hidden=true;gatePass=null});
+document.addEventListener('keydown',e=>{if($('#gate').hidden)return;if(/^\d$/.test(e.key))gateKey(e.key);else if(e.key==='Backspace')gateKey('del');else if(e.key==='Escape')$('#gate-cancel').click()});
+const fg=$('#gate-forgot');fg.addEventListener('pointerdown',forgotStart);['pointerup','pointerleave','pointercancel'].forEach(ev=>fg.addEventListener(ev,()=>{if(Gate.mode==='pin')forgotStop()}));
+fg.addEventListener('contextmenu',e=>e.preventDefault()); // a long press shouldn't open the phone's menu
+$('#gate-cancel').addEventListener('click',()=>{forgotStop();$('#gate').hidden=true;gatePass=null});
 // Settings → Parent controls → Change PIN: check the old one, then choose a new one.
 let pinMsg='';
 function changePin(){grownUpGate(()=>{gatePass=()=>{pinMsg='Your new PIN is saved.';renderSettings()};Gate.why='';Gate.purpose='change';gateShow('new1');$('#gate').hidden=false},'to change it')}

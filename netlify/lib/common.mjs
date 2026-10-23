@@ -1,4 +1,4 @@
-// Shared helpers for the Road Trip Buddy server functions.
+// Shared helpers for the AWTY server functions.
 
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

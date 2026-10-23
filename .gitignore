@@ -1,0 +1,18 @@
+# Never upload these to GitHub (secrets, signing keys and private notes)
+keys.txt
+google play/
+.claude/
+planning/
+backups/
+releases/
+tools/
+todo/
+mascots/
+CLAUDE.md
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+node_modules/
+.netlify/

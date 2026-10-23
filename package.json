@@ -1,10 +1,11 @@
 {
-  "name": "road-trip-buddy",
-  "version": "1.0.0",
+  "name": "awty",
+  "version": "0.1.1",
   "private": true,
-  "description": "Road trip companion app for kids: installable phone app plus small server functions for Google Maps, DVLA and AI stories.",
+  "description": "AWTY – Are We There Yet?: road-trip app for kids, plus small server functions for Google Maps, AI stories, usage stats and the developer dashboard.",
   "type": "module",
   "dependencies": {
-    "@anthropic-ai/sdk": "latest"
+    "@anthropic-ai/sdk": "latest",
+    "@netlify/blobs": "latest"
   }
 }

@@ -1,8 +1,9 @@
-// Builds a Road Trip Buddy route from Google Maps:
+// Builds a AWTY route from Google Maps:
 //  - the driving route (Routes API) → distance, time, and the road's path for GPS tracking
 //  - scenery zones along the way (town / countryside / motorway / city, plus forest and coast near matching places)
 //  - famous places along the route (Places API Text Search "along route") → the landmarks that get read aloud
 import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
+import { unsuitablePlace } from "../lib/safety.mjs";
 
 const MILE = 1609.344;
 
@@ -111,6 +112,7 @@ async function findLandmarks(key, encoded, pts, cum, totalMiles) {
   const found = [];
   for (const p of data.places || []) {
     if ((p.userRatingCount || 0) < 150 || !p.location) continue; // keep places lots of people know
+    if (unsuitablePlace(p.displayName?.text, p.types)) continue; // no pubs, cemeteries, prisons, hospitals, battlefields…
     const loc = [p.location.latitude, p.location.longitude];
     let best = 0, bd = Infinity;
     for (let i = 0; i < pts.length; i++) {
@@ -153,15 +155,21 @@ export default async (req) => {
   } catch (e) {
     return json({ error: e.message }, 400);
   }
-  const destination = clip(body.destination, 200);
+  // A place picked from the suggestions (or a saved place) comes as a Google place ID, which is exact;
+  // anything typed (such as a postcode) comes as an address.
+  const placeIdOk = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{10,300}$/.test(v);
+  const destinationText = clip(body.destination, 200);
+  const destination = placeIdOk(body.destinationPlaceId) ? { placeId: body.destinationPlaceId } : destinationText ? { address: destinationText } : null;
   if (!destination) return json({ error: "Enter a destination." }, 400);
   const o = body.origin || {};
   const origin =
     typeof o.lat === "number" && typeof o.lng === "number"
       ? { location: { latLng: { latitude: o.lat, longitude: o.lng } } }
-      : o.address
-        ? { address: clip(o.address, 200) }
-        : null;
+      : placeIdOk(o.placeId)
+        ? { placeId: o.placeId }
+        : o.address
+          ? { address: clip(o.address, 200) }
+          : null;
   if (!origin) return json({ error: "Missing a starting point." }, 400);
 
   const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
@@ -174,7 +182,7 @@ export default async (req) => {
     },
     body: JSON.stringify({
       origin,
-      destination: { address: destination },
+      destination,
       travelMode: "DRIVE",
       routingPreference: "TRAFFIC_AWARE",
       units: "IMPERIAL",

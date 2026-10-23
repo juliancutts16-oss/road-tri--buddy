@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>AWTY Dashboard</title>
+<link rel="icon" href="icon-192.png">
+<style>
+/* Developer-only page. It holds no data itself: everything comes from /api/stats, which needs the STATS_KEY. */
+:root{--bg:#F4F6FB;--surface:#FFFFFF;--ink:#14203F;--muted:#5B6683;--faint:#E6EAF3;--line:#D8DEEC;--bar:#2457D6;--bar-soft:#9DB4F0;--good:#1E8A52;--warn:#B26A00;--bad:#C62828;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1426;--surface:#161E36;--ink:#E9EEFB;--muted:#9BA6C4;--faint:#212B48;--line:#2A3558;--bar:#7FA2FF;--bar-soft:#3A4E8C;--good:#4CCB8A;--warn:#F2B04C;--bad:#FF7A70;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{margin:0;font-size:1.6rem}
+h2{font-size:1rem;margin:0 0 10px}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.tile b{display:block;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums;margin:4px 0}
+.tile small{color:var(--muted);font-size:.8rem}
+.lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.target{font-size:.78rem;font-weight:600}
+.target.ok{color:var(--good)}.target.low{color:var(--warn)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.chart{position:relative;height:200px;display:flex;align-items:flex-end;gap:2px;padding:10px 0 0;border-bottom:1px solid var(--line)}
+.chart .b{flex:1;background:var(--bar);border-radius:4px 4px 0 0;min-height:1px;position:relative}
+.chart .b:hover{background:var(--bar-soft)}
+.chart .b:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);font-size:.75rem;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:2}
+.axis{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.hbar{display:grid;grid-template-columns:minmax(0,10rem) 1fr 3rem;gap:10px;align-items:center;padding:4px 0}
+.hbar .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar .t{height:10px;background:var(--faint);border-radius:5px;overflow:hidden}
+.hbar .t i{display:block;height:100%;background:var(--bar);border-radius:5px}
+.hbar .c{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:520px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+form{display:flex;gap:8px;flex-wrap:wrap}
+input{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;min-width:0;flex:1}
+button{padding:9px 14px;border:0;border-radius:8px;background:var(--bar);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.err{color:var(--bad);font-weight:600}
+.empty{color:var(--muted);margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>AWTY Dashboard</h1><div class="muted" id="when">Developer view of anonymous usage stats</div></div>
+    <div><button class="ghost" id="refresh" hidden>Refresh</button> <button class="ghost" id="logout" hidden>Forget key</button></div>
+  </header>
+
+  <section class="card" id="login">
+    <h2>Enter the dashboard key</h2>
+    <p class="muted">This is the <b>STATS_KEY</b> you set in Netlify. It's remembered on this device only.</p>
+    <form id="keyform"><input id="key" type="password" autocomplete="off" placeholder="Dashboard key" aria-label="Dashboard key"><button>Open</button></form>
+    <p class="err" id="err" hidden></p>
+  </section>
+
+  <div id="out" hidden>
+    <section aria-label="Key numbers">
+      <div class="lbl" style="margin-top:4px">The 5 numbers</div>
+      <div class="tiles" id="key5"></div>
+    </section>
+    <section class="tiles" id="totals" style="margin-top:12px" aria-label="Totals"></section>
+
+    <section class="card">
+      <h2>Trips finished per day <span class="muted" style="font-weight:400">· last 30 days</span></h2>
+      <div class="chart" id="chart" role="img" aria-label="Bar chart of trips finished per day"></div>
+      <div class="axis"><span id="ax0"></span><span id="ax1"></span></div>
+    </section>
+
+    <div class="grid2">
+      <section class="card"><h2>Features used</h2><div id="features"></div></section>
+      <section class="card"><h2>Mini-games played</h2><div id="games"></div></section>
+      <section class="card"><h2>Trips by age group &amp; mode</h2><div id="agesmodes"></div></section>
+      <section class="card"><h2>App versions &amp; devices</h2><div id="versions"></div></section>
+    </div>
+
+    <section class="card"><h2>Crashes <span class="muted" style="font-weight:400">· grouped by error</span></h2><div class="tbl" id="crashes"></div></section>
+    <section class="card"><h2>Issue reports from parents</h2><div class="tbl" id="issues"></div></section>
+    <p class="muted" style="font-size:.85rem;margin-top:16px">Usage events are kept for 90 days and issue reports for 180 days; older ones are deleted automatically when this page loads. Only installs whose parents switched on "Help improve AWTY" are counted.</p>
+  </div>
+</main>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let key='';try{key=localStorage.getItem('awty.statsKey')||''}catch(e){}
+const FEATURE_NAMES={spot:'Spot-it round',story_time:'Story time button',mic:'Listen for answers',landmark:'Landmark story/fact',bonus_yes:'Bonus game accepted',bonus_no:'Bonus game skipped',map:'Journey map',here:'Use my current location',saved_place:'Saved place used',read_story:'Read the story (parents)',music:'Background music'};
+const GAME_NAMES={bubbles:'Bubble Pop',colours:'Colour Cars',count:'Count with Me',pairs3:'Memory Match',coinroad:'Coin Road',traffic:'Traffic Lights',letters:'Missing Letter',sums:'Car Sums',racer:'Neon Racer',pairs6:'Memory Grid',tables:'Times Table Turbo',scramble:'Word Scramble'};
+const ISSUE_NAMES={broke:'Something broke',story:'A story wasn’t right',maps:'Maps or location',other:'Something else'};
+function bars(obj,names={}){const e=Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]);if(!e.length)return'<p class="empty">Nothing yet.</p>';const max=e[0][1];
+  return e.map(([k,v])=>`<div class="hbar"><span class="n">${esc(names[k]||k)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="c">${v}</span></div>`).join('')}
+function tile(label,value,note,target,ok){return`<div class="tile"><span class="lbl">${esc(label)}</span><b>${value==null?'–':esc(value)}</b>${target?`<span class="target ${value==null?'':ok?'ok':'low'}">Target ${esc(target)}</span><br>`:''}<small>${esc(note)}</small></div>`}
+async function load(){
+  $('#err').hidden=true;
+  try{
+    const r=await fetch('/api/stats',{headers:{'x-stats-key':key}});const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||`The server answered ${r.status}`);
+    render(d);$('#login').hidden=true;$('#out').hidden=false;$('#refresh').hidden=false;$('#logout').hidden=false;
+  }catch(e){$('#err').textContent=e.message;$('#err').hidden=false;$('#login').hidden=false;$('#out').hidden=true}
+}
+function render(d){
+  const k=d.keyNumbers,t=d.totals;
+  $('#when').textContent=`Updated ${new Date(d.generated).toLocaleString()}`;
+  $('#key5').innerHTML=
+    tile('1 · First-trip completion',k.firstTripCompletion==null?null:k.firstTripCompletion+'%','Installs that started a trip and finished one','60%+',k.firstTripCompletion>=60)+
+    tile('2 · Second-trip rate',k.secondTripRate==null?null:k.secondTripRate+'%',`Came back within 30 days (${k.secondTripSample} families so far)`,'40%+',k.secondTripRate>=40)+
+    tile('3 · Trips per family / month',k.tripsPerFamilyPerMonth,'Finished trips per active family, last 30 days','3+',k.tripsPerFamilyPerMonth>=3)+
+    tile('4 · Free → Plus',k.plusConversion==null?null:k.plusConversion+'%','Shown once subscriptions are added','5%+ trials',false)+
+    tile('5 · Would recommend',k.recommendAverage,`Average of ${k.recommendCount} parent ratings (0–10)`,'8+',k.recommendAverage>=8);
+  $('#totals').innerHTML=tile('Installs counted',t.installs,'With usage stats switched on')+tile('Active this week',t.active7,'Used AWTY in the last 7 days')+tile('Active this month',t.active30,'Finished a trip in the last 30 days')+tile('Trips started',t.tripsStarted,'All time (last 90 days of data)')+tile('Trips finished',t.tripsFinished,'Arrived with the app running');
+  const max=Math.max(1,...d.tripsByDay.map(x=>x.trips));
+  $('#chart').innerHTML=d.tripsByDay.map(x=>`<div class="b" style="height:${x.trips/max*100}%" data-tip="${esc(new Date(x.day).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}: ${x.trips} trip${x.trips===1?'':'s'}"></div>`).join('');
+  $('#ax0').textContent=new Date(d.tripsByDay[0].day).toLocaleDateString(undefined,{day:'numeric',month:'short'});$('#ax1').textContent='Today';
+  $('#features').innerHTML=bars(d.features,FEATURE_NAMES);$('#games').innerHTML=bars(d.games,GAME_NAMES);
+  $('#agesmodes').innerHTML=bars(d.ages)+'<hr style="border:0;border-top:1px solid var(--line)">'+bars(d.modes,{demo:'Demo driving',gps:'Live GPS',timer:'Timed (no location)',offline:'Offline'});
+  $('#versions').innerHTML=bars(d.versions)+'<hr style="border:0;border-top:1px solid var(--line)">'+bars(d.platforms);
+  $('#crashes').innerHTML=d.crashes.length?`<table><thead><tr><th>Error</th><th>Where</th><th>Count</th><th>Last seen</th><th>Versions</th></tr></thead><tbody>${d.crashes.map(c=>`<tr><td>${esc(c.msg)}</td><td>${esc(c.where)}</td><td class="n">${c.count}</td><td class="n">${new Date(c.last).toLocaleString()}</td><td>${esc(c.versions.join(', '))}</td></tr>`).join('')}</tbody></table>`:'<p class="empty">No crashes reported. 🎉</p>';
+  $('#issues').innerHTML=d.issues.length?`<table><thead><tr><th>When</th><th>Type</th><th>What they said</th><th>Version</th></tr></thead><tbody>${d.issues.map(i=>`<tr><td class="n">${new Date(i.at).toLocaleString()}</td><td>${esc(ISSUE_NAMES[i.cat]||i.cat)}</td><td>${esc(i.text)}</td><td>${esc(i.v)} · ${esc(i.platform)}</td></tr>`).join('')}</tbody></table>`:'<p class="empty">No issue reports yet.</p>';
+}
+$('#keyform').addEventListener('submit',e=>{e.preventDefault();key=$('#key').value.trim();try{localStorage.setItem('awty.statsKey',key)}catch(_){}load()});
+$('#refresh').addEventListener('click',load);
+$('#logout').addEventListener('click',()=>{key='';try{localStorage.removeItem('awty.statsKey')}catch(_){}location.reload()});
+if(key)load();
+</script>
+</body>
+</html>

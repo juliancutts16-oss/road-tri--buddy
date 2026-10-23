@@ -1,7 +1,8 @@
 // Offline support: keeps the app itself (and its fonts) on the phone so it opens with no signal.
 // Server calls under /api always go to the network.
-const CACHE = "rtb-v1";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+// The app registers this file as "sw.js?v=<version>", so each release gets its own cache and old ones are cleared.
+const CACHE = "awty-" + (new URL(location.href).searchParams.get("v") || "dev");
+const SHELL = ["./", "index.html", "manifest.webmanifest", "privacy.html", "icon-192.png", "icon-512.png", "icon-maskable-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));

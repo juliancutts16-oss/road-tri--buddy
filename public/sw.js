@@ -32,12 +32,17 @@ self.addEventListener("fetch", (e) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (url.origin === location.origin) {
-    // App files: try the network first so updates arrive, fall back to the saved copy offline.
+    // App files: try the network first so updates arrive. On weak signal (no answer within 3 seconds) or offline,
+    // open the saved copy straight away; a slow download still finishes and updates the saved copy for next time.
+    const net = fetch(req).then((res) => save(req, res));
+    const slow = new Promise((resolve) => setTimeout(resolve, 3000));
+    const saved = () => caches.match(req).then((hit) => hit || caches.match("index.html"));
     e.respondWith(
-      fetch(req)
-        .then((res) => save(req, res))
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("index.html")))
+      Promise.race([net.catch(() => null), slow.then(() => null)]).then((res) =>
+        res || saved().then((hit) => hit || net)
+      )
     );
+    e.waitUntil(net.catch(() => {}));
   } else if (/fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => save(req, res))));
   }

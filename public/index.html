@@ -13,7 +13,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Lilita+One&family=Lexend:wght@400;500;600;700&family=Nunito:wght@600;700;800&family=Outfit:wght@300;400;500;600&family=Press+Start+2P&display=swap">
+<!-- fonts load without holding up the first screen (they swap in a moment later, and come from the phone's cache after the first visit) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Lilita+One&family=Lexend:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&family=Press+Start+2P&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Lilita+One&family=Lexend:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&family=Press+Start+2P&display=swap"></noscript>
 <style>
 /* Layout: one phone-width column; the road scene is the hero, everything a child taps sits below it so nothing covers the car or road.
    Each display style swaps the whole token set, so the app's look follows the child's age, not the OS theme.
@@ -542,7 +544,29 @@ body.kid-locked #demo{display:none}
 :root[data-style="basic"] .spot-item.done{opacity:1;background:#E3F6EA;border-color:var(--green)}
 
 /* Search screen: a mountain with the car climbing a zig-zag road, and just the logo and search bar on top */
-.hero{position:relative;margin:0 calc(-1*max(16px,env(safe-area-inset-left,0px)));height:min(68vh,600px);min-height:420px;overflow:hidden;background:linear-gradient(#CFE6FF,#F4F8FF);border-radius:0 0 32px 32px}
+/* The mountain is the full-screen splash on any phone or tablet. The Go button and bottom bar float over its foot
+   ("--go-room"). The three slim boxes sit underneath it: scroll down a little (or tap "More trip options") to reach them. */
+.start{--go-room:calc(184px + env(safe-area-inset-bottom,0px))}
+.hero{position:relative;margin:-14px calc(-1*max(16px,env(safe-area-inset-left,0px))) 0;height:100vh;height:100svh;min-height:560px;overflow:hidden;background:linear-gradient(#CFE6FF,#F4F8FF);border-radius:0 0 32px 32px}
+.start-rows{display:grid;gap:8px;align-content:start;scroll-margin-top:16px}
+/* Search screen only: a round down arrow on its own at the bottom right scrolls to the three boxes, and hides once
+   they're on screen. On narrow phones the bottom bar slides a little left while it shows, so they never overlap. */
+.bn-down{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(25px + env(safe-area-inset-bottom,0px));z-index:40;width:54px;height:54px;border:0;border-radius:50%;background:#FFFFFF;color:var(--navy);display:grid;place-items:center;cursor:pointer;padding:0;box-shadow:0 8px 20px rgba(20,32,63,.25)}
+.bnav{transition:transform .25s ease}
+@media (max-width:480px){body.has-down .bnav{transform:translateX(calc(-50% - 34px))}}
+.bn-down[hidden]{display:none}
+.bn-down svg{animation:nudge 1.8s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateY(-1px)}50%{transform:translateY(3px)}}
+.calm .bn-down svg{animation:none}@media (prefers-reduced-motion:reduce){.bn-down svg{animation:none}}
+.start-rows .fold{display:block;border-radius:18px}
+.start-rows .fold[open]{background:var(--surface)}
+.start-rows .fold:not([open]) > .sec-body{display:none}
+.start-rows .fold[open] > .sec-body{padding-top:4px}
+.start-rows .fold > summary{padding:0 14px;min-height:48px;gap:8px}
+.start-rows .fold-h{font-size:calc(.98rem*var(--ds));line-height:1.15}
+.start-rows .fold .sec-sub{font-size:.74rem;line-height:1.3}
+.search input::placeholder{color:var(--navy);opacity:.72;font-size:min(.94rem,3.7vw)}
+@media (max-width:420px){.hero-bar{gap:6px}.hero-bar .logo{width:40px;height:44px}.search{gap:6px;padding-left:12px}.search .icon-btn{width:38px;height:38px}}
 .hero .mtn{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* the whole mountain always fits; the hills and sky carry on past the edges */
 .hero-bar{position:absolute;top:calc(6vh + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:10px;z-index:3}
 .hero-bar .logo{width:50px;height:55px}
@@ -559,7 +583,8 @@ body.kid-locked #demo{display:none}
 .hero-drop{position:absolute;top:calc(6vh + 66px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:4;display:grid;gap:8px}
 .hero-drop .place-chips,.saved-panel{background:#FFFFFF;border-radius:20px;padding:12px;box-shadow:0 8px 24px rgba(20,32,63,.16);margin:0}
 .saved-panel .lbl{margin-bottom:8px}
-.hero-msg{position:absolute;left:16px;right:16px;bottom:16px;z-index:2;text-align:center}
+.hero-msg{position:absolute;left:16px;right:16px;bottom:calc(var(--go-room) + 52px);z-index:2;text-align:center}
+.here-pill .s-msg{margin:0;font-weight:600;color:var(--navy);text-align:left}.here-pill .s-msg.err{color:var(--red)}
 .hero-msg span{display:inline-block;background:rgba(255,255,255,.92);border-radius:16px;padding:8px 14px;font-weight:600;font-size:.9rem;box-shadow:0 4px 14px rgba(20,32,63,.1)}
 .start .go{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
 .calm .hero .climb{display:none}
@@ -715,6 +740,7 @@ body.kid-locked #demo{display:none}
   </div>
   <button class="bn-lock" id="bn-lock" aria-label="Lock the screen for the kids"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="shackle" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
 </nav>
+<button type="button" class="bn-down" id="bn-down" aria-label="More trip options" hidden><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
 
 <!-- Drawings used in several places: the AWTY planet logo and Hoot the storyteller with his book. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -879,8 +905,8 @@ const AGE={
   '8+':{displayStyle:'teen',landmark:{type:'fact',sentences:5,lang:'academic',interactive:'question'},spot:{time:45,count:5,every:3},cats:['animals','vehicles','nature','places'],bonusCount:3,access:{decoSize:.9},child:{color:true,bg:true,road:true,sound:true,style:true,spotNow:true}}
 };
 const DEFAULTS={
-  age:'6-7',demoMode:true,passcode:'',pin:'',consent:null,places:[],toPlace:null,fromPlace:null,profile:{names:'',animal:'',likes:'',buddy:'',reason:''},tripMode:'connected',from:'',to:"Grandma's House, Oakville",route:null,offlineMins:90,offlineRouteId:'',
-  roadStyle:'straight',car:{body:'saloon',color:'red'},plate:'',
+  age:'6-7',demoMode:true,passcode:'',pin:'',consent:null,places:[],toPlace:null,fromPlace:null,profile:{names:'',animal:'',likes:'',buddy:'',reason:''},tripMode:'connected',from:'',to:'',route:null,offlineMins:90,offlineRouteId:'',
+  car:{body:'saloon',color:'red'},plate:'',
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
   displayStyle:'explorer',bgAuto:true,bgManual:'countryside',
@@ -894,6 +920,7 @@ const DEFAULTS={
 
 /* ================= State ================= */
 let S=deepMerge(DEFAULTS,store.get('settings',{}));
+if(S.to==="Grandma's House, Oakville"&&!S.toPlace)S.to=''; // the old example destination (0.1.3 and earlier): the search bar now starts empty
 if(!S.consent)S.child.lock=true; // anyone who hasn't been through the new consent screen gets the grown-up gate switched on
 // What the parent agreed to send off the phone. Until they've chosen, nothing online is used.
 const allowed=k=>!!(S.consent&&S.consent[k]);
@@ -972,7 +999,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.1.3';
+const APP_VERSION='0.1.4';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1938,37 +1965,6 @@ function drawStraight(g,W,H,dt){
       g.fillStyle=tg;g.fillRect(cx-W*.32,nearY-W*.15*.32,W*.245,Math.max(1,u*.5));g.fillRect(cx-W*.26,nearY-W*.15*.2,W*.185,Math.max(1,u*.3))}}
   drawCar(g,cx,nearY-bob,W*.15,S.car.body,COLORS[S.car.color]||S.car.color,1,{spin:scene.spin,t:scene.t});
 }
-function wpath(t,W,H){const d=Math.pow(Math.sin(Math.PI*t),.85);return{x:W*(.12+.76*(t+.045*Math.sin(4*Math.PI*t))),y:H*.9-d*H*.42+H*.035*Math.sin(6*Math.PI*t)*d,s:1-.68*d}}
-function roadYAt(x,W,H){let a=0,b=1;for(let i=0;i<18;i++){const m=(a+b)/2;if(wpath(m,W,H).x<x)a=m;else b=m}return wpath(a,W,H)}
-function drawWinding(g,W,H,dt){
-  const zone=sceneZone(dt),p=zonePal(zone),A=S.access,st=S.displayStyle;const horizon=H*.36,u=W/100;
-  if(scene.prev&&scene.fade<1)skyAndFar(g,scene.prev,W,H,horizon,H*.44,1);
-  skyAndFar(g,zone,W,H,horizon,H*.44,scene.prev&&scene.fade<1?scene.fade:1);
-  const gg=g.createLinearGradient(0,H*.4,0,H);gg.addColorStop(0,shade(p.ground,-.08));gg.addColorStop(1,p.ground);g.fillStyle=gg;g.fillRect(0,H*.42,W,H*.58);
-  const roadW=W*.085;const props=[];const n=Math.round(26*A.decoAmount);
-  for(let i=0;i<n;i++){const x=rnd(i,31)*W,y=H*(.45+rnd(i,32)*.53);const rp=roadYAt(x,W,H);const s=lerp(.3,1,(y-H*.42)/(H*.58));if(Math.abs(y-rp.y)<roadW*rp.s*1.1+H*.03)continue;props.push({x,y,s,r:rnd(i,33),behind:y<rp.y})}
-  props.sort((a,b)=>a.y-b.y);
-  props.filter(q=>q.behind).forEach(q=>prop(g,zone,q.x,q.y,H*.15*q.s*A.decoSize,q.r,p));
-  const N=150,pts=[];for(let i=0;i<=N;i++)pts.push(wpath(i/N,W,H));
-  const segs=[];for(let i=0;i<N;i++)segs.push(i);segs.sort((a,b)=>(pts[a].s+pts[a+1].s)-(pts[b].s+pts[b+1].s));
-  // The road never crosses itself (it always heads left to right), so all the kerb goes down first, then all the
-  // tarmac, then the centre dashes. Drawing kerb and tarmac piece by piece left rings where each kerb overlapped the last piece.
-  const seg=(i,w)=>{const a=pts[i],b=pts[i+1];g.lineWidth=w*(a.s+b.s)/2;g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()};
-  g.lineCap='round';g.strokeStyle=p.kerb;if(st==='teen'){g.shadowBlur=u;g.shadowColor=p.kerb}segs.forEach(i=>seg(i,roadW*1.2));g.shadowBlur=0;
-  g.strokeStyle=p.road;segs.forEach(i=>seg(i,roadW));
-  g.lineCap='butt';g.strokeStyle=p.dash;const off=Math.floor(scene.scroll*.02);segs.forEach(i=>{if(((i+off)%6+6)%6<3)seg(i,Math.max(1/roadW,.06)*roadW)});
-  props.filter(q=>!q.behind).forEach(q=>prop(g,zone,q.x,q.y,H*.15*q.s*A.decoSize,q.r,p));
-  T.route.landmarks.forEach(lm=>{const L=lmInfo(lm);const q=wpath(lm.mile/T.route.miles,W,H);const near=T.milesR>=lm.mile-1.2&&T.milesR<=lm.mile+.4;emoji(g,L.emoji,q.x-roadW*q.s*.2,q.y-roadW*q.s*.6,H*.16*q.s*A.decoSize*(near?1.35:1),T.milesR>lm.mile+.4?.55:1)});
-  const h0=wpath(0,W,H),h1=wpath(1,W,H);
-  drawHouse(g,h0.x-W*.05,h0.y-roadW*.4,W*.1,S.houseStart.type,S.houseStart.color);
-  drawHouse(g,h1.x+W*.05,h1.y-roadW*.4,W*.1,S.houseEnd.type,S.houseEnd.color,{flag:true});
-  const cars=[];
-  scene.traffic.forEach(c=>{if(c.x>1||c.x<0)return;const t=c.x;cars.push({t,facing:-1,body:c.body,color:c.color,lane:-.18,w:.1})});
-  cars.push({t:clamp(T.miles/T.total,0,1),facing:1,body:S.car.body,color:COLORS[S.car.color]||S.car.color,lane:.18,w:.13,hero:true});
-  cars.forEach(c=>{c.p=wpath(c.t,W,H)});cars.sort((a,b)=>a.p.s-b.p.s);
-  cars.forEach(c=>{const q=c.p,q2=wpath(Math.min(1,c.t+.003),W,H),q1=wpath(Math.max(0,c.t-.003),W,H);const rot=clamp(Math.atan2(q2.y-q1.y,q2.x-q1.x),-.6,.6);
-    drawCar(g,q.x,q.y+roadW*q.s*c.lane,W*c.w*q.s,c.body,c.color,c.facing,{rot,spin:c.hero?scene.spin:-scene.t*8,t:scene.t})});
-}
 // Canvases are measured only when they change size (a ResizeObserver clears the remembered size), because
 // measuring on every frame makes the browser recalculate the page layout 60+ times a second.
 const canvasSizes=new WeakMap(),canvasWatch='ResizeObserver' in window?new ResizeObserver(es=>es.forEach(e=>canvasSizes.delete(e.target))):null;
@@ -1981,7 +1977,7 @@ function renderScene(dt){
   let W=cv.width,H=cv.height,g=ctx;const px=S.displayStyle==='pixel';
   if(px){const f=Math.max(3,W/170);W=Math.round(cv.width/f);H=Math.round(cv.height/f);if(!scene.off)scene.off=document.createElement('canvas');if(scene.off.width!==W||scene.off.height!==H){scene.off.width=W;scene.off.height=H}g=scene.off.getContext('2d')}
   g.save();g.clearRect(0,0,W,H);
-  if(S.roadStyle==='winding')drawWinding(g,W,H,dt);else drawStraight(g,W,H,dt);
+  drawStraight(g,W,H,dt);
   g.restore();
   if(px){ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(scene.off,0,0,cv.width,cv.height)}
 }
@@ -2447,7 +2443,6 @@ function renderSettings(){
       ${select('offlineRouteId','Use saved route',[['','None, timer only'],...routes.map(r=>[r.id,esc(r.name)])])}</div></div>`}
     <div><span class="lbl">Saved places</span><div class="list">${S.places.length?S.places.map((p,i)=>`<div class="li"><div class="grow"><b>⭐ ${esc(p.name)}</b><small>${esc(p.address)}</small></div><button class="x" data-act="delplace" data-i="${i}" aria-label="Delete ${esc(p.name)}">✕</button></div>`).join(''):'<p class="note">None yet. Choose a destination, then tap “Save this place” to keep it, for example Home or Grandma’s.</p>'}</div></div>
     <div><span class="lbl">Saved routes</span><div class="list">${routes.length?routes.map(r=>`<div class="li ${S.tripMode==='offline'&&S.offlineRouteId===r.id?'on':''}"><div class="grow"><b>${esc(r.name)}</b><small>${esc(r.from)} → ${esc(destName(r))} · ${r.miles} mi · ${fmtMins(r.mins)}</small></div><button class="btn ghost" data-act="useroute" data-id="${r.id}">Use offline</button><button class="x" data-act="delroute" data-id="${r.id}" aria-label="Delete ${esc(r.name)}">✕</button></div>`).join(''):'<p class="note">No saved routes yet.</p>'}</div></div>
-    <div><span class="lbl">Road style</span>${chips('roadStyle',[['straight','➡️ Straight'],['winding','🐍 Winding']],S.roadStyle)}<p class="note" style="margin-top:6px">Winding snakes off into the distance and back, so landmarks along the whole route are visible.</p></div>
     <p class="note">With Demo driving off, the phone’s GPS moves the car along the route and the screen stays awake. Keep the app open on screen during the drive.</p>`;
   const carBody=`${API.dvla?`<div><label class="lbl" for="f-plate">Match your real car by number plate</label><div class="row"><input type="text" id="f-plate" data-bind="plate" value="${esc(S.plate)}" placeholder="AB12 CDE" style="text-transform:uppercase;letter-spacing:.08em;font-weight:700"><button class="btn" data-act="lookup">Look up</button></div>${plateMsg?`<div class="status" style="margin-top:8px">${plateMsg}</div>`:''}</div>`:''}
     <div><span class="lbl">Body</span><div class="tiles">${Object.entries(BODIES).map(([id,B])=>{const locked=B.unlock!==undefined&&!unl.has(id);return`<button class="tile ${S.car.body===id?'on':''} ${locked?'locked':''}" data-act="body" data-id="${id}" aria-pressed="${S.car.body===id}">${locked?'<span class="lock">🔒</span>':''}<canvas data-thumb="car" data-body="${id}" data-locked="${locked}" width="200" height="120"></canvas>${B.label}</button>`}).join('')}</div>${lockMsg?`<div class="status" style="margin-top:8px">${lockMsg}</div>`:''}</div>
@@ -2631,7 +2626,6 @@ function renderKidTools(){
   const c=S.child,b=[];
   if(c.color)b.push(`<button class="ktool" data-kid="color"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${COLORS[S.car.color]};border:1px solid var(--line)"></span>Car colour</button>`);
   if(c.bg)b.push(`<button class="ktool" data-kid="bg">${ZONES[currentZoneSafe()][1]} Scenery</button>`);
-  if(c.road)b.push(`<button class="ktool" data-kid="road">${S.roadStyle==='winding'?'🐍':'➡️'} Road</button>`);
   if(c.style)b.push(`<button class="ktool" data-kid="style">🎨 ${STYLES[S.displayStyle].label}</button>`);
   if(c.sound)b.push(`<button class="ktool" data-kid="sound">${S.sound.on?'🔊 Sound on':'🔇 Sound off'}</button>`);
   if(c.spotNow&&S.spot.enabled)b.push(`<button class="ktool" data-kid="spot">🔍 Spot-it!</button>`);
@@ -2660,17 +2654,18 @@ function renderStart(){
     <div class="hero">${MOUNTAIN}
       <div class="hero-bar"><svg class="logo" viewBox="0 0 400 440" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg>
         ${conn?`<div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <label class="sr" for="s-to">Where are we going?</label><input type="text" id="s-to" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Where are we going?">
+          <label class="sr" for="s-to">Search destination</label><input type="text" id="s-to" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Search destination">
           <button type="button" class="icon-btn ib-saved" data-start="saved" aria-label="Saved places" aria-expanded="${savedOpen}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
           <button type="button" class="icon-btn ib-here ${hereOn()?'on':''}" data-start="here" aria-label="Start from my current location" aria-pressed="${!!hereOn()}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div>`
         :`<div class="search" style="padding:14px 18px;font-weight:600">✈️ No-signal trip: set the time below</div>`}
       </div>
-      <div class="hero-drop">${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}<div class="sugg" data-for="to" hidden></div>
+      <div class="hero-drop">${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="to" hidden></div>
         ${savedOpen&&conn?`<div class="saved-panel"><span class="lbl">Saved places</span>${placeChips('to')||'<p class="note">None yet. Type where you’re going, then save it.</p>'}
           ${routes.length?`<span class="lbl" style="margin-top:10px">Saved trips</span><div class="chips-row small">${routes.map(r=>`<button type="button" class="chip-btn ${S.route&&S.route.savedFrom===r.id&&S.tripMode==='connected'?'on':''}" data-start="route" data-id="${r.id}">${esc(r.name)}</button>`).join('')}</div>`:''}</div>`:''}
       </div>
       ${fresh&&S.route&&conn?`<div class="hero-msg"><span>Route ready: <b>${S.route.miles} miles · ${fmtMins(S.route.mins)}</b>${S.route.landmarks.length?` · ${S.route.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`:''}</span></div>`:''}
     </div>
+    <div class="start-rows">
     ${fold('trip','Trip details',conn?(S.from.trim()?`From ${esc(S.from.trim())}`:`From where you are now${hereOn()&&S.here.area?`, near ${esc(S.here.area)}`:''}`):`No signal · ${fmtMins(S.offlineMins)}`,`
       ${conn?`<div class="ac"><label class="lbl" for="s-from">Starting from</label><input type="text" id="s-from" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()&&S.here.area?`📍 Where you are now (near ${esc(S.here.area)})`:'📍 Current location (or type an address)'}"><div class="sugg" data-for="from" hidden></div>
         ${placeChips('from')}</div>`
@@ -2693,11 +2688,11 @@ function renderStart(){
       <p class="note">${API.ai?'The AI writer weaves these into the stories and fun facts for each landmark.':'These go into the built-in stories now, and into AI-written ones once AI stories are switched on.'}</p>
       ${leftOut().length?`<p class="status" id="s-leftout">We’ll leave out ${leftOut().map(v=>`“${esc(v)}”`).join(', ')} from the stories, as ${leftOut().length>1?'they aren’t':'it isn’t'} suitable for young children.</p>`:''}
       ${(window.SpeechRecognition||window.webkitSpeechRecognition)?toggle('landmark.listen','🎤 Listen for their answers','After each question the app listens and says if they got it right. The phone will ask to use the microphone.')+(S.landmark.listen&&micState==='denied'?`<div class="status">${micStatusText()}</div>`:''):''}`)}
-    ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
-    <p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p>
+    </div>
     <button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':teen?'Start trip':'Let’s go! 🚗'}</button>
+    ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
     <button class="linkish" id="s-more">More settings</button>`;
-  renderSugg();
+  renderSugg();downArrow();
 }
 let savedOpen=false;
 // Trip details, Who's coming and the story extras fold away to keep the Search screen tidy; the closed box shows a one-line summary.
@@ -2710,8 +2705,8 @@ function fold(id,title,sub,body){return`<details class="sec card fold" data-fold
 const ROAD_UP='M200 860 C200 790 320 780 310 730 C300 680 90 690 90 630 C90 570 300 580 300 520 C300 460 110 470 115 410 C120 355 270 360 260 310 C252 270 200 262 200 226';
 const MOUNTAIN=`<svg class="mtn" viewBox="0 0 390 880" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
   <g fill="#FFFFFF" opacity=".9"><ellipse cx="70" cy="190" rx="34" ry="11"/><ellipse cx="88" cy="181" rx="18" ry="12"/><ellipse cx="320" cy="250" rx="30" ry="10"/><ellipse cx="336" cy="242" rx="16" ry="10"/></g>
-  <path d="M-200 520 L70 330 L130 420 L190 300 L260 440 L330 340 L600 520 L600 900 L-200 900 Z" fill="#C9D3EA"/>
-  <path d="M-200 900 L-200 760 C40 560 120 300 200 200 C280 300 360 560 600 760 L600 900 Z" fill="#BFE3B0"/>
+  <path d="M-1200 520 L-200 520 L70 330 L130 420 L190 300 L260 440 L330 340 L600 520 L1600 520 L1600 900 L-1200 900 Z" fill="#C9D3EA"/>
+  <path d="M-1200 900 L-1200 760 L-200 760 C40 560 120 300 200 200 C280 300 360 560 600 760 L1600 760 L1600 900 Z" fill="#BFE3B0"/>
   <path d="M200 200 C280 300 360 560 600 760 L600 900 L270 900 C300 640 250 380 200 200 Z" fill="#A6D59A"/>
   <path d="M200 200 C214 218 228 240 240 262 L222 256 L210 270 L196 254 L180 266 L166 254 C176 236 188 216 200 200 Z" fill="#FFFFFF"/>
   <path d="${ROAD_UP}" stroke="#3A3F4D" stroke-width="24" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2861,7 +2856,12 @@ function updateNav(){const kid=!$('#view-kid').hidden,locked=kid&&kidLocked,n=$(
   n.classList.toggle('locked',locked);n.classList.toggle('open',kid&&!kidLocked);document.body.classList.toggle('kid-locked',locked);bb.inert=locked;
   $$('#bn-btns [data-nav]').forEach(b=>{if(!$('#view-'+b.dataset.nav).hidden)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   $('#bn-lock').setAttribute('aria-label',locked?'Unlock with the parent PIN':'Lock the screen for the kids');
-  $('#bn-lock .shackle').setAttribute('d',kid&&!kidLocked?'M8 11V7a4 4 0 0 1 7.5-2':'M8 11V7a4 4 0 0 1 8 0v4')}
+  $('#bn-lock .shackle').setAttribute('d',kid&&!kidLocked?'M8 11V7a4 4 0 0 1 7.5-2':'M8 11V7a4 4 0 0 1 8 0v4');downArrow()}
+// The Search screen's down arrow (beside the lock): shown while the three boxes are still below the screen.
+function downArrow(){const b=$('#bn-down'),r=$('#view-start .start-rows');b.hidden=$('#view-start').hidden||!r||r.getBoundingClientRect().top<innerHeight-140;document.body.classList.toggle('has-down',!b.hidden)}
+let downQueued=false;const downSoon=()=>{if(downQueued)return;downQueued=true;requestAnimationFrame(()=>{downQueued=false;downArrow()})}; // at most once a frame while scrolling
+addEventListener('scroll',downSoon,{passive:true});addEventListener('resize',downSoon);
+$('#bn-down').addEventListener('click',()=>{const r=$('#view-start .start-rows');if(r)r.scrollIntoView({behavior:calmMotion()?'auto':'smooth',block:'start'})});
 function lockKids(){if($('#view-kid').hidden)showTab('kid');kidLocked=true;gateUntil=0;updateNav()}
 $('#bn-lock').addEventListener('click',()=>{Snd.ready();
   if(!$('#view-kid').hidden&&kidLocked)grownUpGate(()=>{kidLocked=false;updateNav()},'to unlock');
@@ -2906,7 +2906,6 @@ $('#arrive').addEventListener('click',e=>{const a=e.target.dataset.act,sc=e.targ
 $('#kid-tools').addEventListener('click',e=>{const b=e.target.closest('[data-kid]');if(!b)return;const k=b.dataset.kid;Snd.ready();
   if(k==='color'){const ks=Object.keys(COLORS);S.car.color=ks[(ks.indexOf(S.car.color)+1)%ks.length]}
   if(k==='bg'){const ks=Object.keys(ZONES);T.kidZone=ks[(ks.indexOf(currentZone())+1)%ks.length]}
-  if(k==='road')S.roadStyle=S.roadStyle==='winding'?'straight':'winding';
   if(k==='style'){const ks=Object.keys(STYLES);S.displayStyle=ks[(ks.indexOf(S.displayStyle)+1)%ks.length];applyStyle()}
   if(k==='sound'){S.sound.on=!S.sound.on;if(!S.sound.on)Voice.stop()}
   if(k==='spot'){if(!Spot.active)Spot.start()}
@@ -2991,16 +2990,21 @@ VS.addEventListener('change',e=>{const el=e.target;
 });
 
 /* ================= Main loop ================= */
-// The trip runs every frame (timers, GPS, games), but the road and map are drawn at most 30 times a second:
-// smooth for a car moving along a road, and much kinder to the battery on a long drive than 60–120.
-let last=performance.now(),hudT=0,drawDt=0;const DRAW_EVERY=1/30,viewKid=$('#view-kid');
+// The trip runs every frame (timers, GPS, games), but the road and map are drawn at most 30 times a second
+// (15 while the trip is paused): smooth for a car moving along a road, and much kinder to the battery than 60–120.
+// Each picture is only drawn while it's actually on screen: not when the swipe box shows Games or the Story
+// instead of the map, not when it's scrolled out of view, and not under a full-screen mini-game.
+let last=performance.now(),hudT=0,drawDt=0;const DRAW_EVERY=1/30,DRAW_IDLE=1/15,viewKid=$('#view-kid');
+const onScreen=new Map(),seen=el=>onScreen.get(el)!==false;
+if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>es.forEach(e=>onScreen.set(e.target,e.isIntersecting)));io.observe($('#scene'));io.observe($('#map'))}
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;scene.t+=dt;
   if(T){step(dt);
     if(T.running){scene.scroll+=dt*(scene.cv.width||600)*.12;scene.spin+=dt*14;scene.spawn-=dt;if(scene.spawn<=0){scene.traffic.push({x:1.12,body:['hatchback','saloon','suv','van','estate','sports'][Math.floor(Math.random()*6)],color:Object.values(COLORS)[Math.floor(Math.random()*9)],v:.12+Math.random()*.08});scene.spawn=(S.access.reduceMotion?5:2.2)+Math.random()*3}}
-    scene.traffic.forEach(c=>c.x-=(T.running?c.v:c.v*.5)*dt*(S.roadStyle==='winding'?.6:1));scene.traffic=scene.traffic.filter(c=>c.x>-.15);
+    scene.traffic.forEach(c=>c.x-=(T.running?c.v:c.v*.5)*dt);scene.traffic=scene.traffic.filter(c=>c.x>-.15);
     Spot.tick(dt);Bonus.tick(dt);
-    if(!viewKid.hidden){drawDt+=dt;if(drawDt>=DRAW_EVERY-.004){renderScene(drawDt);renderMap();drawDt=0}hudT-=dt;if(hudT<=0){hud();hudT=.2;Music.duck()}}
+    if(!viewKid.hidden){drawDt+=dt;if(drawDt>=(T.running?DRAW_EVERY:DRAW_IDLE)-.004){if(!gameOpen()){const d=Math.min(drawDt,.1);if(seen(scene.cv))renderScene(d);if(seen($('#map')))renderMap()}drawDt=0}
+      hudT-=dt;if(hudT<=0){hud();hudT=.2;Music.duck()}}
   }
   requestAnimationFrame(loop);
 }

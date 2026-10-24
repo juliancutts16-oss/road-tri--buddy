@@ -6,6 +6,18 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.1.4
+- Search screen: the mountain is now a full-screen splash on every phone and tablet, with just the search bar and the Go button over it. "Trip details", "Who's coming?" and "Make the stories theirs" are slim boxes underneath. Scroll down a little, or tap the round down arrow on its own at the bottom right. It only shows on the Search screen and hides once the boxes are on screen. On narrow phones the bottom bar slides a little left while the arrow is showing.
+- The search bar starts empty with "Search destination", instead of the example "Grandma's House, Oakville". Phones that still had the example filled in have it cleared.
+- Search bar: it now says "Search destination" in darker, easier-to-read text, sized so it fits on small phones.
+- Search screen messages (like "Type where you're going first") now appear under the search bar where you can see them.
+- Faster and lighter on battery (nothing looks different):
+  - The journey map is only drawn while you can see it, not while the swipe box shows Games or the Story. The road picture stops drawing while it's scrolled off screen, and both stop while a mini-game is open.
+  - While the trip is paused, the pictures are drawn 15 times a second instead of 30.
+  - The app opens faster on weak signal. If the internet doesn't answer within 3 seconds, the saved copy opens straight away, and the new download finishes in the background for next time. Before, it could sit waiting.
+  - The first screen no longer waits for Google Fonts, and a font the app never used (Nunito) is no longer requested.
+- Trip screen: the road picture is always the straight road from home to the destination. The winding road, its "Road style" choice in Settings and the kids' road button are gone.
+
 ## 0.1.3 (fixes)
 - "Use my current location" (📍 in the search bar) now shows its message right under the search bar, says which town you're near (e.g. "near Oxford"), and turns blue while it's in use. If location is switched off, the message has a "Turn it on" button. Only a position rounded to about 1 km is sent to find the town.
 - "Make the stories theirs" is now a fold-away box like "Trip details" and "Who's coming?", with a one-line summary.

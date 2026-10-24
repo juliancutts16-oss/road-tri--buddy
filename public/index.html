@@ -628,6 +628,13 @@ body.kid-locked #demo{display:none}
 .sp-body{display:grid;gap:12px}
 .spc .h{display:flex;align-items:center;gap:8px}
 .spc .sec-body{padding:0}
+.sv-ask{display:grid;gap:4px;justify-items:center}
+.sv-ask-av{width:76px;height:76px;border-radius:50%;background:#E8F0FF;border:3px solid var(--yellow);display:grid;place-items:center}
+.sv-ask-data{color:var(--navy)!important;font-weight:600}
+.sv-ask-prog{width:100%;margin-bottom:12px;text-align:left}
+.sv-ask-btns{display:grid;gap:8px;width:100%}.sv-ask .note{margin:6px 0 0}
+.sv-status{font-weight:600;color:var(--navy);display:grid;gap:6px}.sv-status .err{color:var(--red)}
+.sv-bar{display:block;height:8px;border-radius:99px;background:var(--soft);overflow:hidden}.sv-bar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .3s}
 .report-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;border:0;border-radius:22px;background:var(--red);color:#FFFFFF;padding:0 18px;text-align:left;font:inherit;cursor:pointer;box-shadow:0 6px 16px rgba(200,50,42,.35)}
 .report-btn b{display:block;font-size:1.1rem}.report-btn small{font-size:.78rem}
 :root[data-style="basic"] .kpi{border:0;border-radius:22px}
@@ -800,6 +807,18 @@ body.kid-locked #demo{display:none}
   </div>
 </div>
 
+<!-- First launch: offer to download Hoot's storytelling voice (Alice). Asked once; Settings → Voice has it any time. -->
+<div class="overlay" id="sv-ask" hidden style="z-index:85">
+  <div class="modal sv-ask" role="dialog" aria-modal="true" aria-labelledby="sv-ask-h">
+    <div class="sv-ask-av"><svg viewBox="0 0 320 345" width="52" aria-hidden="true"><use href="#hoot-book"/></svg></div>
+    <h3 id="sv-ask-h">A storytelling voice for Hoot?</h3>
+    <p>Download Alice, a natural British storyteller voice, with real storybook music and sound effects. It’s about 124 MB, so it’s best on Wi-Fi. After that it works with no signal.</p>
+    <p class="sv-ask-data" id="sv-ask-data" hidden>📶 You seem to be on mobile data.</p>
+    <div class="sv-status sv-ask-prog" id="sv-ask-prog" role="status" hidden></div>
+    <div class="sv-ask-btns"><button type="button" class="btn primary" id="sv-ask-go">Download now</button><button type="button" class="btn ghost" id="sv-ask-later">Later</button></div>
+    <p class="note">You can do this any time in Settings → Voice.</p>
+  </div>
+</div>
 <div class="overlay" id="consent" hidden style="z-index:90">
   <div class="modal consent" id="consent-box"></div>
 </div>
@@ -920,7 +939,7 @@ const DEFAULTS={
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
   displayStyle:'explorer',bgAuto:true,bgManual:'countryside',
-  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true,music:true,musicVol:.25,storyFx:true},
+  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true,music:true,musicVol:.25,storyFx:true,voice:'bf_alice'},
   spot:{enabled:true,every:2,time:60,count:4,cats:{animals:true,vehicles:true,nature:true,places:true,shapes:false},off:{}},
   bonus:{count:2,length:40,off:{}},
   landmark:{enabled:true,type:'story',sentences:5,voice:'',rate:1,lang:'simple',interactive:'question',listen:false,choices:true,helpSpot:true},
@@ -1009,7 +1028,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.1.5';
+const APP_VERSION='0.2.0';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1052,7 +1071,7 @@ async function prepareStories(route){
   const work=async lm=>{try{const g=await api('story',{name:L(lm).name,kind:lm.kind||'landmark',summary:lm.summary||'',type:S.landmark.type,sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids()},60000);lm.gen={key,sentences:g.sentences,question:g.question,word:g.word,quiz:g.quiz||null}}catch(e){failed++}done++;upd()};
   const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
   storyStatus=failed?`${total-failed} of ${total} ready. The rest will use the built-in stories.`:`${S.landmark.type==='fact'?'Fun facts':'Stories'} ready for all ${total} landmarks.`;
-  saveS();saveRoutes();const el=$('#storyStatus');if(el)el.textContent=storyStatus;
+  saveS();saveRoutes();const el=$('#storyStatus');if(el)el.textContent=storyStatus;svPrepare(route);
 }
 
 /* ================= Trip story: one adventure for the whole drive ================= */
@@ -1111,7 +1130,7 @@ function builtChoice(i){const p=BUILT_CHOICES[(i+(T?T.seed:0))%BUILT_CHOICES.len
   return{question:`What should our hero do next? Should they ${p[0][0]}, or ${p[1][0]}?`,options:p.map(([text,emoji])=>({text,emoji}))}}
 // The request for one middle chapter (also used to rewrite the next chapter after the children choose).
 function chapterBody(route,sg,i){const stopList=storyStops(route),names=stopList.map(l=>l.road?'the open road':lmInfo(l).name),lm=stopList[i],L=lm.road?{name:'the open road',word:'road'}:lmInfo(lm);
-  return{sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:storyTheme().cues,mode:'chapter',bible:sg.bible,index:i,total:stopList.length,name:L.name,
+  return{sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:storyTheme().cues,moods:Object.keys(MOODS),mode:'chapter',bible:sg.bible,index:i,total:stopList.length,name:L.name,
     kind:lm.road?'road':(lm.kind||L.word.toLowerCase()),summary:lm.summary||'',prev:i?names[i-1]:'',next:names[i+1]||'',to:destName(route),
     choices:S.landmark.choices!==false,help:S.landmark.helpSpot===false?'':helpItem(route,lm).a}}
 const pickN=(s,n)=>n>=s.length?s:n===3?[s[0],s[1],s[s.length-1]]:s.slice(0,n);
@@ -1121,11 +1140,11 @@ async function prepareSaga(route){
   const key=sagaKey(route);let sg=route.saga&&route.saga.key===key?route.saga:null;if(sg&&sg.done)return;
   storyPending=true;const upd=t=>{storyStatus=t;const el=$('#storyStatus');if(el)el.textContent=t};
   const th=storyTheme(),stopList=storyStops(route),names=stopList.map(l=>l.road?'the open road':lmInfo(l).name);
-  const common={sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:th.cues,choices:S.landmark.choices!==false},to=destName(route);
+  const common={sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:th.cues,moods:Object.keys(MOODS),choices:S.landmark.choices!==false},to=destName(route);
   try{
     if(!sg||!sg.intro){upd('Writing the beginning and end of your trip story…');
       const g=await api('story',{...common,mode:'intro',from:route.from||'Home',to,stops:names.filter(n=>n!=='the open road')},60000);
-      sg={key,intro:g.intro,ending:g.ending,bible:g.bible,choice:g.choice||null,chapters:{}};route.saga=sg;saveS();saveRoutes();if(T&&T.route===route&&T.running)tellIntro()}
+      sg={key,intro:g.intro,ending:g.ending,bible:g.bible,choice:g.choice||null,chapters:{}};route.saga=sg;saveS();saveRoutes();svPrepare(route);if(T&&T.route===route&&T.running)tellIntro()}
     const todo=stopList.map((lm,i)=>({lm,i})).filter(x=>!sg.chapters[x.lm.id]);let done=0,failed=0;
     const work=async({lm,i})=>{const body=chapterBody(route,sg,i);
       try{sg.chapters[lm.id]={...await api('story',body,60000),helpItem:body.help?helpItem(route,lm):null}}catch(e){failed++}
@@ -1133,7 +1152,7 @@ async function prepareSaga(route){
     const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
     sg.done=!failed;upd(failed?`Trip story ready. ${failed} chapter${failed>1?'s':''} will use the built-in story.`:`Trip story ready: a beginning, ${stopList.length} middle chapter${stopList.length===1?'':'s'} and an end.`)}
   catch(e){upd('Couldn’t write the trip story just now, so the built-in story will be used.')}
-  storyPending=false;saveS();saveRoutes();
+  storyPending=false;saveS();saveRoutes();svPrepare(route); // the storyteller voice gets the whole story ready in the background
 }
 // Built-in version of the same three-part story, for when the AI isn't set up or there's no signal.
 function sagaFallback(route){
@@ -1199,7 +1218,7 @@ function tellIntro(force){
   if(!T||T.introTold||S.landmark.type!=='story'||!S.landmark.enabled)return;
   const ready=T.route.saga&&T.route.saga.key===sagaKey(T.route)&&T.route.saga.intro;if(!force&&API.ai&&storyPending&&!ready)return;
   const sg=sagaFor(T.route),first=storyStops(T.route)[0];
-  T.introTold=true;StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...sg.intro,...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]));
+  T.introTold=true;StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...sg.intro,...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]),false,true);
 }
 // Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
 async function loadRoute(){
@@ -1378,7 +1397,52 @@ const SFX={
   meow(){Snd.tone(620,.25,'triangle',.08,0,880);Snd.tone(880,.35,'triangle',.07,.25,560)},
   squeak(){Snd.tone(1500,.1,'sine',.1,0,2200);Snd.tone(1700,.1,'sine',.1,.16,2500)}
 };
-function playSfx(id){if(SFX[id]&&S.sound.on&&Snd.ready())try{SFX[id]()}catch(e){}}
+function playSfx(id,soft){if(!S.sound.on||!Snd.ready())return;if(Pack.has('s-'+id)){Pack.sfx(id,soft);return}if(SFX[id])try{SFX[id]()}catch(e){}}
+
+/* ================= Recorded sound pack ================= */
+// Real recorded sounds the owner chose on Pixabay (free for a paid app), trimmed and evened out by tools/soundlab.html:
+// 29 effects, 11 music loops and 4 background atmospheres (about 8 MB). They download with the storyteller voice and
+// stay on the phone ("awty-sounds" cache, kept across releases). Without them the app's own made-up sounds play.
+const PACK_V=1;
+const Pack={man:null,buf:new Map(),loading:new Map(),state:'off',
+  installed(){return store.get('pack',false)},
+  ready(){return this.state==='ready'},
+  has(k){return this.ready()&&!!this.man[k]},
+  async load(){if(this.state==='ready'||this.state==='loading')return;this.state='loading';
+    try{const man=await (await fetch('sounds/manifest.json?v='+PACK_V)).json();
+      await Promise.all(Object.keys(man).map(k=>fetch(`sounds/${k}.mp3?v=${PACK_V}`).then(r=>{if(!r.ok)throw new Error(k);return r.arrayBuffer()})));
+      this.man=man;this.state='ready';store.set('pack',true);
+      Object.keys(man).filter(k=>man[k].kind==='sfx').forEach(k=>this.get(k)); // effects are tiny: have them ready to play instantly
+    }catch(e){this.state=this.installed()?'off':'error'}},
+  // a decoded sound (from the phone's saved copy); only two music tracks are kept in memory at once
+  get(k){if(this.buf.has(k))return Promise.resolve(this.buf.get(k));if(this.loading.has(k))return this.loading.get(k);Snd.init();if(!Snd.ac)return Promise.resolve(null);
+    const p=fetch(`sounds/${k}.mp3?v=${PACK_V}`).then(r=>r.arrayBuffer()).then(a=>Snd.ac.decodeAudioData(a)).then(b=>{this.loading.delete(k);this.buf.set(k,b);
+      const music=[...this.buf.keys()].filter(x=>x[0]==='m');if(music.length>2)this.buf.delete(music[0]);return b}).catch(()=>{this.loading.delete(k);return null});
+    this.loading.set(k,p);return p},
+  // an effect: placed a little left or right, through the shared soft room echo; quieter while Hoot is talking
+  sfx(id,soft){const k='s-'+id,b=this.buf.get(k),m=this.man[k];if(!b){this.get(k);return}const ac=Snd.ac,s=ac.createBufferSource(),g=ac.createGain();
+    s.buffer=b;g.gain.value=soft?.62:.85;let node=g;if(ac.createStereoPanner){const p=ac.createStereoPanner();p.pan.value=(Math.random()-.5)*.7;g.connect(p);node=p}
+    s.connect(g);node.connect(Snd.fx||Snd.out);s.start(ac.currentTime,m.start/m.rate,m.frames/m.rate)},
+  // a seamless loop: back-to-back copies that overlap by 50 ms, each fading into the next over the same notes
+  loop(k,dest,fade=1.5){const ac=Snd.ac,m=this.man[k],out=ac.createGain(),srcs=new Set();let stopped=false,timer=0;
+    out.gain.value=0;out.connect(dest);out.gain.setTargetAtTime(1,ac.currentTime,fade/3);
+    this.get(k).then(b=>{if(stopped||!b)return;const st=m.start/m.rate,len=m.frames/m.rate,F=.05;let next=ac.currentTime+.05;
+      const seg=at=>{const s=ac.createBufferSource(),g=ac.createGain();s.buffer=b;s.connect(g);g.connect(out);
+        g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(1,at+F);g.gain.setValueAtTime(1,at+len);g.gain.linearRampToValueAtTime(0,at+len+F);
+        s.start(at,st,len+F);srcs.add(s);s.onended=()=>srcs.delete(s)};
+      const plan=()=>{while(next<ac.currentTime+3){seg(next);next+=len}};plan();timer=setInterval(plan,1000)});
+    return{stop(f=1.5){if(stopped)return;stopped=true;clearInterval(timer);out.gain.setTargetAtTime(0,ac.currentTime,f/3);
+      setTimeout(()=>{srcs.forEach(s=>{try{s.stop()}catch(e){}});out.disconnect()},f*1000+600)}}},
+  async remove(){this.state='off';this.man=null;this.buf.clear();store.set('pack',false);try{await caches.delete('awty-sounds')}catch(e){}}
+};
+// Background atmosphere: very quiet sounds of where the car is (birdsong, the sea, a town, a forest), while driving.
+const Amb={cur:null,key:null,gain:null,
+  want(){if(!T||!T.running||$('#view-kid').hidden||!S.sound.on||!S.sound.music||!Pack.ready())return null;/* only on the trip screen while moving */const z=currentZone();
+    return z==='beach'?'a-seaside':z==='city'||z==='town'?'a-town':z==='forest'?'a-forest':'a-countryside'},
+  update(){const k=this.want();if(k===this.key){if(this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.4);return}
+    if(this.cur)this.cur.stop(3);this.cur=null;this.key=k;if(!k)return;Snd.init();const ac=Snd.ac;if(!ac)return;
+    if(!this.gain){this.gain=ac.createGain();this.gain.connect(Snd.out)}this.gain.gain.value=this.level();this.cur=Pack.loop(k,this.gain,3)},
+  level(){return .55*S.sound.musicVol/.25*(Voice.busy?.6:1)}};
 
 /* ================= Background music ================= */
 // Gentle tunes made on the phone (no files, nothing copyrighted), one per age style. Four chords loop under an
@@ -1397,15 +1461,21 @@ const MOODS={
   happy:{bpm:104,chords:[[60,64,67],[55,59,62],[57,60,64],[53,57,60]],scale:[72,74,76,79,81,84],lead:'sine',perc:'soft'}
 };
 const Music={on:false,timer:0,next:0,step:0,gain:null,style:null,noiseBuf:null,mood:null,built:null,
-  start(){if(!S.sound.on||!S.sound.music||!Snd.ready())return;const ac=Snd.ac;
+  // Music only ever plays on the trip screen once the trip is under way (moving, or reading the ending on arrival),
+  // never on the Search screen, in Settings, or while paused. The only exception: a parent's ▶ preview in Settings.
+  allowed(){return this.preview||!!(T&&(T.running||T.arrived)&&!$('#view-kid').hidden)},
+  start(){if(!S.sound.on||!S.sound.music||!this.allowed()||!Snd.ready())return;const ac=Snd.ac;
     if(!this.gain){this.gain=ac.createGain();this.gain.gain.value=0;this.gain.connect(Snd.out)}
-    if(this.on&&this.style===S.displayStyle&&this.built===this.mood)return;this.stop(true);this.on=true;this.style=S.displayStyle;this.built=this.mood;this.build();this.step=0;this.next=ac.currentTime+.15;
+    // the recorded music (if the sound pack is on the phone): the mood's track, or the happy main theme while driving
+    const rk=Pack.ready()&&(this.mood&&Pack.has('m-'+this.mood)?'m-'+this.mood:Pack.has('m-happy')?'m-happy':null);
+    if(rk){if(this.on&&this.realKey===rk)return;this.stop(true);this.on=true;this.realKey=rk;this.real=Pack.loop(rk,this.gain);this.gain.gain.setTargetAtTime(this.level(),ac.currentTime,.8);return}
+    if(this.on&&!this.real&&this.style===S.displayStyle&&this.built===this.mood)return;this.stop(true);this.on=true;this.style=S.displayStyle;this.built=this.mood;this.build();this.step=0;this.next=ac.currentTime+.15;
     this.gain.gain.setTargetAtTime(this.level(),ac.currentTime,.8);this.timer=setInterval(()=>this.tick(),100)},
   // story music on (a mood name) or off (null); off goes back to the driving music only while the trip is moving
   setMood(m){if(this.mood===m)return;this.mood=m;if(!m&&!(T&&T.running)){this.stop();return}this.stop(true);this.start()},
-  stop(quick){if(!this.on)return;this.on=false;clearInterval(this.timer);if(this.gain)this.gain.gain.setTargetAtTime(0,Snd.ac.currentTime,quick?.05:.6)},
+  stop(quick){if(this.real){this.real.stop(quick?.4:1.5);this.real=null;this.realKey=null}if(!this.on)return;this.on=false;clearInterval(this.timer);if(this.gain)this.gain.gain.setTargetAtTime(0,Snd.ac.currentTime,quick?.05:.6)},
   level(){return S.sound.musicVol*(Voice.busy||('speechSynthesis' in window&&speechSynthesis.speaking)?.3:1)},
-  duck(){if(this.on&&this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.25)},
+  duck(){if(this.on&&this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.25);Amb.update()},
   build(){const st=this.style,md=this.mood&&MOODS[this.mood];
     this.bpm=md?md.bpm:{playful:96,explorer:112,teen:100,pixel:120}[st]||100;
     this.chords=md?md.chords:{playful:[[60,64,67],[55,59,62],[57,60,64],[53,57,60]],explorer:[[55,59,62],[62,66,69],[52,55,59],[60,64,67]],teen:[[57,60,64],[53,57,60],[60,64,67],[55,59,62]]}[st]||[[60,64,67],[55,59,62],[57,60,64],[53,57,60]];
@@ -1463,7 +1533,78 @@ function voiceScore(v,allowOnline=true){
   if(!v.localService)s+=allowOnline?20:-100;return s}
 function bestVoice(allowOnline=true){const vs='speechSynthesis' in window?speechSynthesis.getVoices():[];let best=null,bs=-Infinity;
   vs.forEach(v=>{const s=voiceScore(v,allowOnline);if(s>bs){bs=s;best=v}});return bs>-100?best:null}
-const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:false,
+/* ================= Storyteller voice (Kokoro, on the phone) ================= */
+// An optional natural-sounding British voice that runs on the phone itself (no cloud, so names never leave it).
+// A parent downloads it once (about 116 MB, best on Wi-Fi, plus the 8 MB sound pack); after that it works with no signal. A phone makes this
+// speech a little slower than it's spoken, so the trip's story lines are turned into audio ahead of time, in order,
+// as soon as the story is ready. Anything that isn't ready in time is read by the phone's own voice instead.
+const SV={VOICES:[['bf_alice','Alice']],
+  w:null,state:'off',pct:0,err:'',clips:new Map(),wait:new Map(),queue:[],working:false,seq:0,
+  installed(){return store.get('sv',false)},
+  on(){return S.sound.voice!=='phone'&&this.installed()&&this.state!=='error'},
+  voice(){return this.VOICES.some(v=>v[0]===S.sound.voice)?S.sound.voice:'bf_alice'},
+  speed(){return Math.round(S.landmark.rate*(S.age==='4-5'?.92:1)*100)/100},
+  key(t,v){return`${v||this.voice()}|${this.speed()}|${t}`},
+  clip(t){return this.clips.get(this.key(t))},
+  // starts the voice: downloads it the first time, or loads it from the phone after that
+  load(){if(this.w)return;this.state='loading';this.err='';this.pct=0;svUi();Pack.load(); // the recorded sounds come with the voice
+    try{this.w=new Worker('voice-worker.js',{type:'module'})}catch(e){this.fail('This phone can’t run the storyteller voice.');return}
+    this.w.onmessage=e=>{const m=e.data;
+      if(m.type==='progress'){if(this.state==='loading'){this.pct=Math.round(m.pct);svUi()}} // (a late update must not hide "Ready")
+      else if(m.type==='ready'){this.state='ready';store.set('sv',true);svUi();svPrepare(T&&T.route)}
+      else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
+      else if(m.type==='audio'||m.type==='fail'){const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
+        if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
+        this.pump()}};
+    this.w.onerror=()=>this.fail('Couldn’t start the storyteller voice.');
+    this.w.postMessage({type:'load',voices:this.VOICES.map(v=>v[0])})},
+  fail(msg){this.state='error';this.err=msg;try{this.w&&this.w.terminate()}catch(e){}this.w=null;[...this.queue,...this.wait.values()].forEach(j=>j.res.forEach(r=>r(null)));this.queue=[];this.wait.clear();this.working=false;svUi()},
+  // asks for a sentence's audio; first=true jumps the queue (it's needed now). Resolves with the clip, or null.
+  render(t,first){const key=this.key(t),have=this.clips.get(key);if(have)return Promise.resolve(have);
+    return new Promise(res=>{let job=this.queue.find(j=>j.key===key)||[...this.wait.values()].find(j=>j.key===key);
+      if(job){job.res.push(res);if(first){job.need=true;if(this.queue.includes(job)){this.queue.splice(this.queue.indexOf(job),1);this.queue.unshift(job)}}}
+      else{job={key,t,v:this.voice(),sp:this.speed(),res:[res],need:!!first};first?this.queue.unshift(job):this.queue.push(job)}this.pump()})},
+  pump(){if(this.working||this.state!=='ready'||!this.queue.length)return;const job=this.queue.shift(),id=++this.seq;this.working=true;this.wait.set(id,job);
+    this.w.postMessage({type:'say',id,text:job.t,voice:job.v,speed:job.sp})},
+  // removes the download from the phone (the phone's own voice is used again)
+  async remove(){try{this.w&&this.w.terminate()}catch(e){}this.w=null;this.state='off';Pack.remove();this.clips.clear();this.queue=[];this.working=false;store.set('sv',false);
+    try{for(const k of ['awty-voice','kokoro-voices','transformers-cache'])await caches.delete(k)}catch(e){}svUi()}
+};
+// The words Hoot actually says for a story line: names filled in on the phone, sound-effect tags taken out.
+// Each sound tag remembers where it sits in the sentence ("at", in letters), so it can play on its word:
+// a tag at the start plays just before the sentence, one after a word plays as that word is said.
+// {music:mood} chooses the story music for what follows.
+function speakable(raw){const marks=[],music=[],norm=x=>x.replace(/\s{2,}/g,' ').replace(/\s+([!?.,;:])/g,'$1').trim();
+  const pieces=fillNames(raw).replace(/…|\s[—–]\s/g,', ')
+    .replace(/\{\s*sfx\s*:\s*([a-z]+)\s*\}/gi,(_,c)=>{marks.push(c.toLowerCase());return'\u0001'}).replace(/\{\s*music\s*:\s*([a-z]+)\s*\}/gi,(_,m)=>{music.push(m.toLowerCase());return' '})
+    .replace(/\{[^}]*\}/g,' ').split('\u0001');
+  const t=norm(pieces.join(' '));
+  // where each sound goes: after how many words (and roughly which letter, for the phone's word signal)
+  const cues=marks.map((c,i)=>{const before=norm(pieces.slice(0,i+1).join(' ')),words=before?before.split(/\s+/).length:0;return{c,words,at:before.length,start:words===0}});
+  return{t,cues,music}}
+// Lines that are said on every trip, made once so they're always ready.
+const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!'];
+// Queues every line of this route's story (in the order it will be read), so it's ready before it's needed.
+// Lines queued for an earlier trip (or another voice) that haven't been made yet are dropped first.
+function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=T&&R===T.route?[greetText()]:[];if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
+  const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
+  SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
+  texts.forEach(t=>{SV.render(t)})}
+// Settings shows the download progress live, without redrawing the whole page.
+// The first-launch offer: shown once, after the privacy choices (and PIN) are done, on the Search screen.
+function svAsk(){if(SV.installed()||SV.state==='loading'||store.get('svAsked',false)||!('Worker' in window)||!$('#consent').hidden||!$('#gate').hidden||$('#view-start').hidden)return;
+  $('#sv-ask-data').hidden=!(navigator.connection&&navigator.connection.type==='cellular');$('#sv-ask-prog').hidden=true;$('#sv-ask-go').hidden=false;$('#sv-ask-later').textContent='Later';$('#sv-ask').hidden=false}
+$('#sv-ask-later').addEventListener('click',()=>{store.set('svAsked',true);$('#sv-ask').hidden=true});
+$('#sv-ask-go').addEventListener('click',()=>{store.set('svAsked',true);$('#sv-ask-go').hidden=true;$('#sv-ask-later').textContent='Carry on (it keeps downloading)';$('#sv-ask-prog').hidden=false;SV.load();svUi()});
+function svUi(){const ap=$('#sv-ask-prog');if(!$('#sv-ask').hidden&&!ap.hidden){ap.innerHTML=svStatus();if(SV.state==='ready')setTimeout(()=>{$('#sv-ask').hidden=true},1800)}
+  const el=$('#sv-status');if(SV.state==='loading'&&el)el.innerHTML=svStatus(); // just the progress
+  else if(!$('#view-settings').hidden&&setPanel==='sound'){const y=scrollY;renderSettings();scrollTo(0,y)}} // finished, failed or removed: redraw the card
+function svStatus(){const s=SV.state;
+  if(s==='loading')return SV.installed()?'Getting the storyteller voice ready…':`Downloading… ${SV.pct}%<span class="sv-bar"><i style="width:${SV.pct}%"></i></span>`;
+  if(s==='ready')return'✅ Ready, and works with no signal.';
+  if(s==='error')return`<span class="err">${esc(SV.err)}</span>`;
+  return SV.installed()?'Downloaded. It starts when you next plan a trip.':'Not downloaded yet.'}
+const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:false,src:null,
   ok(){return 'speechSynthesis' in window&&S.sound.on},
   pick(){const chosen=S.landmark.voice&&speechSynthesis.getVoices().find(v=>v.name===S.landmark.voice);
     return chosen||bestVoice(navigator.onLine!==false&&!this.netSlow)},
@@ -1473,30 +1614,58 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     if(end==='?'){pitch=1.12;rate=.97;gap=520}else if(end==='!'){pitch=1.1;rate=1.03;gap=380}
     if(words>20)rate*=.96;if(this.calm){pitch-=.06;rate*=.92;gap+=220}
     pitch+=((hashStr(t)%5)-2)*.01;if(S.age==='4-5')gap+=120;return{pitch,rate,gap}},
-  say(items,priority){if(!this.ok())return false;if(priority)this.stop();this.queue.push(...items);if(!this.busy)this.next();return true},
+  // gate=true for a story chapter: with the storyteller voice, the chapter waits until all its lines are ready,
+  // so it's read in one go with no gaps (only the opening usually waits; later chapters are ready miles ahead)
+  say(items,priority,gate){if(!this.ok())return false;if(priority)this.stop();
+    if(gate&&SV.on()&&SV.state==='ready')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
+    this.queue.push(...items);if(!this.busy)this.next();return true},
   next(){let it=this.queue.shift();const tok=++this.token;this.cur=it;
     if(it===undefined){this.busy=false;return}this.busy=true;
     if(typeof it==='object'){if(it.fn){it.fn();this.next();return}
       if('calm' in it){this.calm=it.calm;this.next();return}
+      if(it.gate){const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
+        let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);this.gating=false;hud(true);this.next()},cap=setTimeout(go,150000);
+        this.gating=true;hud(true);[...need].reverse().forEach(t=>SV.render(t,true));Promise.all(need.map(t=>SV.render(t))).then(go);return}
       if(it.listen){Ear.listen().then(h=>judge(it.listen,h)).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return}
       if(it.ask){Ask.run(it.ask).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return} // a choice or "help me spot…"
       if(it.sfx){playSfx(it.sfx);setTimeout(()=>{if(tok===this.token)this.next()},700);return}
       setTimeout(()=>{if(tok===this.token)this.next()},it.pause||0);return}
-    // sound-effect tags like {sfx:magic} play just before the sentence and are never read out
-    const raw=it,cues=[];it=fillNames(it).replace(/…|\s[—–]\s/g,', ').replace(/\{\s*sfx\s*:\s*([a-z]+)\s*\}/gi,(_,c)=>{cues.push(c.toLowerCase());return' '}).replace(/\{[^}]*\}/g,' ').replace(/\s{2,}/g,' ').trim();
-    const known=S.sound.storyFx===false?[]:cues.filter(c=>SFX[c]).slice(0,2);known.forEach((c,i)=>setTimeout(()=>{if(tok===this.token)playSfx(c)},i*550));
+    // sound tags like {sfx:magic} are never read out: one at the start plays just before the sentence, one after a
+    // word plays as that word is said ("mids"); {music:…} switches the story music
+    const raw=it,sp=speakable(it);it=sp.t;const fx=S.sound.storyFx!==false,ok=c=>SFX[c]||Pack.has('s-'+c);
+    if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
+    const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,3):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
+    known.forEach((c,i)=>setTimeout(()=>{if(tok===this.token)playSfx(c)},i*550));this.mids=mids;
     if(it){StoryLog.begin(it);StoryLog.add(it)} // shown on the Story page so the children can read along
     if(!it){setTimeout(()=>{if(tok===this.token)this.next()},known.length?900:0);return}
+    // the storyteller voice: use the audio made ahead of time. A one-off line that isn't ready yet is read by the
+    // phone's voice straight away (so nothing waits), and made in the background for next time.
+    if(SV.on()&&SV.state==='ready'){const c=SV.clip(it);if(c){this.playClip(c,it,tok,known);return}SV.render(it)}
+    this.speakPhone(it,raw,tok,known)},
+  // plays a sentence made by the storyteller voice; the read-along highlighter follows its real length
+  playClip(c,it,tok,known){Snd.init();const ac=Snd.ac;if(!ac){this.speakPhone(it,it,tok,known);return}if(ac.state==='suspended')ac.resume();
+    const gap=this.prosody(it).gap+(this.queue[0]&&this.queue[0].ask?300:0),wait=known.length?650+(known.length-1)*550:0;
+    let done=false;const fin=()=>{if(done||tok!==this.token)return;done=true;this.src=null;StoryLog.end(it);setTimeout(()=>{if(tok===this.token)this.next()},gap)};
+    setTimeout(()=>{if(tok!==this.token)return;const b=ac.createBuffer(1,c.pcm.length,c.rate);b.copyToChannel(c.pcm,0);
+      const s=ac.createBufferSource(),g=ac.createGain();g.gain.value=S.sound.volume;s.buffer=b;s.connect(g);g.connect(ac.destination);
+      s.onended=fin;this.src=s;s.start();StoryLog.start(it,1,b.duration*1000);setTimeout(fin,b.duration*1000+1500);
+      // each mid-sentence sound lands as its word finishes (the word timings come from the clip's real length)
+      (this.mids||[]).forEach(q=>{const ms=StoryLog.words.slice(0,q.words).reduce((a,w)=>a+(w.ms||0),0);setTimeout(()=>{if(tok===this.token)playSfx(q.c,true)},Math.max(0,ms-60))})},wait)},
+  // the phone's own text-to-speech voice
+  speakPhone(it,raw,tok,known){
     const u=new SpeechSynthesisUtterance(it);const v=this.pick();if(v){u.voice=v;u.lang=v.lang}
     const p=this.prosody(it);u.rate=S.landmark.rate*(S.age==='4-5'?.92:1)*p.rate;u.pitch=p.pitch;u.volume=S.sound.volume;
     const gap=p.gap+(this.queue[0]&&this.queue[0].ask?300:0); // a breath before the next sentence
     let done=false,started=false;const fin=()=>{if(done||tok!==this.token)return;done=true;StoryLog.end(it);setTimeout(()=>{if(tok===this.token)this.next()},gap)};
     const wait=known.length?650+(known.length-1)*550:0; // let the sound effect play before the words start
-    u.onstart=()=>{started=true;StoryLog.start(it,u.rate)};u.onboundary=e=>{if(!e.name||e.name==='word')StoryLog.at(it,e.charIndex)};u.onend=fin;u.onerror=fin;setTimeout(fin,wait+it.length*75/Math.max(.5,u.rate)+2500); // safety net if the phone never reports the sentence finished
+    // mid-sentence sounds follow the phone's word-by-word signal; if it sends none, they're timed from the speaking speed
+    const mids=(this.mids||[]).map(q=>({...q})),fire=ci=>mids.forEach(q=>{if(!q.done&&ci>=q.at){q.done=true;if(tok===this.token)playSfx(q.c,true)}});let heard=false;
+    u.onstart=()=>{started=true;StoryLog.start(it,u.rate);if(mids.length)setTimeout(()=>{if(heard)return;const cps=14.5*Math.max(.5,u.rate);mids.forEach(q=>setTimeout(()=>{if(!q.done){q.done=true;if(tok===this.token)playSfx(q.c,true)}},Math.max(0,q.at*1000/cps-500)))},500)};
+    u.onboundary=e=>{if(!e.name||e.name==='word'){heard=true;StoryLog.at(it,e.charIndex);fire(e.charIndex)}};u.onend=()=>{fire(1e9);fin()};u.onerror=fin;setTimeout(fin,wait+it.length*75/Math.max(.5,u.rate)+2500); // safety net if the phone never reports the sentence finished
     // an online voice that hasn't started after 3.5s: switch to the best voice on the phone and say the sentence again
     if(v&&!v.localService&&!S.landmark.voice)setTimeout(()=>{if(started||done||tok!==this.token)return;this.netSlow=true;done=true;try{speechSynthesis.cancel()}catch(e){}this.queue.unshift(raw);this.next()},wait+3500);
     setTimeout(()=>{if(tok===this.token)speechSynthesis.speak(u)},wait)},
-  stop(){clearTimeout(StoryLog.timer);this.queue=[];this.held=null;this.cur=null;this.token++;this.busy=false;this.calm=false;Ear.stop();Ask.cancel();try{speechSynthesis.cancel()}catch(e){}},
+  stop(){clearTimeout(StoryLog.timer);if(this.src){try{this.src.onended=null;this.src.stop()}catch(e){}this.src=null}this.queue=[];this.held=null;this.cur=null;this.token++;this.busy=false;this.calm=false;Ear.stop();Ask.cancel();try{speechSynthesis.cancel()}catch(e){}},
   // Pause keeps the sentence being spoken plus everything after it, so ▶ carries on from there.
   // (speechSynthesis.pause() is unreliable on Android, so it cancels and re-queues instead.)
   pause(){if(!this.busy)return;const rest=[...(this.calm?[{calm:true}]:[]),...(typeof this.cur==='string'||(this.cur&&this.cur.ask)?[this.cur]:[]),...this.queue];this.stop();this.held=rest.length?rest:null},
@@ -1518,8 +1687,9 @@ const StoryLog={lines:[],head:'Today’s trip story',title:'Read along with Hoot
   begin(t){clearTimeout(this.timer);this.text=t;this.wi=-1;this.exact=false;this.words=[...t.matchAll(/\S+/g)].map(m=>({s:m.index,e:m.index+m[0].length,len:m[0].length}))},
   mark(i,instant){this.wi=i;const w=this.words[i];this.spans.forEach((el,k)=>{el.classList.toggle('said',k<i);el.classList.toggle('on',k===i);
     el.style.transitionDuration=instant?'0s':k===i&&w?Math.round(w.ms||220)+'ms':''})},
-  start(t,rate){if(t!==this.text)return;const cps=14.5*Math.max(.5,rate||1); // about 14 letters a second at normal speed
+  start(t,rate,total){if(t!==this.text)return;const cps=14.5*Math.max(.5,rate||1); // about 14 letters a second at normal speed
     this.words.forEach(w=>{w.ms=(w.len+1)*1000/cps+(/[,;:]$/.test(this.text.slice(w.s,w.e))?180:0)});
+    if(total){const sum=this.words.reduce((a,w)=>a+w.ms,0)||1;this.words.forEach(w=>{w.ms*=total*.97/sum})} // the storyteller voice: the sentence's real length is known
     const step=i=>{if(this.exact||t!==this.text||i>=this.words.length)return;this.mark(i);this.timer=setTimeout(()=>step(i+1),this.words[i].ms)};step(0)},
   at(t,ci){if(t!==this.text)return;this.exact=true;clearTimeout(this.timer);const i=this.words.findIndex(w=>ci<w.e);if(i>=0&&i!==this.wi)this.mark(i)},
   end(t){if(t!==this.text)return;clearTimeout(this.timer);this.mark(this.words.length);const p=$('#k-story .now-line');if(p)p.classList.add('done')}
@@ -2070,7 +2240,7 @@ function setPlay(on){if(!T)return;const was=T.running;T.running=on&&!T.arrived;
     if(S.landmark.listen)Tel.feature('mic');if(S.sound.on&&S.sound.music)Tel.feature('music')}
   if(was&&!T.running)Voice.pause();else if(!was&&T.running)Voice.resume();const b=$('#d-play');b.textContent=T.running?'❚❚':'▶';b.setAttribute('aria-label',T.running?'Pause trip':'Start trip');
   const sp=$('#k-storyplay');sp.classList.toggle('paused',!T.running);sp.setAttribute('aria-label',T.running?'Pause the trip and the story':'Carry on');$('#k-storystate').textContent=T.running?'Hoot is reading along':'Paused';
-  if(T.running&&liveGps())Geo.start();else Geo.stop();keepAwake(T.running);if(T.running)Music.start();else Music.stop();renderTripPanel()}
+  if(T.running&&liveGps())Geo.start();else Geo.stop();keepAwake(T.running);if(T.running)Music.start();else Music.stop();Amb.update();renderTripPanel()}
 function step(dt){
   if(!T.running||T.arrived)return;
   if(liveGps())return; // the GPS watcher moves the car
@@ -2103,7 +2273,7 @@ function hud(force){
   // Hoot's bubble: the next story stop or landmark, or what's happening now
   const stops=S.landmark.enabled?(S.landmark.type==='story'?storyStops(r):r.landmarks):[],nx=stops.find(l=>!T.announced.has(l.id)&&l.mile>=T.milesR-.2);
   const nl=T.arrived?'We made it':nx&&!nx.road?`Next stop · ${Math.max(0,nx.mile-T.milesR)<1?'nearly there':Math.round(nx.mile-T.milesR)+' mile'+(Math.round(nx.mile-T.milesR)===1?'':'s')}`:'On the road';
-  const nt=T.arrived?`Hooray! We’re at ${destName(r)}.`:nx&&!nx.road?`${lmInfo(nx).name.replace(/^the /,'The ')} is coming up!${S.landmark.type==='story'?' I’ll read the next chapter when we get there.':' I’ll tell you all about it.'}`
+  const nt=Voice.gating?'One moment… I’m getting my storytelling voice ready!':T.arrived?`Hooray! We’re at ${destName(r)}.`:nx&&!nx.road?`${lmInfo(nx).name.replace(/^the /,'The ')} is coming up!${S.landmark.type==='story'?' I’ll read the next chapter when we get there.':' I’ll tell you all about it.'}`
     :T.running?'Keep watching out of the window!':'Hoot has a story ready for the trip.';
   set('#k-next-l',nl);set('#k-next',nt);
   const z=currentZone();set('#k-zone',r.timerOnly&&!T.kidZone?`Offline · ${ZONES[z][0]}`:`${ZONES[z][1]} ${ZONES[z][0]}`);
@@ -2187,7 +2357,7 @@ function announce(lm){
   const sst=S.landmark.type==='story'?storyStops(T.route):null,ci=sst?sst.findIndex(s=>s.id===lm.id):-1;
   StoryLog.chapter(sst?`Chapter ${ci+2} of ${sst.length+2}`:'Fun facts',lm.road?'On the open road':L.name.replace(/^the /,'The '));
   const parts=[...buildSpeech(lm),{fn:()=>{clearTimeout(badgeTimer);badgeTimer=setTimeout(()=>b.hidden=true,2500)}}];
-  const spoke=Voice.say(S.landmark.type==='story'?withStoryMusic(parts):parts);
+  const spoke=Voice.say(S.landmark.type==='story'?withStoryMusic(parts):parts,false,true);
   b.classList.toggle('quiet',!spoke);clearTimeout(badgeTimer);if(!spoke)badgeTimer=setTimeout(()=>b.hidden=true,8000);
 }
 
@@ -2353,7 +2523,7 @@ function showNextCel(){if(!$('#celebrate').hidden||!celQueue.length)return;const
   $('#celebrate').hidden=false;Snd.unlock();confetti(90)}
 function arrive(){
   T.arrived=true;T.running=false;setPlay(false);Spot.end();Snd.arrive();confetti();
-  if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)StoryLog.chapter('The end','We made it!');if(T===t)Voice.say(withStoryMusic([{calm:true},...end,{calm:false}]))},3000)} // the END of the trip story
+  if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)StoryLog.chapter('The end','We made it!');if(T===t)Voice.say(withStoryMusic([{fn:()=>Music.setMood('calm')},{calm:true},...end,{calm:false}]),false,true)},3000)} // the END of the trip story
   const n=Object.values(T.spotted).reduce((a,b)=>a+b,0);
   $('#arrive').innerHTML=`<p class="big">We made it to ${esc(destName(T.route))}!</p><div class="arrive-stats"><span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span></div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>${askRating()?`<div id="rate-box"><button class="linkish" data-act="rate">For grown-ups: one quick question</button></div>`:''}`;
   $('#arrive').hidden=false;
@@ -2396,7 +2566,7 @@ function select(path,label,opts){const cur=getP(S,path);return`<div><label class
 function range(path,label,min,max,step){const v=getP(S,path);return`<div class="rng"><label for="${idFor(path)}">${label}<b data-out="${path}">${Math.round(v*100)}%</b></label><input type="range" id="${idFor(path)}" data-bind="${path}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`}
 // Settings is six coloured tiles; each opens its own page (growing out of the tile) with these sections as cards.
 const SET_GROUPS={
-  sound:{c:'c1',icon:'🔊',title:'Voice',sub:'Sound & music',secs:['sound','sounds']},
+  sound:{c:'c1',icon:'🔊',title:'Voice',sub:'Sound & music',secs:['storyvoice','sound','sounds']},
   child:{c:'c2',icon:'🛡️',title:'Safety',sub:'PIN, lock & reset',secs:['child','data']},
   acc:{c:'c3',icon:'📱',title:'Screen',sub:'Calm & colours',secs:['acc','style','bg','car','house']},
   lm:{c:'c4',icon:'💬',title:'Prompts',sub:'Stories & questions',secs:['lm','read']},
@@ -2506,7 +2676,15 @@ function renderSettings(){
       <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn ghost" data-act="changepin">${S.pin?'Change PIN':'Set up a PIN'}</button></div>${pinMsg?`<div class="status" style="margin-top:8px">${esc(pinMsg)}</div>`:''}</div>
     ${toggle('child.lock','Lock the trip screen for the kids','When a trip starts, the bottom bar shows only “Parents only” and the lock. Your PIN opens Search, Stats and Settings.')}
     ${toggle('child.spotNow','Spot-it on the Games page','Lets children start a Spot-it round themselves.')}`;
-  const SECS={trip:()=>sec('trip','🗺️','Trip & route',tripBody),read:()=>sec('read','📖','Read the story',storyReadBody(R)),car:()=>sec('car','🚗','Car & garage',carBody),
+  const svName=(SV.VOICES.find(v=>v[0]===S.sound.voice)||['','the phone voice'])[1];
+  const svBody=`<p class="note">Alice, a natural British storyteller voice that runs on this phone, so it needs no internet once it’s downloaded, and the children’s names never leave the phone.</p>
+    <div class="sv-status" id="sv-status">${svStatus()}</div>
+    ${SV.installed()||SV.state==='loading'?'':`<div><button class="btn primary" data-act="svget">Download the storyteller voice</button><p class="note" style="margin-top:6px">About 124 MB with the music and sound effects, so best on Wi-Fi. It takes a few minutes, then it’s kept on the phone.</p></div>`}
+    <div><span class="lbl">Who reads the story?</span><div class="chips-row">${[...SV.VOICES,['phone','Phone voice']].map(([id,n])=>`<button type="button" class="chip-btn ${(SV.installed()?S.sound.voice===id:id==='phone')?'on':''}" data-act="svpick" data-id="${id}" ${id!=='phone'&&!SV.installed()?'disabled':''}>${n}</button>`).join('')}</div>
+      <p class="note" style="margin-top:6px">${SV.installed()?'Alice is the storyteller voice. The phone voice is your phone’s own.':'Alice can be chosen once the download has finished.'}</p></div>
+    ${SV.state==='ready'&&S.sound.voice!=='phone'?`<button class="btn ghost" data-act="svhear">▶ Hear ${esc(svName)}</button>`:''}
+    ${SV.installed()?`<button class="linkish" data-act="svremove" style="justify-self:start">Remove the download from this phone</button>`:''}`;
+  const SECS={storyvoice:()=>sec('storyvoice','🦉','Storyteller voice',svBody),trip:()=>sec('trip','🗺️','Trip & route',tripBody),read:()=>sec('read','📖','Read the story',storyReadBody(R)),car:()=>sec('car','🚗','Car & garage',carBody),
     house:()=>sec('house','🏠','Houses',houseRow('houseStart','Starting house')+houseRow('houseEnd',`Destination (${esc(destName(R))})`)),style:()=>hasPremium()?sec('style','🎨','Display style',styleBody):'',
     bg:()=>sec('bg','🌍','Background',bgBody),sound:()=>sec('sound','🔊','Sound',soundBody),sounds:()=>sec('sounds','🎧','Story sounds & music',storySoundsBody()),
     spot:()=>sec('spot','🔍','Spot-it game',spotBody),bonus:()=>sec('bonus','🎮','Mini-games',bonusBody),lm:()=>sec('lm','📖','Landmarks',lmBody),
@@ -2629,7 +2807,7 @@ function setAndApply(path,v){
 let storyTimer=0;
 function applyStyle(){const r=document.documentElement;if(!hasPremium())S.displayStyle=BASIC_ART;r.dataset.style='basic';r.dataset.age=S.age;
   if(hasPremium())r.dataset.theme=PREMIUM_THEMES[S.age];else delete r.dataset.theme;scene.zone=null;const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(r).getPropertyValue('--bg').trim()||'#2F6B4F'}
-function applyLive(){if(T&&T.running&&S.sound.on&&S.sound.music)Music.start();else Music.stop(true);Music.duck();$('#view-kid').style.filter=S.access.saturation===1?'':`saturate(${S.access.saturation})`;document.body.classList.toggle('calm',S.access.reduceMotion);renderKidTools();hud(true)}
+function applyLive(){if(T&&T.running&&S.sound.on&&S.sound.music)Music.start();else Music.stop(true);Music.duck();Amb.update();$('#view-kid').style.filter=S.access.saturation===1?'':`saturate(${S.access.saturation})`;document.body.classList.toggle('calm',S.access.reduceMotion);renderKidTools();hud(true)}
 
 /* ================= Kid tools ================= */
 function renderKidTools(){
@@ -2731,11 +2909,11 @@ const MOUNTAIN=`<svg class="mtn" viewBox="0 0 390 880" preserveAspectRatio="xMid
   <g class="climb"><g transform="translate(-19 -22) scale(.6)"><path d="M14 18 Q18 5 31 5 L39 5 Q50 6 54 18 Z" fill="#E8453C" stroke="#14203F" stroke-width="3" stroke-linejoin="round"/><path d="M20 17 Q23 9 30 9 L30 17 Z M34 9 L38 9 Q45 10 48 17 L34 17 Z" fill="#CDEBFF"/><rect x="4" y="16" width="56" height="15" rx="7.5" fill="#E8453C" stroke="#14203F" stroke-width="3"/><rect x="10" y="23" width="36" height="3" rx="1.5" fill="#FFD23F"/><circle cx="18" cy="31" r="7" fill="#14203F"/><circle cx="46" cy="31" r="7" fill="#14203F"/></g>
     <animateMotion dur="16s" repeatCount="indefinite" path="${ROAD_UP}"/></g>
 </svg>`;
-function greet(){
+function greetText(){
   const who=kidNames(),r=T.route,reason=prof('reason');
   const where=r.timerOnly?`Our drive takes about ${fmtMins(r.mins)}.`:`We’re going to ${destName(r)}, which is ${Math.round(r.miles)} miles away.`;
-  Voice.say([`Hello ${who||'everyone'}! ${reason?`Today’s adventure is ${reason}! `:''}${where} Watch the car on the road to see how far we’ve got. Let’s go!`]);
-}
+  return`Hello ${who||'everyone'}! ${reason?`Today’s adventure is ${reason}! `:''}${where} Watch the car on the road to see how far we’ve got. Let’s go!`}
+function greet(){Voice.say([greetText()],false,true)}
 async function startTrip(){
   if(startBusy)return;Snd.ready();
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
@@ -2748,7 +2926,7 @@ async function startTrip(){
       startBusy=false}
     else prepareStories(S.route);
   }
-  saveS();newTrip();showTab('kid');setPlay(true);greet();beginStory();
+  saveS();newTrip();svPrepare(T.route);showTab('kid');setPlay(true);greet();beginStory();
 }
 // After the greeting, the trip story's opening: straight away if it's written, or within 12 seconds either way.
 function beginStory(){tellIntro();const t=T;setTimeout(()=>{if(T===t&&T.running)tellIntro(true)},12000)}
@@ -2787,6 +2965,7 @@ function showTab(tab){
   if(tab==='settings'){plateMsg='';lockMsg='';renderSettings()}if(tab==='stats'){confirmReset=false;renderStats()}
   if(tab==='kid')StoryLog.render();
   $('#tabHint').textContent='';window.scrollTo({top:0});updateNav();
+  if(tab==='kid'&&T&&T.running)Music.start();else if(!Music.preview)Music.stop(true);Amb.update(); // music only on the trip screen while moving
 }
 /* ================= Parent consent ================= */
 // Shown the first time AWTY opens (and from Settings). Nothing online is used until a grown-up has chosen.
@@ -2816,7 +2995,7 @@ function saveConsent(all){
     if(!choice.location){Geo.stop();S.here=null;saveS()} // location off: stop using it straight away and forget the last position
     if(wasStats&&!choice.stats)Tel.forget();if(!wasStats&&choice.stats)Tel.log('open');
     if(hereMsg==='!off'&&allowed('location'))hereMsg='Location is on. Tap 📍 again to use where you are.';
-    applyLive();if(!$('#view-settings').hidden)renderSettings();if(!$('#view-start').hidden)renderStart()},'to save these choices');
+    applyLive();if(!$('#view-settings').hidden)renderSettings();if(!$('#view-start').hidden)renderStart();setTimeout(svAsk,700)},'to save these choices');
 }
 $('#consent').addEventListener('click',e=>{if(e.target.id==='c-agree')saveConsent();if(e.target.id==='c-none')saveConsent(false)});
 
@@ -2958,8 +3137,12 @@ VS.addEventListener('click',e=>{
   if(a==='telsend'){Tel.flush().then(()=>{telMsg=Tel.q.length?'Couldn’t send just now; AWTY will try again later.':'Sent.';renderSettings()});return}
   if(a==='teldelete'){telMsg='Deleting…';renderSettings();Tel.forget().then(ok=>{telMsg=ok?'Your usage data has been deleted from our server and this phone, and AWTY will use a new random ID.':'Deleted on this phone. Our server couldn’t be reached, so please try again when you’re online.';renderSettings()});return}
   if(a==='sfx'){Snd.ready();playSfx(b.dataset.id);return}
-  if(a==='mood'){const id=b.dataset.id;Snd.ready();Music.setMood(id);setTimeout(()=>{if(Music.mood===id)Music.setMood(null)},9000);return} // 9-second preview
+  if(a==='mood'){const id=b.dataset.id;Snd.ready();Music.preview=true;Music.setMood(id);setTimeout(()=>{if(Music.mood!==id)return;Music.preview=false;Music.setMood(null);if(!Music.allowed())Music.stop()},9000);return} // 9-second preview
   if(a==='delplace'){S.places.splice(+b.dataset.i,1)}
+  if(a==='svget'){SV.load();renderSettings();return}
+  if(a==='svpick'){S.sound.voice=b.dataset.id;saveS();renderSettings();svPrepare(T&&T.route);return}
+  if(a==='svhear'){const n=(SV.VOICES.find(v=>v[0]===S.sound.voice)||[0,'your storyteller'])[1];Voice.say([`Hello! I’m ${n}, your AWTY storyteller.`,'Are you ready for an adventure?'],true,true);return} // waits a few seconds so it's really that voice
+  if(a==='svremove'){SV.remove().then(()=>{S.sound.voice='bf_alice';saveS();renderSettings()});return}
   if(a==='hearvoice'){Voice.say(['Hello! I’m your AWTY storyteller.','Are you ready for an adventure?','Then let’s go… the road is waiting!'],true);return}
   if(a==='report'){reportAsk=b.dataset.id;reportMsg='';renderSettings();return}
   if(a==='reportcancel'){reportAsk='';renderSettings();return}
@@ -3027,6 +3210,8 @@ function loop(now){
 }
 scene.cv=$('#scene');scene.ctx=scene.cv.getContext('2d');
 applyStyle();newTrip();applyLive();checkServices();showTab('start');Tel.log('open');setTimeout(()=>Tel.flush(),5000);
+if(SV.installed())setTimeout(()=>SV.load(),1500); // the storyteller voice, if a parent downloaded it, loads from the phone
+else setTimeout(svAsk,2000); // or, the first time, offer it
 if(!S.consent||(S.consent.v||1)<CONSENT_VERSION)showConsent(); // first launch, or the choices have changed since a parent last saw them
 if(location.hash==='#games'){showTab('settings');openPanel('bonus',null,'bonus')} // shortcut for testing the mini-games
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`).catch(()=>{});

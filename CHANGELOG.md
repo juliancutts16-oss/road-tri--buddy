@@ -6,6 +6,25 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.2.0 — Alice and real sound
+
+**Storyteller voice (new)**
+- Hoot can now read with Alice, a natural British storyteller voice that runs on the phone itself (Kokoro). The phone's own voice is still there as an option.
+- Settings → Voice → Storyteller voice: a parent downloads it once (about 116 MB, best on Wi-Fi). After that it works with no signal, stays on the phone across app updates, and can be removed again from the same card.
+- First launch: after the privacy choices and parent PIN, a pop-up asks "A storytelling voice for Hoot?" with **Download now** or **Later**. It shows the download's progress, closes itself when Alice is ready, mentions it if the phone seems to be on mobile data, and is only asked once.
+- Nothing is sent to the cloud, so the children's names still never leave the phone.
+- The trip's story is turned into audio in the background as soon as it's ready, in the order it will be read. Each chapter waits until all its lines are ready, then is read in one go with no gaps. Only the opening usually waits (Hoot's bubble says he's getting his voice ready); later chapters are ready miles ahead. One-off lines that aren't ready yet use the phone voice so nothing waits.
+- The read-along highlighter follows the storyteller voice's real timing.
+- Real recorded sounds (in progress): 44 sounds chosen by the owner from Pixabay (free for use in a paid app), trimmed and tidied into `public/sounds/`. That's 29 sound effects cut to their best 0.1–4 seconds, 11 storybook music tracks made into seamless 64-second loops, and 4 background atmospheres (countryside, seaside, town, forest) as 24-second loops. Volumes are evened out, and the whole set is about 8 MB.
+- The recorded sounds now play in the stories:
+  - The AI places each sound straight after the word it belongs to ("Oh look, the dragon is here!" and the growl lands on "here"). It can also choose the music mood for each part.
+  - With Alice, sounds land exactly on their word; with the phone voice they follow the phone's word signal (or an estimate). Mid-sentence sounds play a little softer so they sit under the voice, placed slightly left or right, with a soft room echo.
+  - Real storybook music replaces the made-up tunes: the happy main theme while driving, each story's mood during its chapters, and the calm track for the ending. It dips whenever Hoot speaks. Loops blend end-to-start over 50 ms, so there's no click.
+  - Music and atmosphere only ever play on the trip screen once the trip is moving. There's none on the Search screen, in Settings, while paused, or for a story read while parked. Two exceptions: the calm music under the ending when you arrive, and a parent's ▶ music preview in Settings.
+  - A very quiet background atmosphere matches where the car is (countryside birdsong, the seaside, a town, a forest) and stops when the trip pauses or ends.
+  - The sounds download with Alice (about 124 MB together), stay on the phone across updates and work with no signal. Without them, the app's own made-up sounds play as before.
+- The site now has "cross-origin isolation" switched on, so the voice can use several of the phone's processor cores (about 1.6x faster).
+
 ## 0.1.5 (fixes)
 - Search screen: once you've entered a destination, one slim line under the search bar asks "From" with two small buttons: "📍 My location" or "Type address" (which opens Trip details, ready to type). It stays clear of the mountain top and disappears once a start is chosen. Pressing Go without one gives it a little shake instead of trying a route. Not shown for no-signal trips or routes that are already planned.
 - Hoot is now centred in his circle beside the "Next stop" bubble, and in the Story header, with his ears no longer cut off. His picture was being shifted up and to the left.

@@ -121,7 +121,8 @@ h2.h{font-family:var(--display);font-size:calc(1.15rem*var(--ds));margin:0 0 10p
 .spot{margin-top:14px}
 .spot-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
 .spot-head b{font-family:var(--display);font-size:calc(1.3rem*var(--ds))}
-.spot-head span{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.spot-head span{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;margin-left:auto}
+.spot-done{border:0;border-radius:999px;background:var(--soft);color:var(--ink);font:700 .85rem var(--body);padding:8px 16px;min-height:38px;cursor:pointer}
 .spot-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:10px}
 .spot-item{position:relative;border:2px solid var(--line);background:var(--soft);border-radius:var(--radius);padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--ink);font-weight:600;font-size:.8rem;transition:transform .15s}
 .spot-item .e{font-size:2.6rem;line-height:1;filter:var(--emoji-filter)}
@@ -712,7 +713,7 @@ body.kid-locked #demo{display:none}
       <div class="kid-side">
 
       <div class="card spot" id="spot" hidden>
-        <div class="spot-head"><b>Can you spot…</b><span id="spot-left">60s</span></div>
+        <div class="spot-head"><b>Can you spot…</b><span id="spot-left">60s</span><button type="button" class="spot-done" id="spot-done">Done</button></div>
         <div class="spot-items" id="spot-items"></div>
         <div class="spot-time"><i id="spot-bar"></i></div>
       </div>
@@ -1028,7 +1029,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.0';
+const APP_VERSION='0.2.1';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1551,7 +1552,8 @@ const SV={VOICES:[['bf_alice','Alice']],
     try{this.w=new Worker('voice-worker.js',{type:'module'})}catch(e){this.fail('This phone can’t run the storyteller voice.');return}
     this.w.onmessage=e=>{const m=e.data;
       if(m.type==='progress'){if(this.state==='loading'){this.pct=Math.round(m.pct);svUi()}} // (a late update must not hide "Ready")
-      else if(m.type==='ready'){this.state='ready';store.set('sv',true);svUi();svPrepare(T&&T.route)}
+      else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // a fresh download makes Alice the storyteller
+        this.state='ready';store.set('sv',true);svUi();svPrepare(T&&T.route)}
       else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
       else if(m.type==='audio'||m.type==='fail'){const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
         if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
@@ -1740,13 +1742,13 @@ function saidLike(h,phrase){const heard=normWords(h.alts.join(' ')).split(' ').f
 // Children answer by tapping or, if listening is on, by saying it. Only ever looking or saying, never doing.
 const Ask={done:null,timer:0,
   run(a){return new Promise(res=>{
-    let over=false;const ov=$('#ask'),start=Date.now(),total=a.kind==='choice'?25000:45000;
+    let over=false;const ov=$('#ask'),start=Date.now(),total=a.kind==='choice'?25000:30000;
     const finish=(i,how)=>{if(over)return;over=true;clearInterval(this.timer);this.done=null;Ear.stop();ov.hidden=true;res(how==='cancel'?[]:this.reply(a,i))};
     this.done=finish;
     $('#ask-lbl').textContent=a.kind==='choice'?'You choose!':'Can you help?';
     $('#ask-q').textContent=a.kind==='choice'?'What should happen next?':`Can you spot ${a.item.a}?`;
     $('#ask-opts').innerHTML=a.kind==='choice'?a.options.map((o,i)=>`<button type="button" class="ask-btn" data-i="${i}"><span class="em">${esc(o.emoji)}</span><span>${esc(o.text.charAt(0).toUpperCase()+o.text.slice(1))}</span></button>`).join('')
-      :`<button type="button" class="ask-btn found" data-i="0"><span class="em">${esc(a.item.emoji)}</span><span>We spotted it!</span></button>`;
+      :`<button type="button" class="ask-btn found" data-i="0"><span class="em">${esc(a.item.emoji)}</span><span>We spotted it!</span></button><button type="button" class="ask-btn" data-i="-1"><span class="em">🙈</span><span>Not this time</span></button>`;
     $('#ask-bar').style.width='100%';ov.hidden=false;
     this.timer=setInterval(()=>{const f=1-(Date.now()-start)/total;$('#ask-bar').style.width=Math.max(0,f*100)+'%';if(f<=0)finish(-1,'timeout')},250);
     // listening: once for a choice (then it's buttons), a few times for spotting as it can take a while
@@ -2255,7 +2257,8 @@ function renderTripPanel(){
 function events(){
   T.milesR=T.miles/T.total*T.route.miles;
   const mb=Math.floor(T.miles/S.sound.mileEvery);if(mb>T.mileBucket){T.mileBucket=mb;if(T.miles<T.total-.05)Snd.mile()}
-  const sb=Math.floor(T.miles/S.spot.every);if(sb>T.spotBucket&&!Spot.active&&!gameOpen()&&!Bonus.open){T.spotBucket=sb;Spot.start()}
+  if(T.nextSpot==null)T.nextSpot=spotGap(); // the first round comes a little way into the trip
+  if(T.miles>=T.nextSpot&&!Spot.active&&!gameOpen()&&!Bonus.open&&$('#ask').hidden&&!Voice.busy)Spot.start();
   // start each story about 1½ minutes' drive before the landmark, so it finishes as you go past
   const lead=clamp(T.route.miles/Math.max(1,T.route.mins)*1.5,.8,2.5);
   if(S.landmark.enabled)(S.landmark.type==='story'?storyStops(T.route):T.route.landmarks).forEach(lm=>{if(!T.announced.has(lm.id)&&T.milesR>=lm.mile-lead&&T.milesR<lm.mile+.3)announce(lm)});
@@ -2294,14 +2297,20 @@ function pickSpotSet(zone,n){
   const out=local.slice(0,Math.ceil(n*.75));for(const it of [...any,...local.slice(out.length),...rest]){if(out.length>=n)break;if(!out.includes(it))out.push(it)}
   return out.length?out:sh(Object.values(ITEMS)).slice(0,n);
 }
-const Spot={active:false,items:[],left:0,dur:60,
-  start(){if(this.active||gameOpen()||!S.spot.enabled||T.arrived)return;this.items=pickSpotSet(currentZone(),S.spot.count).map(it=>({...it,done:false}));this.dur=S.spot.time;this.left=this.dur;this.active=true;this.render();$('#spot').hidden=false;Snd.tone(784,.15,'sine',.12);Snd.tone(1046,.25,'sine',.12,.12);if(!Voice.busy)Voice.say(['Can you spot these?'])},
+// The round keeps its own time (by the clock, with its own timer), so it always ends even if the drawing loop stalls,
+// and "Done" closes it whenever the children want to stop.
+const Spot={active:false,items:[],left:0,dur:60,endAt:0,timer:0,
+  start(){if(this.active||gameOpen()||!S.spot.enabled||T.arrived)return;this.items=pickSpotSet(currentZone(),S.spot.count).map(it=>({...it,done:false}));this.dur=S.spot.time;this.left=this.dur;this.endAt=Date.now()+this.dur*1000;
+    clearInterval(this.timer);this.timer=setInterval(()=>this.tick(0),250);this.active=true;this.render();$('#spot').hidden=false;Snd.tone(784,.15,'sine',.12);Snd.tone(1046,.25,'sine',.12,.12);if(!Voice.busy)Voice.say(['Can you spot these?'])},
   render(){$('#spot-items').innerHTML=this.items.map((it,i)=>`<button class="spot-item ${it.done?'done':''}" data-spot="${i}" ${it.done?'disabled':''} aria-label="${esc(it.n)}${it.done?', found':''}"><span class="e">${it.e}</span>${S.age==='4-5'?'':esc(it.n)}</button>`).join('')},
   tap(i,el){const it=this.items[i];if(!it||it.done)return;if(!this.items.some(x=>x.done))Tel.feature('spot');it.done=true;addScore(100);T.spotted[it.id]=(T.spotted[it.id]||0)+1;Snd.chime();starsAt(el);this.render();
     if(this.items.every(x=>x.done)){Snd.fanfare();setTimeout(()=>this.end(),1300)}},
-  tick(dt){if(!this.active)return;this.left-=dt;$('#spot-left').textContent=Math.ceil(Math.max(0,this.left))+'s';$('#spot-bar').style.width=clamp(this.left/this.dur*100,0,100)+'%';if(this.left<=0)this.end()},
-  end(){this.active=false;$('#spot').hidden=true}
+  tick(){if(!this.active)return;this.left=(this.endAt-Date.now())/1000;$('#spot-left').textContent=Math.ceil(Math.max(0,this.left))+'s';$('#spot-bar').style.width=clamp(this.left/this.dur*100,0,100)+'%';if(this.left<=0)this.end()},
+  end(){this.active=false;clearInterval(this.timer);$('#spot').hidden=true;if(T)T.nextSpot=T.miles+spotGap()} // the next round is a while away
 };
+// Spot-it rounds come now and then, not like clockwork: a random gap of 6 to 12 miles (more if a parent set a longer
+// distance), and never while Hoot is talking, a question is up or a game is open.
+function spotGap(){return Math.max(6,S.spot.every*2)*(1+Math.random())}
 function starsAt(el){
   const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,fx=$('#fx');
   const p=document.createElement('div');p.className='plus';p.textContent='+100';p.style.left=x+'px';p.style.top=y+'px';fx.appendChild(p);setTimeout(()=>p.remove(),1000);
@@ -3094,6 +3103,7 @@ $('.demo-btns').addEventListener('click',e=>{const a=e.target.dataset.demo;if(!a
   if(a==='restart')newTrip();
   if(a==='landmark'){const lm=T.route.landmarks.find(l=>!T.announced.has(l.id))||T.route.landmarks[0];if(lm){Voice.stop();announce(lm)}else{$('#tabHint').textContent='This timed trip has no landmarks. Use a saved route.'}}});
 $('#spot-items').addEventListener('click',e=>{const b=e.target.closest('[data-spot]');if(b)Spot.tap(+b.dataset.spot,b)});
+$('#spot-done').addEventListener('click',()=>Spot.end());
 $('#lm-badge').addEventListener('click',()=>{if(lastLm){Voice.stop();Voice.say(buildSpeech(lastLm))}});
 $('#view-settings').addEventListener('input',e=>{const b=e.target.dataset.bind;if(b==='to'||b==='from'){setP(S,b,e.target.value);saveS();suggestFor(b,e.target.value)}});
 $('#arrive').addEventListener('click',e=>{const a=e.target.dataset.act,sc=e.target.dataset.score;if(a==='newtrip'){const go=()=>{newTrip();showTab('start')};if(kidLocked)grownUpGate(go,'to plan a new trip');else go()}
@@ -3197,7 +3207,11 @@ VS.addEventListener('change',e=>{const el=e.target;
 let last=performance.now(),hudT=0,drawDt=0;const DRAW_EVERY=1/30,DRAW_IDLE=1/15,viewKid=$('#view-kid');
 const onScreen=new Map(),seen=el=>onScreen.get(el)!==false;
 if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>es.forEach(e=>onScreen.set(e.target,e.isIntersecting)));io.observe($('#scene'));io.observe($('#map'))}
-function loop(now){
+// The next frame is booked first and the work is guarded, so one error can never freeze the trip screen
+// (it's still reported once, for the crash stats).
+let loopErr=false;
+function loop(now){requestAnimationFrame(loop);try{frame(now)}catch(e){if(!loopErr){loopErr=true;setTimeout(()=>{throw e})}}}
+function frame(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;scene.t+=dt;
   if(T){step(dt);
     if(T.running){scene.scroll+=dt*(scene.cv.width||600)*.12;scene.spin+=dt*14;scene.spawn-=dt;if(scene.spawn<=0){scene.traffic.push({x:1.12,body:['hatchback','saloon','suv','van','estate','sports'][Math.floor(Math.random()*6)],color:Object.values(COLORS)[Math.floor(Math.random()*9)],v:.12+Math.random()*.08});scene.spawn=(S.access.reduceMotion?5:2.2)+Math.random()*3}}
@@ -3206,10 +3220,10 @@ function loop(now){
     if(!viewKid.hidden){drawDt+=dt;if(drawDt>=(T.running?DRAW_EVERY:DRAW_IDLE)-.004){if(!gameOpen()){const d=Math.min(drawDt,.1);if(seen(scene.cv))renderScene(d);if(seen($('#map')))renderMap()}drawDt=0}
       hudT-=dt;if(hudT<=0){hud();hudT=.2;Music.duck()}}
   }
-  requestAnimationFrame(loop);
 }
 scene.cv=$('#scene');scene.ctx=scene.cv.getContext('2d');
 applyStyle();newTrip();applyLive();checkServices();showTab('start');Tel.log('open');setTimeout(()=>Tel.flush(),5000);
+if(SV.installed()&&!store.get('svDefaulted',false)){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // phones that downloaded Alice in 0.2.0 switch to her once
 if(SV.installed())setTimeout(()=>SV.load(),1500); // the storyteller voice, if a parent downloaded it, loads from the phone
 else setTimeout(svAsk,2000); // or, the first time, offer it
 if(!S.consent||(S.consent.v||1)<CONSENT_VERSION)showConsent(); // first launch, or the choices have changed since a parent last saw them

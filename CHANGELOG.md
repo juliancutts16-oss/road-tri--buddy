@@ -6,6 +6,13 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.2.1 (fixes)
+- Spot-it ("Can you spot…") comes now and then instead of constantly: a random gap of 6–12 miles between rounds, and never while Hoot is talking, a question is up or a game is open.
+- Spot-it has a **Done** button, and its timer now keeps time by the clock, so a round always ends (it could get stuck on screen before).
+- The story's "Can you help spot…?" question has a **Not this time** button (Hoot says "That's okay!"), and its timer is 30 seconds instead of 45.
+- The trip screen can no longer freeze if something goes wrong in one frame: the app carries on and the problem is still reported in the crash stats.
+- Alice becomes the storyteller automatically as soon as she's downloaded, even if "Phone voice" was picked before. Phones that already downloaded her in 0.2.0 switch to her once. After that, a parent's own choice is kept.
+
 ## 0.2.0 — Alice and real sound
 
 **Storyteller voice (new)**

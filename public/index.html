@@ -580,6 +580,16 @@ body.kid-locked #demo{display:none}
 .here-pill .here-msg{margin:0!important;color:var(--navy);font-weight:600}
 .here-pill .here-msg.err{color:var(--red)}
 .here-pill .linkish{font-weight:700}
+/* "Where are you starting from?": one slim line under the search bar until a start is chosen */
+.start-prompt{justify-self:start;max-width:100%;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border-radius:999px;padding:5px 5px 5px 14px;box-shadow:0 4px 14px rgba(20,32,63,.12)}
+.sp-q{font:700 .78rem var(--body);color:var(--muted);margin-right:2px}
+.start-prompt button{min-height:32px;border-radius:999px;font:600 .8rem var(--body);cursor:pointer;padding:0 12px;white-space:nowrap}
+.sp-here{border:0;background:var(--blue);color:#FFFFFF}
+.sp-type{border:1.5px solid var(--line);background:var(--soft);color:var(--navy)}
+.sugg:not([hidden]) ~ .start-prompt{display:none} /* the suggestion list comes first while typing */
+.start-prompt.nudge{animation:sp-nudge .45s ease}
+@keyframes sp-nudge{0%,100%{transform:none}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.calm .start-prompt.nudge{animation:none}
 .hero-drop{position:absolute;top:calc(6vh + 66px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:4;display:grid;gap:8px}
 .hero-drop .place-chips,.saved-panel{background:#FFFFFF;border-radius:20px;padding:12px;box-shadow:0 8px 24px rgba(20,32,63,.16);margin:0}
 .saved-panel .lbl{margin-bottom:8px}
@@ -666,7 +676,7 @@ body.kid-locked #demo{display:none}
         <div class="big-left" id="k-left" hidden>30.0 miles to go</div>
       </div>
       <div class="hoot">
-        <div class="hoot-av"><svg viewBox="40 40 320 345" width="44" aria-hidden="true"><use href="#hoot-book"/></svg></div>
+        <div class="hoot-av"><svg viewBox="0 0 320 345" width="44" aria-hidden="true"><use href="#hoot-book"/></svg></div>
         <div class="hoot-say" role="status"><small id="k-next-l">Next stop</small><span id="k-next">Hoot has a story ready for the trip.</span></div>
       </div>
       <div class="swipe-wrap">
@@ -680,7 +690,7 @@ body.kid-locked #demo{display:none}
           </section>
           <section class="page" id="pg-games" aria-label="Pick a game"><h2>Pick a game</h2><div class="game-grid" id="k-games"></div></section>
           <section class="page" id="pg-story" aria-label="The story">
-            <div class="story-head"><svg viewBox="40 40 320 345" width="44" aria-hidden="true"><use href="#hoot-book"/></svg><div><small id="k-ch">Today’s trip story</small><h2 id="k-ch-t">Read along with Hoot</h2></div></div>
+            <div class="story-head"><svg viewBox="0 0 320 345" width="44" aria-hidden="true"><use href="#hoot-book"/></svg><div><small id="k-ch">Today’s trip story</small><h2 id="k-ch-t">Read along with Hoot</h2></div></div>
             <div class="story-body" id="k-story"></div>
             <div class="story-ctl"><button class="round" id="k-storyplay" aria-label="Pause the trip"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path class="i-pause" d="M6 5h4v14H6zM14 5h4v14h-4z"/><path class="i-play" d="M7 4l13 8-13 8z"/></svg></button><span class="grow" id="k-storystate">Hoot is reading along</span><button class="mini" id="k-storynext">Next chapter</button></div>
           </section>
@@ -999,7 +1009,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.1.4';
+const APP_VERSION='0.1.5';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -2643,7 +2653,10 @@ const currentZoneSafe=()=>T?currentZone():S.bgManual;
 /* ================= Start screen ================= */
 const ANIMALS=[['dog','🐶'],['cat','🐱'],['unicorn','🦄'],['dinosaur','🦖'],['rabbit','🐰'],['lion','🦁'],['dragon','🐉'],['penguin','🐧']];
 const LIKES=[['space','🚀'],['football','⚽'],['superheroes','🦸'],['princesses','👑'],['trains','🚂'],['robots','🤖'],['music','🎵'],['the seaside','🏖️'],['pirates','🏴‍☠️'],['fairies','🧚']];
-let startMsg='',startBusy=false;
+let startMsg='',startBusy=false,startNudge=false;
+// With real maps, a trip needs a starting point: a typed address or "Use my location". Until one is chosen,
+// a small card under the search bar asks (only once a destination is in, and not for a route that's already planned).
+const needStart=()=>S.tripMode==='connected'&&API.maps&&allowed('maps')&&!!S.to.trim()&&!S.from.trim()&&!hereOn()&&!routeFresh();
 function likesRaw(){return String(S.profile.likes||'').split(',').map(s=>s.trim()).filter(Boolean)}
 function likesList(){return likesRaw().filter(s=>!unsafeText(s))} // only the suitable ones go into stories
 function renderStart(){
@@ -2660,6 +2673,8 @@ function renderStart(){
         :`<div class="search" style="padding:14px 18px;font-weight:600">✈️ No-signal trip: set the time below</div>`}
       </div>
       <div class="hero-drop">${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="to" hidden></div>
+        ${needStart()&&!hereMsg?`<div class="start-prompt ${startNudge?'nudge':''}" role="group" aria-label="Where are you starting from?"><span class="sp-q">From</span>
+          <button type="button" class="sp-here" data-start="here">📍 My location</button><button type="button" class="sp-type" data-start="typefrom">Type address</button></div>`:''}
         ${savedOpen&&conn?`<div class="saved-panel"><span class="lbl">Saved places</span>${placeChips('to')||'<p class="note">None yet. Type where you’re going, then save it.</p>'}
           ${routes.length?`<span class="lbl" style="margin-top:10px">Saved trips</span><div class="chips-row small">${routes.map(r=>`<button type="button" class="chip-btn ${S.route&&S.route.savedFrom===r.id&&S.tripMode==='connected'?'on':''}" data-start="route" data-id="${r.id}">${esc(r.name)}</button>`).join('')}</div>`:''}</div>`:''}
       </div>
@@ -2726,6 +2741,7 @@ async function startTrip(){
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
   if(S.tripMode==='connected'){
     if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
+    if(needStart()){startMsg='';startNudge=true;hereMsg=hereMsg.startsWith('!')?'':hereMsg;renderStart();scrollTo({top:0,behavior:calmMotion()?'auto':'smooth'});startNudge=false;return} // the "Where are you starting from?" card asks
     if(!routeFresh()&&await needsPick()){startMsg='!Which one did you mean? Pick the right place from the list.';renderStart();const d=$('#s-to');if(d)d.scrollIntoView({block:'center'});return}
     if(!routeFresh()){startBusy=true;startMsg=API.maps?'Finding the route…':'';renderStart();
       try{await loadRoute();startMsg=''}catch(e){startBusy=false;startMsg='!Couldn’t get the route. '+e.message;renderStart();return}
@@ -2752,6 +2768,7 @@ VSt.addEventListener('click',e=>{
   const b=e.target.closest('[data-start]');if(!b)return;const k=b.dataset.start;
   if(k==='here'){useHere(renderStart);return}
   if(k==='privacy'){showConsent();return}
+  if(k==='typefrom'){startOpen.add('trip');renderStart();const f=$('#s-from');if(f){f.scrollIntoView({behavior:calmMotion()?'auto':'smooth',block:'center'});f.focus({preventScroll:true})}return}
   if(k==='saved'){savedOpen=!savedOpen;renderStart();return}
   if(k==='animal'){S.profile.animal=String(S.profile.animal).toLowerCase()===b.dataset.val?'':b.dataset.val}
   if(k==='like'){const l=likesRaw(),i=l.findIndex(x=>x.toLowerCase()===b.dataset.val);if(i>=0)l.splice(i,1);else l.push(b.dataset.val);S.profile.likes=l.join(', ')}

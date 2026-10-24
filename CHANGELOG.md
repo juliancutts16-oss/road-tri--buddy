@@ -6,6 +6,10 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.1.5 (fixes)
+- Search screen: once you've entered a destination, one slim line under the search bar asks "From" with two small buttons: "📍 My location" or "Type address" (which opens Trip details, ready to type). It stays clear of the mountain top and disappears once a start is chosen. Pressing Go without one gives it a little shake instead of trying a route. Not shown for no-signal trips or routes that are already planned.
+- Hoot is now centred in his circle beside the "Next stop" bubble, and in the Story header, with his ears no longer cut off. His picture was being shifted up and to the left.
+
 ## 0.1.4
 - Search screen: the mountain is now a full-screen splash on every phone and tablet, with just the search bar and the Go button over it. "Trip details", "Who's coming?" and "Make the stories theirs" are slim boxes underneath. Scroll down a little, or tap the round down arrow on its own at the bottom right. It only shows on the Search screen and hides once the boxes are on screen. On narrow phones the bottom bar slides a little left while the arrow is showing.
 - The search bar starts empty with "Search destination", instead of the example "Grandma's House, Oakville". Phones that still had the example filled in have it cleared.

@@ -17,6 +17,23 @@ export default async (req) => {
   } catch (e) {
     return json({ error: e.message }, 400);
   }
+  // "Where am I?" for "Use my current location": the phone sends a position rounded to about 1 km,
+  // and gets back just the town or area name to show the parent (e.g. "Oakville").
+  if (body.near) {
+    const lat = Math.round(Number(body.lat) * 100) / 100, lng = Math.round(Number(body.lng) * 100) / 100;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return json({ error: "No position." }, 400);
+    const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.addressComponents" },
+      body: JSON.stringify({ maxResultCount: 5, rankPreference: "DISTANCE", languageCode: "en-GB", locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 2000 } } }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return json({ error: data.error?.message || "Google Places did not answer." }, 502);
+    const parts = (data.places || []).flatMap((p) => p.addressComponents || []);
+    const find = (type) => parts.find((c) => (c.types || []).includes(type))?.longText;
+    return json({ area: find("postal_town") || find("locality") || find("sublocality") || find("administrative_area_level_3") || find("administrative_area_level_2") || "" });
+  }
+
   const input = clip(body.input, 120);
   if (input.length < 2) return json({ suggestions: [] });
 

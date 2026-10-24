@@ -6,6 +6,14 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here._
 
+## 0.1.3 (fixes)
+- "Use my current location" (📍 in the search bar) now shows its message right under the search bar, says which town you're near (e.g. "near Oxford"), and turns blue while it's in use. If location is switched off, the message has a "Turn it on" button. Only a position rounded to about 1 km is sent to find the town.
+- "Make the stories theirs" is now a fold-away box like "Trip details" and "Who's coming?", with a one-line summary.
+- Settings: no more long list under the tiles. Each coloured tile opens its own page that grows out of the tile, with a Back button. "Report a problem" jumps straight to the right page.
+- Story read-along: instead of a whole yellow block, a highlighter sweeps through each word as Hoot says it, then the line fades back.
+- Trip screen: the winding road is now one smooth road with a dashed centre line. It used to be covered in dark rings, with big dark circles at each end.
+- Trip screen: Hoot now sits level with the middle of the "Next stop" bubble, and the bubble has a little tail pointing at him.
+
 ## 0.1.2 (hotfix)
 - No more maths questions. Setting up the parent PIN goes straight to choosing it.
 - "Forgot PIN?" now has to be held down for 10 seconds (it counts down) before a new PIN can be chosen. Trips and settings are kept.

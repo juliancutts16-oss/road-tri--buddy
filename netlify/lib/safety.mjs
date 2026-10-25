@@ -3,7 +3,7 @@
 //  - a word filter, a reading-level check, and a filter for interests typed by parents and for landmarks
 
 export const AGE_RULES = {
-  "4-5": "Ages 4 to 5: very short sentences (about 8 to 10 words) using everyday words a four-year-old knows. Problems are tiny and cosy, like a lost hat or a missing map. Only kind characters; no baddies at all.",
+  "4-5": "Ages 4 to 5: very short sentences (about 8 to 10 words) using everyday words a four-year-old knows. Problems are tiny and cosy, for example a cake that keeps wobbling, a song nobody can remember or a kite stuck in a tree. Only kind characters; no baddies at all.",
   "6-7": "Ages 6 to 7: short sentences (about 10 to 14 words). A few new words are fine if the story makes their meaning clear. Small adventures and gentle surprises. Characters can be cheeky but never mean.",
   "8+": "Ages 8 to 12: longer sentences and richer vocabulary are fine. Bigger quests and puzzles are fine, but never real danger. A rival is allowed only if they become friends by the end.",
 };
@@ -14,7 +14,7 @@ export const ALWAYS_RULES = `Rules for every age:
 - Always show kindness, teamwork and good manners.
 - The children are strapped into car seats. When the story asks them to do something, it may only ask them to look out of the window, listen, say something in a normal voice, count, sing quietly or imagine.
 - Never ask, dare or encourage them to do anything with their bodies: no kicking, stamping, jumping, bouncing, wriggling, clapping, banging, tapping, reaching, grabbing, touching, pressing, pushing, pulling, opening, unbuckling, climbing, standing up or throwing, and no shouting or loud noises that could startle the driver. Never ask them to talk to or wave at anyone outside the car.
-- The hero may run, jump or kick a ball in the story world, but never suggest the children copy it (nothing like "kick like Pip!" or "can you jump too?").`;
+- The hero may run, jump or kick a ball in the story world, but never suggest the children copy it (nothing like "kick like our hero!" or "can you jump too?").`;
 
 export const FACT_RULES = "For fun facts: only facts that are true and cheerful. Leave out anything upsetting, such as wars, battles, deaths, disasters, crimes or punishments.";
 

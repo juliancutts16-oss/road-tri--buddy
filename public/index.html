@@ -1073,7 +1073,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.3';
+const APP_VERSION='0.2.4';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1189,7 +1189,13 @@ async function prepareSaga(route){
   const common={sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:th.cues,moods:Object.keys(MOODS),choices:S.landmark.choices!==false},to=destName(route);
   try{
     if(!sg||!sg.intro){upd('Writing the beginning and end of your trip story…');
-      const g=await api('story',{...common,mode:'intro',from:route.from||'Home',to,stops:names.filter(n=>n!=='the open road')},60000);
+      // the outlines of the last few stories go along, so the writer makes this one clearly different (kept on this phone)
+      const recent=store.get('recentStories',[]).filter(b=>typeof b==='string').slice(-5);
+      // and the story ideas already used here, so a new one is picked each time (ids like "6-7:12", kept on this phone)
+      const usedIdeas=store.get('usedIdeas',[]).filter(x=>typeof x==='string').slice(-100);
+      const g=await api('story',{...common,mode:'intro',from:route.from||'Home',to,stops:names.filter(n=>n!=='the open road'),recent,usedIdeas},60000);
+      if(g.bible)store.set('recentStories',[...recent,g.bible].slice(-5));
+      if(typeof g.idea==='string')store.set('usedIdeas',[...usedIdeas,g.idea].slice(-100));
       sg={key,intro:g.intro,ending:g.ending,bible:g.bible,choice:g.choice||null,chapters:{}};route.saga=sg;saveS();saveRoutes();svPrepare(route);if(T&&T.route===route&&T.running)tellIntro()}
     const todo=stopList.map((lm,i)=>({lm,i})).filter(x=>!sg.chapters[x.lm.id]);let done=0,failed=0;
     const work=async({lm,i})=>{const body=chapterBody(route,sg,i);
@@ -1201,13 +1207,27 @@ async function prepareSaga(route){
   storyPending=false;prepareSaga.busy=null;saveS();saveRoutes();svPrepare(route); // the storyteller voice gets the whole story ready in the background
 }
 // Built-in version of the same three-part story, for when the AI isn't set up or there's no signal.
+// Its plot is picked for each trip, so it isn't the same story every time.
+const PLOTS=[
+  {problem:h=>`But there’s a problem! The ${h}’s map has blown away in the wind, so it will need to find clues along the way.`,
+    found:[(h,f)=>`There, a friendly ${f} pointed the way, and gave the ${h} the first clue.`,(h,f,d)=>`Hidden under a leaf was a shiny clue pointing towards ${d}!`,h=>`The ${h} found another clue, and the map was nearly complete.`],
+    again:h=>`Clutching the clue, the ${h} set off again. We’re getting closer!`,last:h=>`Clutching all the clues, the ${h} knew the way at last. We’re nearly there!`,use:'Using all the clues'},
+  {problem:h=>`But there’s a problem! The ${h}’s favourite song has lost its notes, and nobody can remember how it goes.`,
+    found:[(h,f)=>`There, a friendly ${f} hummed a happy note, and the ${h} caught it in a jar.`,h=>`A little note was bouncing along a fence, so the ${h} scooped it up.`,h=>`The ${h} found another note, and the song was nearly whole again.`],
+    again:h=>`Humming the new note, the ${h} set off again. We’re getting closer!`,last:h=>`With every note found, the ${h} could hum the whole tune. We’re nearly there!`,use:'Singing the whole song'},
+  {problem:h=>`But there’s a problem! The rainbow has lost its colours, and the ${h} has promised to find them all.`,
+    found:[(h,f)=>`There, a friendly ${f} shared a splash of bright red.`,h=>`A puddle shone with sunny yellow, and the ${h} scooped it up.`,h=>`The ${h} found a stripe of blue, and the rainbow was nearly bright again.`],
+    again:h=>`Carrying the new colour, the ${h} set off again. We’re getting closer!`,last:h=>`With every colour found, the ${h} was ready to paint the rainbow. We’re nearly there!`,use:'Painting the rainbow bright again'},
+  {problem:h=>`But there’s a problem! The ${h}’s amazing flying machine is missing three parts, and the big show is today.`,
+    found:[(h,f)=>`There, a friendly ${f} handed over a shiny spring.`,h=>`A little cog was twinkling in the grass, so the ${h} popped it in a pocket.`,h=>`The ${h} found a bendy bolt, and the machine was nearly ready.`],
+    again:h=>`Holding the new part, the ${h} set off again. We’re getting closer!`,last:h=>`With every part found, the ${h} could mend the machine at last. We’re nearly there!`,use:'Flying the mended machine'}];
 function sagaFallback(route){
-  const hero=sagaHero(),dest=destName(route),buddy=prof('buddy'),reason=prof('reason'),likes=likesList(),n=S.landmark.sentences,who=kidNames();
+  const hero=sagaHero(),dest=destName(route),buddy=prof('buddy'),reason=prof('reason'),likes=likesList(),n=S.landmark.sentences,who=kidNames(),P=PLOTS[Math.floor((T?T.seed:0)/7)%PLOTS.length];
   const th=storyTheme(),cue=i=>`{sfx:${th.themeCues.length?th.themeCues[i%th.themeCues.length]:BASE_CUES[i%BASE_CUES.length]}} `;
   const goal=reason?`to get to ${dest} in time for ${reason}`:`to carry a secret surprise all the way to ${dest}`;
   const intro=[`${cue(0)}${who?who+', are':'Are'} you ready for a story? Today, a little ${hero} is coming with us on our trip to ${dest}!`,
     `The ${hero} has a very important job: ${goal}.`,
-    `But there’s a problem! The ${hero}’s map has blown away in the wind, so it will need to find clues along the way.`,
+    P.problem(hero),
     buddy?`Luckily, ${buddy}, the ${hero}’s best friend, is coming to help.`:`Luckily, the ${hero} is brave and clever, and ready to help.`,
     `So keep watching out of the window, and let’s see what happens!`];
   const stops=storyStops(route),chapters={};
@@ -1215,13 +1235,13 @@ function sagaFallback(route){
     chapters[lm.id]={sentences:pickN([
       `${cue(i+1)}${CONNECT[i%CONNECT.length]}, ${L?`the ${hero} reached ${L.name} ${L.sight}`:`the ${hero} was zooming along the open road`}.`,
       L?`The ${hero} ${L.bit}.`:[`Suddenly, a gust of wind tickled the ${hero}’s nose. Ah… ah… achoo!`,`Then a rainbow appeared over the road, and the ${hero} followed it over the hill.`,`Along the way, the ${hero} counted ten cows, three tractors and one very sleepy sheep.`][(i+(lm.id==='road2'?1:0))%3],
-      [`There, a friendly ${fr} pointed the way, and gave the ${hero} the first clue.`,`Hidden under a leaf was a shiny clue pointing towards ${dest}!`,`The ${hero} found another clue, and the map was nearly complete.`][i%3],
+      P.found[i%3](hero,fr,dest),
       likes.length?`It reminded the ${hero} of ${likes[i%likes.length]}, which made it smile.`:`It was the most exciting part of the adventure so far!`,
-      last?`Clutching all the clues, the ${hero} knew the way at last. We’re nearly there!`:`Clutching the clue, the ${hero} set off again. We’re getting closer!`,
+      last?P.last(hero):P.again(hero),
       `${buddy||'Everyone'} cheered as they set off again.`,`I wonder what we’ll find next?`],n),
       choice:last?null:builtChoice(i+1)}});
   const ending=[`{sfx:tada} And at last, the ${hero} arrived at ${dest}, just like us!`,
-    reason?`Using all the clues, it made it just in time for ${reason}, and everybody cheered.`:`Using all the clues, it delivered the secret surprise, and everybody cheered.`,
+    reason?`${P.use}, it made it just in time for ${reason}, and everybody cheered.`:`${P.use}, it delivered the secret surprise, and everybody cheered.`,
     `Thank you for helping the ${hero} on the adventure.`,'The end!'];
   return{intro:pickN(intro,n),choice:builtChoice(0),chapters,ending,ai:{}};
 }
@@ -1241,7 +1261,8 @@ function storyChose(nextId,text){if(!T||!nextId)return;T.chose[nextId]=text;
   const route=T.route,s=route.saga,stops=storyStops(route),i=stops.findIndex(l=>l.id===nextId);
   if(i<0||!API.ai||!allowed('ai')||!s||s.key!==sagaKey(route)||!s.bible)return;
   const t=T,body={...chapterBody(route,s,i),chose:text};
-  api('story',body,60000).then(c=>{if(T===t)T.rewrites[nextId]={...c,helpItem:body.help?helpItem(route,stops[i]):null}}).catch(()=>{})}
+  api('story',body,60000).then(c=>{if(T!==t)return;T.rewrites[nextId]={...c,helpItem:body.help?helpItem(route,stops[i]):null};
+    svSoon([...(c.sentences||[]),c.helpAsk,c.helpThanks,c.choice&&c.choice.question,...(c.choice&&c.choice.options||[]).flatMap(o=>[choiceSay.great(o.text),choiceSay.did(o.text)])])}).catch(()=>{})} // the storyteller voice makes it next
 // The "help me spot…" moment in a chapter: the AI's own words if it wrote them, otherwise the built-in ones.
 function helpLines(route,lm,c){
   if(c&&c.helpAsk&&c.helpThanks&&c.helpItem)return{item:c.helpItem,ask:c.helpAsk,thanks:c.helpThanks,at:c.helpAt||Math.ceil((c.sentences||[]).length/2)};
@@ -1249,6 +1270,11 @@ function helpLines(route,lm,c){
   return{item,ask:`Our hero needs your help! Look out of the window. Can you spot ${item.a}? Tell me when you see it!`,thanks:`You found ${item.a}! Thank you! That gave our hero a brilliant idea.`,at:Math.ceil(((c&&c.sentences)||[]).length/2)}}
 // The words for a story part's choice, then the on-screen buttons (the chosen option steers the next chapter).
 const choiceItems=(c,nextId)=>c&&nextId?[c.question,{ask:{kind:'choice',options:c.options,next:nextId}}]:[];
+// What's said after a choice (in one place, so the storyteller voice can prepare the very same lines ahead of time)
+const choiceSay={great:t=>`Great choice! ${t.charAt(0).toUpperCase()+t.slice(1)} it is!`,none:t=>`Nobody picked, so I’ll choose: ${t}!`,did:t=>`So, just like you chose, our hero decided to ${t}.`};
+// The line that starts each landmark's chapter (or its fun facts)
+function chapterLead(lm){const L=lmInfo(lm),who=kidNames();
+  return S.landmark.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:lm.road?`${who?who+', i':'I'}t’s time for the next part of our story!`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}! Here comes the next part of our story.`}
 // Wraps a story part so its theme music plays underneath, then the driving music comes back.
 const withStoryMusic=items=>S.sound.storyFx===false?items:[{fn:()=>Music.setMood(storyTheme().mood)},...items,{fn:()=>Music.setMood(null)}];
 const MOOD_NAMES={magical:'Magical',space:'Space',pirate:'Sea shanty',sporty:'Sporty',heroic:'Hero march',trains:'Choo-choo',robot:'Robot',seaside:'Seaside',dino:'Dino drums',happy:'Happy'};
@@ -1264,7 +1290,8 @@ function tellIntro(force){
   if(!T||T.introTold||S.landmark.type!=='story'||!S.landmark.enabled)return;
   const ready=T.route.saga&&T.route.saga.key===sagaKey(T.route)&&T.route.saga.intro;if(!force&&API.ai&&storyPending&&!ready)return;
   const sg=sagaFor(T.route),first=storyStops(T.route)[0];
-  T.introTold=true;StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...sg.intro,...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]),false,true);
+  T.introTold=true;if(T.route.saga){T.route.saga.heard=true;saveS()} /* a story is told once: the next trip on this route gets a new one */
+  StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...sg.intro,...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]),false,true);
 }
 // Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
 async function loadRoute(){
@@ -1282,7 +1309,8 @@ async function loadRoute(){
 // so the story is being written and Alice is getting the greeting ready while everyone buckles in.
 // Only for places that were picked, saved or typed in full, so it never guesses (a vague name waits for Go).
 let earlyRoute=null,earlyKey='';
-function planEarly(){if(S.tripMode!=='connected'||!API.maps||!allowed('maps')||startBusy||earlyRoute||!S.to.trim()||needStart()||routeFresh())return;
+function planEarly(){if(S.tripMode==='connected'&&routeFresh()&&S.route.saga&&S.route.saga.heard&&!(T&&T.introTold&&!T.arrived)){S.route.saga=null;saveS();prepareStories(S.route);return} // same route again: start its new story now
+  if(S.tripMode!=='connected'||!API.maps||!allowed('maps')||startBusy||earlyRoute||!S.to.trim()||needStart()||routeFresh())return;
   const exact=(s,p)=>p&&p.address===s||isPostcode(s)||s.includes(',');
   if(!exact(S.to,S.toPlace)||(S.from.trim()?!exact(S.from,S.fromPlace):!(S.here&&Date.now()-S.here.at<10*60e3)))return;
   const k=S.to+'|'+fromLabel();if(k===earlyKey)return;earlyKey=k;clearTimeout(planEarly.t);
@@ -1649,14 +1677,22 @@ function speakable(raw){const marks=[],music=[],norm=x=>x.replace(/\s{2,}/g,' ')
   const cues=marks.map((c,i)=>{const before=norm(pieces.slice(0,i+1).join(' ')),words=before?before.split(/\s+/).length:0;return{c,words,at:before.length,start:words===0}});
   return{t,cues,music}}
 // Lines that are said on every trip, made once so they're always ready.
-const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!',...SV.VOICES.map(v=>`Hello! I’m ${v[1]}, your AWTY storyteller.`),'Are you ready for an adventure?']; // (the last two are the Settings ▶ preview)
-// Queues every line of this route's story (in the order it will be read), so it's ready before it's needed.
+const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!','That’s okay! Keep looking out of the window. Our hero spotted one too.',
+  'Great thinking!','Well done!','Brilliant!',...SV.VOICES.map(v=>`Hello! I’m ${v[1]}, your AWTY storyteller.`),'Are you ready for an adventure?']; // (the last two are the Settings ▶ preview)
+// Queues every line of this route's story (in the order it will be read), so it's ready before it's needed: each
+// chapter's opening line, its sentences, and what's said after its choice ("Great choice! …", "So, just like you chose…").
 // Lines queued for an earlier trip (or another voice) that haven't been made yet are dropped first.
 // (It also runs on the Search screen once the route is planned, so the greeting and opening are ready before Go.)
-function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
+function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}
+  if(R)try{const sg=S.landmark.type==='story'?sagaFor(R):null,stops=sg?storyStops(R):R.landmarks;
+    storyParts(R).forEach(p=>{const lm=stops.find(l=>l.id===p.id),c=!sg?null:p.id==='intro'?sg.choice:sg.chapters[p.id]&&sg.chapters[p.id].choice;
+      if(lm)lines.push(chapterLead(lm));lines.push(...p.lines);if(c&&c.options)c.options.forEach(o=>lines.push(choiceSay.great(o.text),choiceSay.did(o.text)))})}catch(e){}
+  lines.push(...SV_STOCK);
   const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
   SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
   texts.forEach(t=>{SV.render(t)})}
+// Puts these lines at the front of the storyteller voice's queue, in order (e.g. a chapter rewritten after a choice).
+function svSoon(lines){if(!SV.on()||SV.state!=='ready')return;lines.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean).reverse().forEach(t=>SV.render(t,true))}
 // Seconds still to wait before these lines can start, so that each one is ready before the ones ahead of it have
 // finished playing (0 = start now). Alice makes them in order; times not yet known are estimated, with a safety margin.
 function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let play=0,make=0,wait=0;
@@ -1668,9 +1704,9 @@ function svShare(lines){let all=0,ok=0;for(const t of lines){const c=SV.clip(t),
 // The globe beside the trip's road: shown only while a chapter waits for Alice. It fills with colour as she gets ready,
 // bounces, shrinks away, and the Map / Games / Story box grows into its space.
 const Loader={on:false,pct:0,t:0,
-  // (a wait shorter than 0.6 seconds never shows it, so it doesn't flash)
-  show(){const el=$('#k-load');clearTimeout(this.t);this.on=true;this.vis=false;this.pct=-1;this.set(0);
-    this.t=setTimeout(()=>{this.vis=true;el.className='hoot';el.hidden=false;$('.kid-main').classList.add('loading')},600)},
+  // (a wait shorter than the delay, 0.6 seconds unless given, never shows it, so it doesn't flash)
+  show(delay=600){const el=$('#k-load');clearTimeout(this.t);this.on=true;this.vis=false;this.pct=-1;this.set(0);
+    this.t=setTimeout(()=>{this.vis=true;el.className='hoot';el.hidden=false;$('.kid-main').classList.add('loading')},delay)},
   set(p){if(!this.on)return;p=Math.max(this.pct,Math.min(99,Math.round(p)));if(p===this.pct)return;this.pct=p;
     $('#k-load .globe').style.setProperty('--fill',(100-p)+'%');$('#k-load-l').textContent=`Getting the story ready · ${p}%`},
   done(){if(!this.on)return;this.on=false;if(!this.vis){clearTimeout(this.t);return}const el=$('#k-load'),q=calmMotion();$('#k-load .globe').style.setProperty('--fill','0%');$('#k-load-l').textContent='Ready!';
@@ -1711,15 +1747,20 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
   // gate=true for a story chapter: with the storyteller voice, the chapter waits until Alice is far enough ahead to
   // read it in one go with no gaps (judged by how fast this phone makes her voice), while the globe fills with colour.
   // Only the opening usually waits; later chapters are ready miles ahead.
+  tried:new Set(),
+  // the storyteller voice is still starting up (e.g. just after the app opened): wait for her, then carry on with this item
+  svLoading(item,tok){if(!SV.on()||SV.state!=='loading'||this.svGaveUp)return false;this.gating=true;Loader.show(1500);const t0=Date.now();
+    const iv=setInterval(()=>{if(tok!==this.token){clearInterval(iv);return}if(SV.state==='loading'&&Date.now()-t0<60000)return;if(SV.state==='loading')this.svGaveUp=true; // (after a minute, carry on without her)
+      clearInterval(iv);this.gating=false;Loader.done();this.queue.unshift(item);this.next()},300);return true},
   say(items,priority,gate){if(!this.ok())return false;if(priority)this.stop();
-    if(gate&&SV.on()&&SV.state==='ready')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
+    if(gate&&SV.on()&&SV.state!=='error')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
     this.queue.push(...items);if(!this.busy)this.next();return true},
   next(){let it=this.queue.shift();const tok=++this.token;this.cur=it;
     if(it===undefined){this.busy=false;return}this.busy=true;
     if(typeof it==='object'){if(it.fn){it.fn();this.next();return}
       if('calm' in it){this.calm=it.calm;this.next();return}
-      if(it.gate){const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
-        this.waitFor=new Set(it.gate);if(it.covered){this.next();return} // already allowed for by the chapter before it
+      if(it.gate){if(this.svLoading(it,tok))return;const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
+        if(it.covered){this.next();return} // already allowed for by the chapter before it
         const bad=new Set(),asked=new Set(need);let went=false,tick=0;
         const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
         // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
@@ -1735,8 +1776,13 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     // sound tags like {sfx:magic} are never read out: one at the start plays just before the sentence, one after a
     // word plays as that word is said ("mids"); {music:…} switches the story music
     const raw=it,sp=speakable(it);it=sp.t;const fx=S.sound.storyFx!==false,ok=c=>SFX[c]||Pack.has('s-'+c);
-    // a line of the chapter being read that Alice hasn't quite finished: wait for it, rather than switch to the phone's voice mid-chapter
-    if(it&&this.waitFor&&this.waitFor.has(it)&&SV.on()&&SV.state==='ready'&&!SV.clip(it)){this.waitFor.delete(it);this.gating=true;Loader.show();SV.render(it,true).then(()=>{if(tok===this.token){this.gating=false;Loader.done();this.queue.unshift(raw);this.next()}});return}
+    // With the storyteller voice, the phone's voice is never mixed in: a line Alice hasn't made yet waits for her (she
+    // makes it next, usually in a second or two; the globe shows only if it takes longer). While she's still starting
+    // up, everything waits for her. Only if she can't make it (or it takes over 20 seconds) does the phone's voice read it.
+    if(it&&this.svLoading(raw,tok))return;
+    if(it&&SV.on()&&SV.state==='ready'&&!SV.clip(it)&&!this.tried.has(it)){this.tried.add(it);if(this.tried.size>60)this.tried=new Set([it]);
+      let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);this.gating=false;Loader.done();this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000);
+      this.gating=true;Loader.show(2500);SV.render(it,true).then(go);return}
     if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
     const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,3):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
     known.forEach((c,i)=>setTimeout(()=>{if(tok===this.token)playSfx(c)},i*550));this.mids=mids;
@@ -1868,8 +1914,8 @@ const Ask={done:null,timer:0,
   reply(a,i){
     if(a.kind==='spot'){if(i<0)return['That’s okay! Keep looking out of the window. Our hero spotted one too.'];addScore(50);Snd.chime();return[a.thanks]}
     const k=i<0?Math.floor(Math.random()*2):i,text=a.options[k].text;storyChose(a.next,text);
-    if(i<0)return[`Nobody picked, so I’ll choose: ${text}!`];
-    addScore(50);Snd.chime();return[`Great choice! ${text.charAt(0).toUpperCase()+text.slice(1)} it is!`]},
+    if(i<0)return[choiceSay.none(text)];
+    addScore(50);Snd.chime();return[choiceSay.great(text)]},
   cancel(){if(this.done)this.done(-1,'cancel')}
 };
 // Decides whether the answer was right and what to say back. Returns sentences to speak.
@@ -2429,14 +2475,17 @@ function lmInfo(lm){
 function buildSpeech(lm){
   const L=lmInfo(lm),st=S.landmark,acad=st.lang==='academic',n=st.sentences,out=[];
   // story mode: this landmark's chapter of the trip story (rewritten to follow the children's last choice, if that's ready)
-  const sg=st.type==='story'&&T?sagaFor(T.route):null,rw=sg&&T.rewrites[lm.id]&&aiOk(T.rewrites[lm.id])?T.rewrites[lm.id]:null;
+  // (with the storyteller voice, the rewrite is only used once she has it ready; otherwise the chapter she prepared
+  // earlier is read, starting "So, just like you chose…", so there's never a long wait)
+  const svReady=t=>!(SV.on()&&SV.state==='ready')||(t.sentences||[]).every(x=>SV.clip(speakable(x).t));
+  const sg=st.type==='story'&&T?sagaFor(T.route):null,rw=sg&&T.rewrites[lm.id]&&aiOk(T.rewrites[lm.id])&&svReady(T.rewrites[lm.id])?T.rewrites[lm.id]:null;
   const ch=sg&&(rw?{...rw,choice:rw.choice||sg.chapters[lm.id].choice}:sg.chapters[lm.id]);let storyChoice=null,nextId=null;
   const g=!ch&&lm.gen&&lm.gen.key===genKey()&&aiOk(lm.gen,lm.gen.blocked)?lm.gen:null,src=ch||g,word=src&&src.word||L.word;
   const who=kidNames();
-  out.push(st.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:lm.road?`${who?who+', i':'I'}t’s time for the next part of our story!`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}! Here comes the next part of our story.`);
+  out.push(chapterLead(lm));
   const ear=Ear.active();let quiz=null;
   if(st.interactive==='repeat')out.push(`Can you say ${word}? Say it with me. ${word}!`,...(ear?[{listen:{kind:'repeat',question:'',answers:[word]}}]:[{pause:2600},'Brilliant!']));
-  if(ch){const stops=storyStops(T.route),i=stops.findIndex(s=>s.id===lm.id),chose=T.chose[lm.id],pre=chose&&!rw?[`So, just like you chose, our hero decided to ${chose}.`]:[];
+  if(ch){const stops=storyStops(T.route),i=stops.findIndex(s=>s.id===lm.id),chose=T.chose[lm.id],pre=chose&&!rw?[choiceSay.did(chose)]:[];
     const body=[...pre,...(ch.sentences||[])],h=st.helpSpot!==false?helpLines(T.route,lm,ch):null;
     if(h)body.splice(Math.min(body.length,pre.length+h.at),0,h.ask,{ask:{kind:'spot',item:h.item,thanks:h.thanks}}); // "help me spot…" partway through
     out.push(...body);nextId=stops[i+1]?stops[i+1].id:null;storyChoice=st.choices!==false&&nextId&&ch.choice?ch.choice:null;
@@ -3055,6 +3104,7 @@ async function startTrip(){
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
   if(S.tripMode==='connected'){
     if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
+    if(S.route&&S.route.saga&&S.route.saga.heard){S.route.saga=null;saveS()} // this route's story has been heard already: write a new one
     if(needStart()){startMsg='';startNudge=true;hereMsg=hereMsg.startsWith('!')?'':hereMsg;renderStart();scrollTo({top:0,behavior:calmMotion()?'auto':'smooth'});startNudge=false;return} // the "Where are you starting from?" card asks
     if(earlyRoute){startBusy=true;startMsg='Finding the route…';renderStart();await earlyRoute;startBusy=false;startMsg=''} // the route planned early is nearly there
     if(!routeFresh()&&await needsPick()){startMsg='!Which one did you mean? Pick the right place from the list.';renderStart();const d=$('#s-to');if(d)d.scrollIntoView({block:'center'});return}

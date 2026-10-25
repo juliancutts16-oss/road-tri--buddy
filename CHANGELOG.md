@@ -6,6 +6,35 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.2.4 — a different story every trip, Alice only
+- A library of 230 story ideas (`netlify/lib/ideas.mjs`), from the owner's list of 200 plus 30 new ones made for road trips and landmarks, grouped by age: 68 for ages 4–5, 72 for 6–7 and 90 for 8+.
+  - Each new story usually starts from one idea for the children's age group (otherwise from the random spark mix below). The writer turns the idea into a journey, with something new happening at each place the car passes, and adds a twist and a running gag.
+  - The phone remembers which ideas it has had, so a family hears every idea for their age before any comes round again.
+  - Ideas that would have broken the safety rules were rewritten rather than dropped. For example, the monster under the bed is now a friendly fluffy creature who'd like a nightlight to read by. The pigeons' pretzel heist is now a birthday surprise. The prank war is a friendly contest. The scared lost dog is a puppy following its nose to a picnic. The ghost is a cheeky garden statue. The mystery snacks are gone.
+  - The writer is also told to change any part of an idea that would frighten anyone or show something unsafe. Every story still goes through all the checks.
+- Every trip gets a different story:
+  - A story is now told once. The next trip on the same route (planned again, or from a saved place) gets a brand-new one, started early on the Search screen. Before, the route kept its story and played it again.
+  - Each new AI story gets a random "spark": where it's set (24 worlds, from a singing lighthouse to a library where characters climb out of the books), the kind of hero (16, unless the children's favourite animal is the hero), the quest (15), a twist for the ending and a running joke or clue. That's tens of thousands of combinations.
+  - The phone remembers the outlines of the last 5 stories, and the writer is told to make the new one completely different (hero, world, goal, problem and names). These outlines stay on the phone and only go to the writer with the next story request.
+  - The writer's examples no longer push every story the same way. They used to suggest "a lost map" and a hero called "Pip".
+- Better storytelling, always inside the existing safety rules (which still come first, and every part is still checked):
+  - hook the children from the very first sentence
+  - show, don't tell, with lively dialogue and sounds
+  - the hero solves the problems with their own ideas, helped by the children's choices and spotting, never rescued by a grown-up or sudden magic
+  - never preachy
+  - each chapter has its own fresh challenge and ends on a gentle cliffhanger, building to a twist at the end
+  - conflict stays gentle: puzzles, races against the clock and mix-ups, never danger or meanness
+- The built-in story (used when the AI story isn't available) now has 4 plots instead of 1: a map blown away, a song that has lost its notes, a rainbow that has lost its colours, and a flying machine missing its parts. A plot is picked for each trip.
+- With Alice as the storyteller, the phone's own voice is no longer mixed in. Before, any line Alice hadn't made ahead of time was read by the phone's voice, which was confusing.
+  - Now she always reads it herself, making it next (usually a second or two). The globe only appears if that takes longer than a couple of seconds.
+  - If the app has only just opened and she's still starting up, the story waits for her.
+  - The phone's voice is used only if she can't make a line at all (or after 20 seconds, or a minute while starting up).
+- Alice now prepares much more ahead of time, so those waits are rare:
+  - each chapter's opening line ("Coming up soon, we'll pass…")
+  - what's said after every choice ("Great choice! … it is!", "So, just like you chose…")
+  - the everyday replies ("Well done!", "Brilliant!", "That's okay! Keep looking…")
+- No more long pause between chapters after a choice. When the children choose, the next chapter is rewritten to follow their choice, and that new version was never prepared by Alice, so it waited (45 seconds or more) every time. Now she makes the rewrite straight away. If it isn't ready in time, the chapter she already prepared is read instead, starting "So, just like you chose, our hero decided to…", so it still follows the children's choice with no wait.
+
 ## 0.2.3 — story reports reviewed and rewritten, quicker start
 - Trip screen: swiping round from the last page to the Map (or back) no longer gets stuck halfway between two pages. The phone's own snapping is paused for the jump, so it always lands on one page.
 - Alice starts the story sooner:

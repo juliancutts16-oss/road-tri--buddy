@@ -94,7 +94,7 @@ button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let key='';try{key=localStorage.getItem('awty.statsKey')||''}catch(e){}
-const FEATURE_NAMES={spot:'Spot-it round',story_time:'Story time button',mic:'Listen for answers',landmark:'Landmark story/fact',bonus_yes:'Bonus game accepted',bonus_no:'Bonus game skipped',map:'Journey map',here:'Use my current location',saved_place:'Saved place used',read_story:'Read the story (parents)',music:'Background music'};
+const FEATURE_NAMES={spot:'Spot-it round',story_time:'Story time button',mic:'Listen for answers',landmark:'Landmark story/fact',bonus_yes:'Bonus game accepted',bonus_no:'Bonus game skipped',map:'Journey map',here:'Use my current location',saved_place:'Saved place used',kid_car:'My car page (car picked)',read_story:'Read the story (parents)',music:'Background music'};
 const GAME_NAMES={bubbles:'Bubble Pop',colours:'Colour Cars',count:'Count with Me',pairs3:'Memory Match',coinroad:'Coin Road',traffic:'Traffic Lights',letters:'Missing Letter',sums:'Car Sums',racer:'Neon Racer',pairs6:'Memory Grid',tables:'Times Table Turbo',scramble:'Word Scramble'};
 const ISSUE_NAMES={broke:'Something broke',story:'A story wasn’t right',maps:'Maps or location',other:'Something else'};
 function bars(obj,names={}){const e=Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]);if(!e.length)return'<p class="empty">Nothing yet.</p>';const max=e[0][1];

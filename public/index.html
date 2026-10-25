@@ -286,11 +286,17 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .unlock-row input{padding:8px}
 
 /* ---------- Stats ---------- */
-.stats{display:grid;gap:12px}
+.stats{display:grid;grid-template-columns:minmax(0,1fr);gap:12px} /* (minmax: a long chart scrolls inside its card instead of widening the page) */
 .tiles4{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
 .kpi b{display:block;font-family:var(--display);font-size:calc(1.6rem*var(--ds));font-variant-numeric:tabular-nums;line-height:1.2}
 .kpi small{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em}
+.kpi-more.open,.tiles4:has(.kpi-more.open) .kpi:nth-child(3){grid-column:1 / -1}
+.kpi-tap{all:unset;display:block;width:100%;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.kpi-tap:focus-visible{outline:3px solid var(--yellow);outline-offset:4px;border-radius:8px}
+.kpi-chev{position:absolute;right:2px;top:50%;width:12px;height:12px;margin-top:-8px;border:solid currentColor;border-width:0 3px 3px 0;transform:rotate(45deg);transition:transform .2s}
+.kpi-more.open .kpi-chev{transform:rotate(-135deg);margin-top:-2px}
+.kpi-list{margin-top:10px;padding:8px 12px;border-radius:16px;background:var(--surface);color:var(--ink,var(--navy))}
 .hbar{display:grid;grid-template-columns:2rem minmax(0,8rem) 1fr 2.5rem;align-items:center;gap:10px;padding:5px 0}
 .hbar .e{font-size:1.4rem;text-align:center}
 .hbar .n{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -451,14 +457,26 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .trip-nums .n2{background:var(--yellow);color:var(--navy)}
 .trip-nums small{display:block;font-size:.75rem;font-weight:600}
 .trip-nums b{display:block;font-family:var(--display);font-weight:400;font-size:calc(1.75rem*var(--ds));line-height:1.05;font-variant-numeric:tabular-nums}
-.hoot{display:flex;align-items:center;gap:12px;margin-top:12px}
-.hoot-av{width:58px;height:58px;flex:none;border-radius:50%;background:#E8F0FF;border:3px solid var(--yellow);display:grid;place-items:center;overflow:hidden}
+.hoot{display:flex;align-items:center;gap:12px;margin-top:12px;max-height:140px;transition:max-height .35s ease,margin-top .35s ease}
+.hoot[hidden]{display:none}
+.hoot.gone{max-height:0;margin-top:0;overflow:hidden}
+/* the loading globe: a grey AWTY globe that fills with colour from the bottom, bounces when ready, then shrinks away */
+.globe{position:relative;width:58px;height:64px;flex:none;animation:gbob 2.4s ease-in-out infinite}
+.globe svg{position:absolute;inset:0;width:100%;height:100%}
+.globe .g-grey{filter:grayscale(1);opacity:.4}
+.globe .g-col{clip-path:inset(var(--fill,100%) 0 0 0);transition:clip-path .6s ease}
+.hoot.ready .globe{animation:gbounce .55s cubic-bezier(.3,1.6,.5,1)}
+.hoot.out .globe,.hoot.out .hoot-say{transform:scale(0);opacity:0;transition:transform .35s ease-in,opacity .35s ease-in}
+@keyframes gbob{50%{transform:translateY(-3px) rotate(-5deg)}}
+@keyframes gbounce{40%{transform:scale(1.25) translateY(-6px)}70%{transform:scale(.92)}}
+@media (prefers-reduced-motion:reduce){.globe{animation:none}}
 .hoot-say{flex:1;min-width:0;background:var(--navy);color:#FFFFFF;border-radius:20px;padding:10px 14px;position:relative}
-.hoot-say::before{content:"";position:absolute;left:-7px;top:50%;width:14px;height:14px;background:inherit;border-radius:3px;transform:translateY(-50%) rotate(45deg)} /* little tail pointing at Hoot */
+.hoot-say::before{content:"";position:absolute;left:-7px;top:50%;width:14px;height:14px;background:inherit;border-radius:3px;transform:translateY(-50%) rotate(45deg)} /* little tail pointing at the globe */
 .hoot-say small{display:block;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--yellow)}
 .hoot-say span{display:block;font-weight:600;line-height:1.3}
 .swipe-wrap{position:relative;margin-top:12px}
-.swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:24px;height:clamp(300px,50vh,440px);overscroll-behavior-x:contain;box-shadow:var(--shadow)}
+.swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:24px;height:calc(clamp(300px,50vh,440px) + var(--grow,76px));transition:height .35s ease;overscroll-behavior-x:contain;box-shadow:var(--shadow)}
+.kid-main.loading .swipe{--grow:0px} /* smaller while the loading globe is showing, then grows into its space */
 .swipe::-webkit-scrollbar{display:none}
 .swipe .page{flex:0 0 100%;scroll-snap-align:start;height:100%;position:relative;overflow:hidden}
 #pg-map{background:#DFF2DA;display:flex;flex-direction:column}
@@ -482,6 +500,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .gtile:nth-child(4n+3){background:var(--red);color:#FFFFFF}
 .gtile:nth-child(4n+4){background:var(--green);color:#FFFFFF}
 .gtile:active{transform:scale(.97)}
+#pg-car{background:#E8F0FF;color:var(--navy);padding:16px;overflow-y:auto}
+#pg-car h2{margin:0 0 8px;font-family:var(--display);font-weight:400;font-size:calc(1.45rem*var(--ds))}
+.kc-hero{display:block;width:100%;max-width:300px;margin:0 auto;height:auto;aspect-ratio:5/3;background:#FFFFFF;border-radius:20px}
+.kc-next{margin:10px 0;font-size:.85rem;font-weight:600}
+.kc-next .t{display:block;height:10px;margin-top:4px;border-radius:999px;background:#FFFFFF;overflow:hidden}
+.kc-next .t i{display:block;height:100%;background:var(--green);border-radius:999px}
+.kc-cars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kc-cars .tile{background:#FFFFFF;border-color:transparent;color:var(--navy)}
+.kc-cars .tile small{font-size:.68rem;font-weight:600;opacity:.8}
+.kc-sw{margin-top:12px;gap:8px}
 #pg-story{background:#FFFFFF;display:flex;flex-direction:column;color:var(--navy)}
 .story-head{background:var(--yellow);padding:12px 16px;display:flex;gap:10px;align-items:center}
 .story-head svg{flex:none}
@@ -515,6 +543,14 @@ body.kid-locked #demo{display:none}
 .bn-btns button:last-child{margin-right:6px}
 .bn-lock{width:58px;height:58px;flex:none;border-radius:50%;border:0;background:var(--yellow);color:var(--navy);display:grid;place-items:center;cursor:pointer;padding:0;transition:transform .4s ease}
 .bnav.open .bn-lock{transform:rotate(-20deg)}
+/* locked: slide the lock to the right to unlock */
+.bnav.locked .bn-lock{order:-1;touch-action:none;cursor:grab;position:relative;z-index:1}
+.bnav.locked .bn-lbl span{padding:0 18px 0 14px;line-height:1.15}
+.bn-lbl small{display:block;font-weight:600;font-size:.72rem;color:var(--yellow);background:linear-gradient(90deg,var(--yellow) 40%,#FFFFFF 50%,var(--yellow) 60%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:slidehint 2.4s linear infinite}
+@keyframes slidehint{from{background-position:100% 0}to{background-position:-150% 0}}
+.bn-lock.nudge{animation:locknudge .6s ease}
+@keyframes locknudge{30%{transform:translateX(22px)}60%{transform:translateX(-3px)}}
+@media (prefers-reduced-motion:reduce){.bn-lbl small{animation:none;-webkit-text-fill-color:var(--yellow)}}
 
 /* Parent PIN: a sheet that slides up from the bottom */
 #gate.overlay{place-items:end center;padding:0}
@@ -582,7 +618,7 @@ body.kid-locked #demo{display:none}
 .here-pill .here-msg.err{color:var(--red)}
 .here-pill .linkish{font-weight:700}
 /* "Where are you starting from?": one slim line under the search bar until a start is chosen */
-.start-prompt{justify-self:start;max-width:100%;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border-radius:999px;padding:5px 5px 5px 14px;box-shadow:0 4px 14px rgba(20,32,63,.12)}
+.start-prompt{justify-self:center;max-width:100%;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border-radius:999px;padding:5px 5px 5px 14px;box-shadow:0 4px 14px rgba(20,32,63,.12)}
 .sp-q{font:700 .78rem var(--body);color:var(--muted);margin-right:2px}
 .start-prompt button{min-height:32px;border-radius:999px;font:600 .8rem var(--body);cursor:pointer;padding:0 12px;white-space:nowrap}
 .sp-here{border:0;background:var(--blue);color:#FFFFFF}
@@ -683,9 +719,9 @@ body.kid-locked #demo{display:none}
         <div class="trip-nums"><div class="n1"><small id="k-miles-l">Miles left</small><b id="k-miles">30</b></div><div class="n2"><small>Time left</small><b id="k-time">36 min</b></div></div>
         <div class="big-left" id="k-left" hidden>30.0 miles to go</div>
       </div>
-      <div class="hoot">
-        <div class="hoot-av"><svg viewBox="0 0 320 345" width="44" aria-hidden="true"><use href="#hoot-book"/></svg></div>
-        <div class="hoot-say" role="status"><small id="k-next-l">Next stop</small><span id="k-next">Hoot has a story ready for the trip.</span></div>
+      <div class="hoot" id="k-load" hidden>
+        <div class="globe" aria-hidden="true"><svg class="g-grey" viewBox="0 0 400 440"><use href="#awty-logo"/></svg><svg class="g-col" viewBox="0 0 400 440"><use href="#awty-logo"/></svg></div>
+        <div class="hoot-say" role="status"><small id="k-load-l">Getting the story ready</small><span>One moment… the story is nearly ready!</span></div>
       </div>
       <div class="swipe-wrap">
         <button class="swipe-next" id="k-swnext" aria-label="Next page"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -702,12 +738,14 @@ body.kid-locked #demo{display:none}
             <div class="story-body" id="k-story"></div>
             <div class="story-ctl"><button class="round" id="k-storyplay" aria-label="Pause the trip"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path class="i-pause" d="M6 5h4v14H6zM14 5h4v14h-4z"/><path class="i-play" d="M7 4l13 8-13 8z"/></svg></button><span class="grow" id="k-storystate">Hoot is reading along</span><button class="mini" id="k-storynext">Next chapter</button></div>
           </section>
+          <section class="page" id="pg-car" aria-label="My car"><h2>My car</h2><div id="k-car"></div></section>
         </div>
       </div>
       <div class="swipe-tabs" role="tablist" aria-label="Swipe pages"><div>
         <button role="tab" data-page="0" aria-selected="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/></svg>Map</button>
         <button role="tab" data-page="1" aria-selected="false"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10v5M4.5 12.5h5"/></svg>Games</button>
         <button role="tab" data-page="2" aria-selected="false"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3z"/><path d="M21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z"/></svg>Story</button>
+        <button role="tab" data-page="3" aria-selected="false"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16v-3l2-5h11l3 4h2v4z"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/></svg>My car</button>
       </div></div>
       </div>
       <div class="kid-side">
@@ -750,7 +788,7 @@ body.kid-locked #demo{display:none}
 
 <!-- Bottom bar. On the trip screen it's locked for the kids ("Parents only" + the lock); the parent PIN opens it. -->
 <nav class="bnav" id="bnav" aria-label="Main">
-  <span class="bn-lbl"><span>Parents only</span></span>
+  <span class="bn-lbl"><span>Parents only<small>Slide to unlock ›</small></span></span>
   <div class="bn-btns" id="bn-btns">
     <button data-nav="start"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Search</button>
     <button data-nav="stats"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/></svg>Stats</button>
@@ -951,6 +989,12 @@ const DEFAULTS={
 /* ================= State ================= */
 let S=deepMerge(DEFAULTS,store.get('settings',{}));
 if(S.to==="Grandma's House, Oakville"&&!S.toPlace)S.to=''; // the old example destination (0.1.3 and earlier): the search bar now starts empty
+// Opening the app again (e.g. the next day) starts with an empty search bar. Coming back within half an hour keeps it,
+// in case the phone closed the app while a parent looked something up.
+if(Date.now()-store.get('seen',0)>30*60e3&&S.to){S.to='';S.toPlace=null;store.set('settings',S)}
+// (the same when the phone kept the app open in the background: coming back to the Search screen after half an hour)
+addEventListener('visibilitychange',()=>{if(document.hidden){store.set('seen',Date.now());return}
+  if(Date.now()-store.get('seen',Date.now())>30*60e3&&!(T&&T.running)&&!$('#view-start').hidden&&S.to){S.to='';S.toPlace=null;saveS();renderStart()}});addEventListener('pagehide',()=>store.set('seen',Date.now()));
 if(!S.consent)S.child.lock=true; // anyone who hasn't been through the new consent screen gets the grown-up gate switched on
 // What the parent agreed to send off the phone. Until they've chosen, nothing online is used.
 const allowed=k=>!!(S.consent&&S.consent[k]);
@@ -1029,7 +1073,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.1';
+const APP_VERSION='0.2.2';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1139,7 +1183,8 @@ const CONNECT=['Before long','After a little while','Soon','A bit further on','N
 function sagaHero(){return prof('animal').toLowerCase()||HEROES[(T?T.seed:0)%HEROES.length]}
 async function prepareSaga(route){
   const key=sagaKey(route);let sg=route.saga&&route.saga.key===key?route.saga:null;if(sg&&sg.done)return;
-  storyPending=true;const upd=t=>{storyStatus=t;const el=$('#storyStatus');if(el)el.textContent=t};
+  if(prepareSaga.busy===route&&prepareSaga.key===key)return; // already being written (it may have started on the Search screen)
+  prepareSaga.busy=route;prepareSaga.key=key;storyPending=true;const upd=t=>{storyStatus=t;const el=$('#storyStatus');if(el)el.textContent=t};
   const th=storyTheme(),stopList=storyStops(route),names=stopList.map(l=>l.road?'the open road':lmInfo(l).name);
   const common={sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:th.cues,moods:Object.keys(MOODS),choices:S.landmark.choices!==false},to=destName(route);
   try{
@@ -1153,7 +1198,7 @@ async function prepareSaga(route){
     const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
     sg.done=!failed;upd(failed?`Trip story ready. ${failed} chapter${failed>1?'s':''} will use the built-in story.`:`Trip story ready: a beginning, ${stopList.length} middle chapter${stopList.length===1?'':'s'} and an end.`)}
   catch(e){upd('Couldn’t write the trip story just now, so the built-in story will be used.')}
-  storyPending=false;saveS();saveRoutes();svPrepare(route); // the storyteller voice gets the whole story ready in the background
+  storyPending=false;prepareSaga.busy=null;saveS();saveRoutes();svPrepare(route); // the storyteller voice gets the whole story ready in the background
 }
 // Built-in version of the same three-part story, for when the AI isn't set up or there's no signal.
 function sagaFallback(route){
@@ -1231,8 +1276,17 @@ async function loadRoute(){
   else origin=S.fromPlace&&S.fromPlace.placeId&&S.fromPlace.address===S.from?{placeId:S.fromPlace.placeId}:{address:S.from.trim()};
   const toId=S.toPlace&&S.toPlace.placeId&&S.toPlace.address===S.to?S.toPlace.placeId:undefined;
   const r=await api('route',{origin,destination:S.to.trim(),destinationPlaceId:toId});
-  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();prepareStories(S.route);return S.route;
+  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();svPrepare(S.route);prepareStories(S.route);return S.route;
 }
+// Plans the route quietly as soon as the destination and start are both chosen on the Search screen (before Go),
+// so the story is being written and Alice is getting the greeting ready while everyone buckles in.
+// Only for places that were picked, saved or typed in full, so it never guesses (a vague name waits for Go).
+let earlyRoute=null,earlyKey='';
+function planEarly(){if(S.tripMode!=='connected'||!API.maps||!allowed('maps')||startBusy||earlyRoute||!S.to.trim()||needStart()||routeFresh())return;
+  const exact=(s,p)=>p&&p.address===s||isPostcode(s)||s.includes(',');
+  if(!exact(S.to,S.toPlace)||(S.from.trim()?!exact(S.from,S.fromPlace):!(S.here&&Date.now()-S.here.at<10*60e3)))return;
+  const k=S.to+'|'+fromLabel();if(k===earlyKey)return;earlyKey=k;clearTimeout(planEarly.t);
+  planEarly.t=setTimeout(()=>{if(k!==S.to+'|'+fromLabel()||startBusy||routeFresh())return;earlyRoute=loadRoute().catch(()=>null).finally(()=>{earlyRoute=null})},1200)}
 // Reuse the loaded route if it matches what's typed and (for Google routes) is from the last few hours.
 function routeFresh(){const r=S.route;if(!r||r.to!==S.to.trim()||r.from!==fromLabel())return false;if(API.maps&&!r.points)return false;
   return !r.points||(/^g\d+$/.test(r.id)&&Date.now()-Number(r.id.slice(1))<3*3600e3)}
@@ -1404,20 +1458,25 @@ function playSfx(id,soft){if(!S.sound.on||!Snd.ready())return;if(Pack.has('s-'+i
 // Real recorded sounds the owner chose on Pixabay (free for a paid app), trimmed and evened out by tools/soundlab.html:
 // 29 effects, 11 music loops and 4 background atmospheres (about 8 MB). They download with the storyteller voice and
 // stay on the phone ("awty-sounds" cache, kept across releases). Without them the app's own made-up sounds play.
-const PACK_V=1;
+// PACK_V is the list's version. A replaced sound gets "v" in manifest.json, so phones download only that file again
+// (2: the town atmosphere without dogs). Saved copies that are no longer used are then removed.
+const PACK_V=2;
 const Pack={man:null,buf:new Map(),loading:new Map(),state:'off',
   installed(){return store.get('pack',false)},
   ready(){return this.state==='ready'},
   has(k){return this.ready()&&!!this.man[k]},
+  url(k,man=this.man){return`sounds/${k}.mp3?v=${(man&&man[k]&&man[k].v)||1}`},
   async load(){if(this.state==='ready'||this.state==='loading')return;this.state='loading';
     try{const man=await (await fetch('sounds/manifest.json?v='+PACK_V)).json();
-      await Promise.all(Object.keys(man).map(k=>fetch(`sounds/${k}.mp3?v=${PACK_V}`).then(r=>{if(!r.ok)throw new Error(k);return r.arrayBuffer()})));
+      await Promise.all(Object.keys(man).map(k=>fetch(this.url(k,man)).then(r=>{if(!r.ok)throw new Error(k);return r.arrayBuffer()})));
       this.man=man;this.state='ready';store.set('pack',true);
+      caches.open('awty-sounds').then(c=>c.keys().then(ks=>ks.forEach(q=>{const u=new URL(q.url),k=u.pathname.split('/').pop().replace(/\.(mp3|json)$/,'');
+        if(u.pathname.endsWith('.json')?u.search!=='?v='+PACK_V:man[k]&&u.search!=='?'+this.url(k).split('?')[1])c.delete(q)}))).catch(()=>{});
       Object.keys(man).filter(k=>man[k].kind==='sfx').forEach(k=>this.get(k)); // effects are tiny: have them ready to play instantly
     }catch(e){this.state=this.installed()?'off':'error'}},
   // a decoded sound (from the phone's saved copy); only two music tracks are kept in memory at once
   get(k){if(this.buf.has(k))return Promise.resolve(this.buf.get(k));if(this.loading.has(k))return this.loading.get(k);Snd.init();if(!Snd.ac)return Promise.resolve(null);
-    const p=fetch(`sounds/${k}.mp3?v=${PACK_V}`).then(r=>r.arrayBuffer()).then(a=>Snd.ac.decodeAudioData(a)).then(b=>{this.loading.delete(k);this.buf.set(k,b);
+    const p=fetch(this.url(k)).then(r=>r.arrayBuffer()).then(a=>Snd.ac.decodeAudioData(a)).then(b=>{this.loading.delete(k);this.buf.set(k,b);
       const music=[...this.buf.keys()].filter(x=>x[0]==='m');if(music.length>2)this.buf.delete(music[0]);return b}).catch(()=>{this.loading.delete(k);return null});
     this.loading.set(k,p);return p},
   // an effect: placed a little left or right, through the shared soft room echo; quieter while Hoot is talking
@@ -1541,6 +1600,9 @@ function bestVoice(allowOnline=true){const vs='speechSynthesis' in window?speech
 // as soon as the story is ready. Anything that isn't ready in time is read by the phone's own voice instead.
 const SV={VOICES:[['bf_alice','Alice']],
   w:null,state:'off',pct:0,err:'',clips:new Map(),wait:new Map(),queue:[],working:false,seq:0,
+  // how fast this phone makes her voice (seconds of work per second of speech) and how fast she speaks (letters a second),
+  // measured on every line and remembered, so a chapter can start as soon as she's far enough ahead
+  rtf:store.get('svRtf',1),cps:store.get('svCps',14),
   installed(){return store.get('sv',false)},
   on(){return S.sound.voice!=='phone'&&this.installed()&&this.state!=='error'},
   voice(){return this.VOICES.some(v=>v[0]===S.sound.voice)?S.sound.voice:'bf_alice'},
@@ -1553,10 +1615,12 @@ const SV={VOICES:[['bf_alice','Alice']],
     this.w.onmessage=e=>{const m=e.data;
       if(m.type==='progress'){if(this.state==='loading'){this.pct=Math.round(m.pct);svUi()}} // (a late update must not hide "Ready")
       else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // a fresh download makes Alice the storyteller
-        this.state='ready';store.set('sv',true);svUi();svPrepare(T&&T.route)}
+        this.state='ready';store.set('sv',true);svUi();svPrepare(T?T.route:routeFresh()?S.route:null)}
       else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
       else if(m.type==='audio'||m.type==='fail'){const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
-        if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
+        if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){const d=c.pcm.length/c.rate;
+            if(d>.5){this.rtf=Math.round((this.rtf*.7+(performance.now()-job.t0)/1000/d*.3)*100)/100;this.cps=Math.round(this.cps*.7+job.t.length/d*.3);store.set('svRtf',this.rtf);store.set('svCps',this.cps)}
+            this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
         this.pump()}};
     this.w.onerror=()=>this.fail('Couldn’t start the storyteller voice.');
     this.w.postMessage({type:'load',voices:this.VOICES.map(v=>v[0])})},
@@ -1566,7 +1630,7 @@ const SV={VOICES:[['bf_alice','Alice']],
     return new Promise(res=>{let job=this.queue.find(j=>j.key===key)||[...this.wait.values()].find(j=>j.key===key);
       if(job){job.res.push(res);if(first){job.need=true;if(this.queue.includes(job)){this.queue.splice(this.queue.indexOf(job),1);this.queue.unshift(job)}}}
       else{job={key,t,v:this.voice(),sp:this.speed(),res:[res],need:!!first};first?this.queue.unshift(job):this.queue.push(job)}this.pump()})},
-  pump(){if(this.working||this.state!=='ready'||!this.queue.length)return;const job=this.queue.shift(),id=++this.seq;this.working=true;this.wait.set(id,job);
+  pump(){if(this.working||this.state!=='ready'||!this.queue.length)return;const job=this.queue.shift(),id=++this.seq;this.working=true;this.wait.set(id,job);job.t0=performance.now();
     this.w.postMessage({type:'say',id,text:job.t,voice:job.v,speed:job.sp})},
   // removes the download from the phone (the phone's own voice is used again)
   async remove(){try{this.w&&this.w.terminate()}catch(e){}this.w=null;this.state='off';Pack.remove();this.clips.clear();this.queue=[];this.working=false;store.set('sv',false);
@@ -1585,13 +1649,38 @@ function speakable(raw){const marks=[],music=[],norm=x=>x.replace(/\s{2,}/g,' ')
   const cues=marks.map((c,i)=>{const before=norm(pieces.slice(0,i+1).join(' ')),words=before?before.split(/\s+/).length:0;return{c,words,at:before.length,start:words===0}});
   return{t,cues,music}}
 // Lines that are said on every trip, made once so they're always ready.
-const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!'];
+const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!',...SV.VOICES.map(v=>`Hello! I’m ${v[1]}, your AWTY storyteller.`),'Are you ready for an adventure?']; // (the last two are the Settings ▶ preview)
 // Queues every line of this route's story (in the order it will be read), so it's ready before it's needed.
 // Lines queued for an earlier trip (or another voice) that haven't been made yet are dropped first.
-function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=T&&R===T.route?[greetText()]:[];if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
+// (It also runs on the Search screen once the route is planned, so the greeting and opening are ready before Go.)
+function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(greetText(R),SV_STOCK[0])}catch(e){}if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
   const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
   SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
   texts.forEach(t=>{SV.render(t)})}
+// Seconds still to wait before these lines can start, so that each one is ready before the ones ahead of it have
+// finished playing (0 = start now). Alice makes them in order; times not yet known are estimated, with a safety margin.
+function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.25+.1;let play=0,make=0,wait=0;
+  for(const t of lines){const c=SV.clip(t);if(!c){make+=est(t)*f;wait=Math.max(wait,make-play)}play+=(c?c.pcm.length/c.rate:est(t))+.4}
+  return wait}
+// The globe beside the trip's road: shown only while a chapter waits for Alice. It fills with colour as she gets ready,
+// bounces, shrinks away, and the Map / Games / Story box grows into its space.
+const Loader={on:false,pct:0,t:0,
+  // (a wait shorter than 0.6 seconds never shows it, so it doesn't flash)
+  show(){const el=$('#k-load');clearTimeout(this.t);this.on=true;this.vis=false;this.pct=-1;this.set(0);
+    this.t=setTimeout(()=>{this.vis=true;el.className='hoot';el.hidden=false;$('.kid-main').classList.add('loading')},600)},
+  set(p){if(!this.on)return;p=Math.max(this.pct,Math.min(99,Math.round(p)));if(p===this.pct)return;this.pct=p;
+    $('#k-load .globe').style.setProperty('--fill',(100-p)+'%');$('#k-load-l').textContent=`Getting the story ready · ${p}%`},
+  done(){if(!this.on)return;this.on=false;if(!this.vis){clearTimeout(this.t);return}const el=$('#k-load'),q=calmMotion();$('#k-load .globe').style.setProperty('--fill','0%');$('#k-load-l').textContent='Ready!';
+    const at=(ms,f)=>{this.t=setTimeout(f,q?0:ms)};
+    at(550,()=>{el.classList.add('ready');at(550,()=>{el.classList.add('out');at(330,()=>{el.classList.add('gone');$('.kid-main').classList.remove('loading');at(380,()=>{el.hidden=true})})})})},
+  hide(){clearTimeout(this.t);this.on=false;$('#k-load').hidden=true;$('.kid-main').classList.remove('loading')}};
+// The ▶ voice previews in Settings: they play even if the sound is switched off, and the button says what's happening
+// ("Getting Alice ready…" while she makes the lines, "Playing…", then back to normal).
+function previewSay(b,items,gate){Snd.init();if(Snd.ac&&Snd.ac.state==='suspended')Snd.ac.resume();
+  const label=b.textContent,back=()=>{clearTimeout(cap);b.disabled=false;b.textContent=label},cap=setTimeout(back,60000);
+  Voice.stop();const wait=gate&&SV.on()&&SV.state==='ready'&&items.some(t=>typeof t==='string'&&!SV.clip(speakable(t).t));
+  b.disabled=true;b.textContent=wait?`Getting ${SV.VOICES[0][1]} ready…`:'Playing…';Voice.preview=back;
+  Voice.say([{fn:()=>{b.textContent='Playing…'}},...items,{fn:()=>{Voice.preview=null;back()}}],false,gate)}
 // Settings shows the download progress live, without redrawing the whole page.
 // The first-launch offer: shown once, after the privacy choices (and PIN) are done, on the Search screen.
 function svAsk(){if(SV.installed()||SV.state==='loading'||store.get('svAsked',false)||!('Worker' in window)||!$('#consent').hidden||!$('#gate').hidden||$('#view-start').hidden)return;
@@ -1607,7 +1696,7 @@ function svStatus(){const s=SV.state;
   if(s==='error')return`<span class="err">${esc(SV.err)}</span>`;
   return SV.installed()?'Downloaded. It starts when you next plan a trip.':'Not downloaded yet.'}
 const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:false,src:null,
-  ok(){return 'speechSynthesis' in window&&S.sound.on},
+  ok(){return 'speechSynthesis' in window&&(S.sound.on||!!this.preview)}, // a parent's ▶ preview in Settings plays even with the sound off
   pick(){const chosen=S.landmark.voice&&speechSynthesis.getVoices().find(v=>v.name===S.landmark.voice);
     return chosen||bestVoice(navigator.onLine!==false&&!this.netSlow)},
   // Storyteller pacing: questions lift and slow a little, exciting lines lift, long lines slow, the ending is calmer,
@@ -1616,8 +1705,9 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     if(end==='?'){pitch=1.12;rate=.97;gap=520}else if(end==='!'){pitch=1.1;rate=1.03;gap=380}
     if(words>20)rate*=.96;if(this.calm){pitch-=.06;rate*=.92;gap+=220}
     pitch+=((hashStr(t)%5)-2)*.01;if(S.age==='4-5')gap+=120;return{pitch,rate,gap}},
-  // gate=true for a story chapter: with the storyteller voice, the chapter waits until all its lines are ready,
-  // so it's read in one go with no gaps (only the opening usually waits; later chapters are ready miles ahead)
+  // gate=true for a story chapter: with the storyteller voice, the chapter waits until Alice is far enough ahead to
+  // read it in one go with no gaps (judged by how fast this phone makes her voice), while the globe fills with colour.
+  // Only the opening usually waits; later chapters are ready miles ahead.
   say(items,priority,gate){if(!this.ok())return false;if(priority)this.stop();
     if(gate&&SV.on()&&SV.state==='ready')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
     this.queue.push(...items);if(!this.busy)this.next();return true},
@@ -1626,15 +1716,24 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     if(typeof it==='object'){if(it.fn){it.fn();this.next();return}
       if('calm' in it){this.calm=it.calm;this.next();return}
       if(it.gate){const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
-        let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);this.gating=false;hud(true);this.next()},cap=setTimeout(go,150000);
-        this.gating=true;hud(true);[...need].reverse().forEach(t=>SV.render(t,true));Promise.all(need.map(t=>SV.render(t))).then(go);return}
+        this.waitFor=new Set(it.gate);if(it.covered){this.next();return} // already allowed for by the chapter before it
+        const t0=Date.now(),bad=new Set(),asked=new Set(need);let went=false,tick=0;
+        const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
+        // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
+        const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
+          later.forEach(t=>{if(!asked.has(t)){asked.add(t);SV.render(t).then(c=>{if(!c)bad.add(t);check()})}});
+          const w=svAhead([...it.gate,...later].filter(t=>!bad.has(t))),el=(Date.now()-t0)/1000;if(w<=0)go();else Loader.set(el/(el+w)*100)};
+        this.gating=true;Loader.show();[...need].reverse().forEach(t=>SV.render(t,true));need.forEach(t=>SV.render(t).then(c=>{if(!c)bad.add(t);check()}));tick=setInterval(check,400);check();return}
       if(it.listen){Ear.listen().then(h=>judge(it.listen,h)).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return}
       if(it.ask){Ask.run(it.ask).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return} // a choice or "help me spot…"
       if(it.sfx){playSfx(it.sfx);setTimeout(()=>{if(tok===this.token)this.next()},700);return}
+      if(it.phone){this.mids=[];this.speakPhone(it.phone,it.phone,tok,[]);return} // always the phone's own voice (its ▶ preview)
       setTimeout(()=>{if(tok===this.token)this.next()},it.pause||0);return}
     // sound tags like {sfx:magic} are never read out: one at the start plays just before the sentence, one after a
     // word plays as that word is said ("mids"); {music:…} switches the story music
     const raw=it,sp=speakable(it);it=sp.t;const fx=S.sound.storyFx!==false,ok=c=>SFX[c]||Pack.has('s-'+c);
+    // a line of the chapter being read that Alice hasn't quite finished: wait for it, rather than switch to the phone's voice mid-chapter
+    if(it&&this.waitFor&&this.waitFor.has(it)&&SV.on()&&SV.state==='ready'&&!SV.clip(it)){this.waitFor.delete(it);this.gating=true;Loader.show();SV.render(it,true).then(()=>{if(tok===this.token){this.gating=false;Loader.done();this.queue.unshift(raw);this.next()}});return}
     if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
     const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,3):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
     known.forEach((c,i)=>setTimeout(()=>{if(tok===this.token)playSfx(c)},i*550));this.mids=mids;
@@ -1667,10 +1766,10 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     // an online voice that hasn't started after 3.5s: switch to the best voice on the phone and say the sentence again
     if(v&&!v.localService&&!S.landmark.voice)setTimeout(()=>{if(started||done||tok!==this.token)return;this.netSlow=true;done=true;try{speechSynthesis.cancel()}catch(e){}this.queue.unshift(raw);this.next()},wait+3500);
     setTimeout(()=>{if(tok===this.token)speechSynthesis.speak(u)},wait)},
-  stop(){clearTimeout(StoryLog.timer);if(this.src){try{this.src.onended=null;this.src.stop()}catch(e){}this.src=null}this.queue=[];this.held=null;this.cur=null;this.token++;this.busy=false;this.calm=false;Ear.stop();Ask.cancel();try{speechSynthesis.cancel()}catch(e){}},
+  stop(){clearTimeout(StoryLog.timer);if(this.src){try{this.src.onended=null;this.src.stop()}catch(e){}this.src=null}this.queue=[];this.held=null;this.cur=null;this.token++;this.busy=false;this.calm=false;if(this.gating){this.gating=false;Loader.hide()}if(this.preview){const f=this.preview;this.preview=null;f()}Ear.stop();Ask.cancel();try{speechSynthesis.cancel()}catch(e){}},
   // Pause keeps the sentence being spoken plus everything after it, so ▶ carries on from there.
   // (speechSynthesis.pause() is unreliable on Android, so it cancels and re-queues instead.)
-  pause(){if(!this.busy)return;const rest=[...(this.calm?[{calm:true}]:[]),...(typeof this.cur==='string'||(this.cur&&this.cur.ask)?[this.cur]:[]),...this.queue];this.stop();this.held=rest.length?rest:null},
+  pause(){if(!this.busy)return;const rest=[...(this.calm?[{calm:true}]:[]),...(typeof this.cur==='string'||(this.cur&&(this.cur.ask||this.cur.gate))?[this.cur]:[]),...this.queue];this.stop();this.held=rest.length?rest:null},
   resume(){const h=this.held;this.held=null;if(h)this.say(h)}
 };
 // What Hoot has read out on this trip, newest last, for the Story page (names are already filled in on the phone).
@@ -2273,12 +2372,6 @@ function hud(force){
   set('#k-left',T.arrived?'We’re here!':r.timerOnly?`${fmtMins(minsLeft)} to go`:`${left.toFixed(1)} miles to go · ${fmtMins(minsLeft)}`);
   const ml=r.timerOnly?Math.round((1-T.miles/T.total)*100)+'%':left>=10?String(Math.round(left)):left.toFixed(1);
   set('#k-miles-l',r.timerOnly?'Still to go':'Miles left');set('#k-miles',T.arrived?'0':ml);set('#k-time',T.arrived?'Here!':fmtMins(minsLeft));
-  // Hoot's bubble: the next story stop or landmark, or what's happening now
-  const stops=S.landmark.enabled?(S.landmark.type==='story'?storyStops(r):r.landmarks):[],nx=stops.find(l=>!T.announced.has(l.id)&&l.mile>=T.milesR-.2);
-  const nl=T.arrived?'We made it':nx&&!nx.road?`Next stop · ${Math.max(0,nx.mile-T.milesR)<1?'nearly there':Math.round(nx.mile-T.milesR)+' mile'+(Math.round(nx.mile-T.milesR)===1?'':'s')}`:'On the road';
-  const nt=Voice.gating?'One moment… I’m getting my storytelling voice ready!':T.arrived?`Hooray! We’re at ${destName(r)}.`:nx&&!nx.road?`${lmInfo(nx).name.replace(/^the /,'The ')} is coming up!${S.landmark.type==='story'?' I’ll read the next chapter when we get there.':' I’ll tell you all about it.'}`
-    :T.running?'Keep watching out of the window!':'Hoot has a story ready for the trip.';
-  set('#k-next-l',nl);set('#k-next',nt);
   const z=currentZone();set('#k-zone',r.timerOnly&&!T.kidZone?`Offline · ${ZONES[z][0]}`:`${ZONES[z][1]} ${ZONES[z][0]}`);
   const ex=$('#k-extra');let extra='';
   if(S.age==='4-5'){const n=Math.max(1,Math.round(minsLeft/11));extra=T.arrived?'':`📺 about ${n} cartoon${n>1?'s':''}`}
@@ -2549,7 +2642,7 @@ function loadSample(){
   for(let i=9;i>=1;i--){const r=mulberry(i*77);const sp={};ids.forEach(id=>{if(r()<.6)sp[id]=1+Math.floor(r()*4)});stats.trips.push({date:now-i*6*864e5,route:i%3?'Home → Grandma’s':'Home → Beach',miles:i%3?30:52,score:1200+Math.floor(r()*48)*100,coins:Math.floor(r()*14),spotted:sp,sample:true})}
   saveStats();renderStats();
 }
-let confirmReset=false;
+let confirmReset=false,seenOpen=false; // "Most spotted things" folds away inside the Seen most tile
 function renderStats(){
   const t=stats.trips,tally={};t.forEach(tr=>Object.entries(tr.spotted||{}).forEach(([k,v])=>tally[k]=(tally[k]||0)+v));
   const top=Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,8),max=top.length?top[0][1]:1;
@@ -2559,8 +2652,9 @@ function renderStats(){
   const v=metricValue(S.unlockMetric),th=S.thresholds[S.unlockMetric];
   $('#view-stats').innerHTML=`<div class="stats">
     <div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Our trips</h1><p>Kept on this phone</p></div>
-    <div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Total points</small><b>${pts.toLocaleString()}</b></div><div class="kpi"><small>Seen most</small><b>${fav?fav.e:'–'}</b></div></div>
-    <div class="card"><h2 class="h">Most spotted things${sample?'<span class="sample-tag">Sample data</span>':''}</h2>${top.length?top.map(([k,c])=>{const it=ITEMS[k]||{e:'❓',n:k};return`<div class="hbar"><span class="e">${it.e}</span><span class="n">${esc(it.n)}</span><span class="t"><i style="width:${c/max*100}%"></i></span><span class="c">${c}</span></div>`}).join(''):'<p class="empty">Play a round of Spot-it to see what gets spotted most.</p>'}</div>
+    <div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Total points</small><b>${pts.toLocaleString()}</b></div>
+    <div class="kpi kpi-more ${seenOpen?'open':''}"><button type="button" class="kpi-tap" data-act="seen" aria-expanded="${seenOpen}"><small>Seen most</small><b>${fav?fav.e:'–'}</b><span class="kpi-chev" aria-hidden="true"></span></button>
+    ${seenOpen?`<div class="kpi-list"><h2 class="sr">Most spotted things</h2>${sample?'<span class="sample-tag">Sample data</span>':''}${top.length?top.map(([k,c])=>{const it=ITEMS[k]||{e:'❓',n:k};return`<div class="hbar"><span class="e">${it.e}</span><span class="n">${esc(it.n)}</span><span class="t"><i style="width:${c/max*100}%"></i></span><span class="c">${c}</span></div>`}).join(''):'<p class="empty">Play a round of Spot-it to see what gets spotted most.</p>'}</div>`:''}</div></div>
     <div class="card"><h2 class="h">Score by trip</h2>${last.length?`<div class="vchart" role="img" aria-label="Bar chart of points for the last ${last.length} trips">${last.map(x=>`<div class="vcol ${x.score===bestS?'best':''}" title="${esc(x.route)}"><span class="v">${x.score>=1000?(x.score/1000).toFixed(1)+'k':x.score}</span><span class="b" style="height:${Math.max(2,x.score/bestS*100)}%"></span><span class="d">${new Date(x.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>`).join('')}</div><p class="note" style="margin-top:8px">Best trip highlighted. Showing the last ${last.length} trip${last.length>1?'s':''}.</p>`:'<p class="empty">Finish a trip to see it compared here.</p>'}</div>
     <div class="card"><h2 class="h">Garage progress <span class="sec-sub">unlock by ${metricWord[S.unlockMetric]}</span></h2>${UNLOCKABLE.map((id,i)=>`<div class="gbar"><span>${v>=th[i]?'🔓':'🔒'} ${BODIES[id].label}</span><span class="t"><i style="width:${clamp(v/th[i]*100,0,100)}%"></i></span><span class="c">${Math.min(v,th[i]).toLocaleString()}/${th[i].toLocaleString()}</span></div>`).join('')}</div>
     <div class="confirm">${t.length?'':'<button class="btn ghost" data-act="sample">Load sample history</button>'}${confirmReset?'<span>Delete all trips and stats?</span><button class="btn primary" data-act="reset-yes">Yes, reset</button><button class="btn ghost" data-act="reset-no">Cancel</button>':'<button class="btn ghost" data-act="reset">Reset all stats</button>'}</div>
@@ -2819,6 +2913,17 @@ function applyStyle(){const r=document.documentElement;if(!hasPremium())S.displa
 function applyLive(){if(T&&T.running&&S.sound.on&&S.sound.music)Music.start();else Music.stop(true);Music.duck();Amb.update();$('#view-kid').style.filter=S.access.saturation===1?'':`saturate(${S.access.saturation})`;document.body.classList.toggle('calm',S.access.reduceMotion);renderKidTools();hud(true)}
 
 /* ================= Kid tools ================= */
+// The "My car" page in the swipe box: their car, every car (locked ones show what unlocks them), how far it is to the
+// next one, and the colours (if a parent allows "Car colour"). Only unlocked cars can be picked.
+function renderKidCar(){const el=$('#k-car');if(!el)return;const unl=unlockedSet(),m=S.unlockMetric,th=S.thresholds[m],v=metricValue(m),nx=UNLOCKABLE.findIndex(id=>!unl.has(id));
+  el.innerHTML=`<canvas class="kc-hero" data-thumb="car" data-body="${S.car.body}" data-color="${S.car.color}" width="400" height="240" role="img" aria-label="Your car: a ${esc(S.car.color)} ${esc(BODIES[S.car.body].label)}"></canvas>
+    ${nx>=0?`<div class="kc-next">Next to unlock: ${BODIES[UNLOCKABLE[nx]].label} · ${Math.min(v,th[nx]).toLocaleString()} of ${th[nx].toLocaleString()} ${metricWord[m]}<span class="t"><i style="width:${clamp(v/th[nx]*100,0,100)}%"></i></span></div>`:'<div class="kc-next">🏆 Every car is unlocked!</div>'}
+    <div class="kc-cars">${Object.entries(BODIES).map(([id,B])=>{const locked=B.unlock!==undefined&&!unl.has(id);return`<button class="tile ${S.car.body===id?'on':''} ${locked?'locked':''}" data-kcar="${id}" aria-pressed="${S.car.body===id}">${locked?'<span class="lock">🔒</span>':''}<canvas data-thumb="car" data-body="${id}" data-locked="${locked}" width="200" height="120"></canvas>${B.label}${locked?`<small>${th[B.unlock].toLocaleString()} ${metricWord[m]}</small>`:''}</button>`}).join('')}</div>
+    ${S.child.color?`<div class="swatches kc-sw">${Object.entries(COLORS).map(([k,c])=>`<button class="sw ${S.car.color===k?'on':''}" style="background:${c}" data-kcol="${k}" aria-label="${k}" aria-pressed="${S.car.color===k}"></button>`).join('')}</div>`:''}`;
+  drawThumbs()}
+$('#k-car').addEventListener('click',e=>{const c=e.target.closest('[data-kcar]'),k=e.target.closest('[data-kcol]');if(!c&&!k)return;Snd.ready();
+  if(c){const id=c.dataset.kcar;if(BODIES[id].unlock!==undefined&&!unlockedSet().has(id)){Snd.tone(220,.12,'triangle',.12);return}S.car.body=id;Tel.feature('kid_car')}
+  if(k)S.car.color=k.dataset.kcol;saveS();renderKidCar()});
 function renderKidTools(){
   const c=S.child,b=[];
   if(c.color)b.push(`<button class="ktool" data-kid="color"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${COLORS[S.car.color]};border:1px solid var(--line)"></span>Car colour</button>`);
@@ -2827,7 +2932,7 @@ function renderKidTools(){
   if(c.sound)b.push(`<button class="ktool" data-kid="sound">${S.sound.on?'🔊 Sound on':'🔇 Sound off'}</button>`);
   if(c.spotNow&&S.spot.enabled)b.push(`<button class="ktool" data-kid="spot">🔍 Spot-it!</button>`);
   if(S.landmark.enabled&&T&&(T.route.landmarks.length||S.landmark.type==='story'))b.push(`<button class="ktool" data-kid="story">📖 Story time</button>`);
-  $('#kid-tools').innerHTML=b.join('');
+  $('#kid-tools').innerHTML=b.join('');renderKidCar();
   // the Games page in the swipe box: this age group's games (the ones a parent left on), plus a Spot-it round
   const all=gamesFor(S.age),on=all.filter(g=>!S.bonus.off[g.id]),gs=on.length?on:all;
   $('#k-games').innerHTML=gs.map(g=>`<button class="gtile" data-kgame="${g.id}"><span class="ge" aria-hidden="true">${g.emoji}</span><b>${esc(g.name)}</b><small>${esc(g.desc)}</small></button>`).join('')
@@ -2894,7 +2999,7 @@ function renderStart(){
     <button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':teen?'Start trip':'Let’s go! 🚗'}</button>
     ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
     <button class="linkish" id="s-more">More settings</button>`;
-  renderSugg();downArrow();
+  renderSugg();downArrow();planEarly();
 }
 let savedOpen=false;
 // Trip details, Who's coming and the story extras fold away to keep the Search screen tidy; the closed box shows a one-line summary.
@@ -2918,8 +3023,8 @@ const MOUNTAIN=`<svg class="mtn" viewBox="0 0 390 880" preserveAspectRatio="xMid
   <g class="climb"><g transform="translate(-19 -22) scale(.6)"><path d="M14 18 Q18 5 31 5 L39 5 Q50 6 54 18 Z" fill="#E8453C" stroke="#14203F" stroke-width="3" stroke-linejoin="round"/><path d="M20 17 Q23 9 30 9 L30 17 Z M34 9 L38 9 Q45 10 48 17 L34 17 Z" fill="#CDEBFF"/><rect x="4" y="16" width="56" height="15" rx="7.5" fill="#E8453C" stroke="#14203F" stroke-width="3"/><rect x="10" y="23" width="36" height="3" rx="1.5" fill="#FFD23F"/><circle cx="18" cy="31" r="7" fill="#14203F"/><circle cx="46" cy="31" r="7" fill="#14203F"/></g>
     <animateMotion dur="16s" repeatCount="indefinite" path="${ROAD_UP}"/></g>
 </svg>`;
-function greetText(){
-  const who=kidNames(),r=T.route,reason=prof('reason');
+function greetText(r=T.route){
+  const who=kidNames(),reason=prof('reason');
   const where=r.timerOnly?`Our drive takes about ${fmtMins(r.mins)}.`:`We’re going to ${destName(r)}, which is ${Math.round(r.miles)} miles away.`;
   return`Hello ${who||'everyone'}! ${reason?`Today’s adventure is ${reason}! `:''}${where} Watch the car on the road to see how far we’ve got. Let’s go!`}
 function greet(){Voice.say([greetText()],false,true)}
@@ -2929,6 +3034,7 @@ async function startTrip(){
   if(S.tripMode==='connected'){
     if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
     if(needStart()){startMsg='';startNudge=true;hereMsg=hereMsg.startsWith('!')?'':hereMsg;renderStart();scrollTo({top:0,behavior:calmMotion()?'auto':'smooth'});startNudge=false;return} // the "Where are you starting from?" card asks
+    if(earlyRoute){startBusy=true;startMsg='Finding the route…';renderStart();await earlyRoute;startBusy=false;startMsg=''} // the route planned early is nearly there
     if(!routeFresh()&&await needsPick()){startMsg='!Which one did you mean? Pick the right place from the list.';renderStart();const d=$('#s-to');if(d)d.scrollIntoView({block:'center'});return}
     if(!routeFresh()){startBusy=true;startMsg=API.maps?'Finding the route…':'';renderStart();
       try{await loadRoute();startMsg=''}catch(e){startBusy=false;startMsg='!Couldn’t get the route. '+e.message;renderStart();return}
@@ -2940,6 +3046,11 @@ async function startTrip(){
 // After the greeting, the trip story's opening: straight away if it's written, or within 12 seconds either way.
 function beginStory(){tellIntro();const t=T;setTimeout(()=>{if(T===t&&T.running)tellIntro(true)},12000)}
 const VSt=$('#view-start');
+// tapping the search bar selects what's in it, so typing replaces the old destination straight away
+// (selected again on the tap's click, because finishing a tap can put the cursor back in the middle)
+VSt.addEventListener('focusin',e=>{const el=e.target;if(el.id!=='s-to'||!el.value)return;el.fresh=true;setTimeout(()=>{if(document.activeElement===el)el.select()},0)});
+VSt.addEventListener('click',e=>{const el=e.target;if(el.id==='s-to'&&el.fresh){el.fresh=false;el.select()}});
+VSt.addEventListener('focusout',e=>{if(e.target.id==='s-to')e.target.fresh=false});
 VSt.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.fold)d.open?startOpen.add(d.dataset.fold):startOpen.delete(d.dataset.fold)},true);
 VSt.addEventListener('input',e=>{const el=e.target,p=el.dataset.p;if(!p)return;setP(S,p,el.value);saveS();
   if(p==='to'||p==='from')suggestFor(p,el.value)}); // typing replaces any picked place; show matches near you
@@ -3060,7 +3171,7 @@ let kidLocked=false;
 function updateNav(){const kid=!$('#view-kid').hidden,locked=kid&&kidLocked,n=$('#bnav'),bb=$('#bn-btns');
   n.classList.toggle('locked',locked);n.classList.toggle('open',kid&&!kidLocked);document.body.classList.toggle('kid-locked',locked);bb.inert=locked;
   $$('#bn-btns [data-nav]').forEach(b=>{if(!$('#view-'+b.dataset.nav).hidden)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-  $('#bn-lock').setAttribute('aria-label',locked?'Unlock with the parent PIN':'Lock the screen for the kids');
+  $('#bn-lock').setAttribute('aria-label',locked?'Parents only: slide right to unlock with the PIN':'Lock the screen for the kids');
   $('#bn-lock .shackle').setAttribute('d',kid&&!kidLocked?'M8 11V7a4 4 0 0 1 7.5-2':'M8 11V7a4 4 0 0 1 8 0v4');downArrow()}
 // The Search screen's down arrow (beside the lock): shown while the three boxes are still below the screen.
 function downArrow(){const b=$('#bn-down'),r=$('#view-start .start-rows');b.hidden=$('#view-start').hidden||!r||r.getBoundingClientRect().top<innerHeight-140;document.body.classList.toggle('has-down',!b.hidden)}
@@ -3068,19 +3179,36 @@ let downQueued=false;const downSoon=()=>{if(downQueued)return;downQueued=true;re
 addEventListener('scroll',downSoon,{passive:true});addEventListener('resize',downSoon);
 $('#bn-down').addEventListener('click',()=>{const r=$('#view-start .start-rows');if(r)r.scrollIntoView({behavior:calmMotion()?'auto':'smooth',block:'start'})});
 function lockKids(){if($('#view-kid').hidden)showTab('kid');kidLocked=true;gateUntil=0;updateNav()}
-$('#bn-lock').addEventListener('click',()=>{Snd.ready();
-  if(!$('#view-kid').hidden&&kidLocked)grownUpGate(()=>{kidLocked=false;updateNav()},'to unlock');
-  else lockKids()});
+// Locked, the lock sits on the left and is slid to the right to ask for the parent PIN (like a phone's "slide to unlock").
+// A tap only wiggles it as a hint. The keyboard (Enter) still opens the PIN directly.
+const kidLockOn=()=>!$('#view-kid').hidden&&kidLocked,askUnlock=()=>grownUpGate(()=>{kidLocked=false;updateNav()},'to unlock');
+const LK=$('#bn-lock'),Slide={on:false,x0:0,dx:0,max:1};
+LK.addEventListener('pointerdown',e=>{if(!kidLockOn())return;Snd.ready();Slide.on=true;Slide.x0=e.clientX;Slide.dx=0;Slide.max=Math.max(40,$('.bn-lbl').scrollWidth);
+  try{LK.setPointerCapture(e.pointerId)}catch(_){}LK.style.transition='none';LK.classList.remove('nudge')});
+LK.addEventListener('pointermove',e=>{if(!Slide.on)return;Slide.dx=clamp(e.clientX-Slide.x0,0,Slide.max);LK.style.transform=`translateX(${Slide.dx}px)`;$('.bn-lbl').style.opacity=String(1-Slide.dx/Slide.max)});
+const slideEnd=()=>{if(!Slide.on)return;Slide.on=false;LK.style.transition='';LK.style.transform='';$('.bn-lbl').style.opacity='';
+  if(Slide.dx>=Slide.max*.8)askUnlock();else if(Slide.dx<8){void LK.offsetWidth;LK.classList.add('nudge')}};
+LK.addEventListener('pointerup',slideEnd);LK.addEventListener('pointercancel',slideEnd);
+LK.addEventListener('click',e=>{Snd.ready();if(kidLockOn()){if(e.detail===0)askUnlock();return}lockKids()});
 $('#bn-btns').addEventListener('click',e=>{const b=e.target.closest('[data-nav]');if(!b||($('#view-kid').hidden?false:kidLocked))return;showTab(b.dataset.nav)});
 
 /* ================= Trip screen: swipe box, story and music ================= */
 const SW=$('#k-swipe');
 function swipePage(){return Math.round(SW.scrollLeft/Math.max(1,SW.clientWidth))}
 function swipeTo(i){SW.scrollTo({left:i*SW.clientWidth,behavior:S.access.reduceMotion?'auto':'smooth'})}
-function swipeUi(){const p=swipePage();$$('.swipe-tabs [data-page]').forEach(b=>b.setAttribute('aria-selected',String(+b.dataset.page===p)));$('#k-swnext').hidden=p>=2;if(p===2)StoryLog.render()}
+const swipeLast=()=>SW.children.length-1;
+function swipeUi(){const p=swipePage();$$('.swipe-tabs [data-page]').forEach(b=>b.setAttribute('aria-selected',String(+b.dataset.page===p)));if(p===2)StoryLog.render();if(p===3)renderKidCar()}
 SW.addEventListener('scroll',()=>{clearTimeout(SW.t);SW.t=setTimeout(swipeUi,60)},{passive:true});
 $('.swipe-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)swipeTo(+b.dataset.page)});
-$('#k-swnext').addEventListener('click',()=>swipeTo(Math.min(2,swipePage()+1)));
+// The pages go round: swiping on from the last page (or the › arrow there) comes back to the Map, and swiping back
+// from the Map goes to the last page. The box fades over the jump so it doesn't rewind through every page.
+function swipeWrap(i){if(S.access.reduceMotion||calmMotion()){SW.scrollTo({left:i*SW.clientWidth});return}
+  SW.style.transition='opacity .15s';SW.style.opacity='0';setTimeout(()=>{SW.scrollTo({left:i*SW.clientWidth,behavior:'instant'});SW.style.opacity='';setTimeout(()=>{SW.style.transition=''},200)},150)}
+$('#k-swnext').addEventListener('click',()=>{const p=swipePage();if(p>=swipeLast())swipeWrap(0);else swipeTo(p+1)});
+let swX=null,swP=0;
+SW.addEventListener('touchstart',e=>{swX=e.touches[0].clientX;swP=swipePage()},{passive:true});
+SW.addEventListener('touchend',e=>{if(swX===null)return;const dx=e.changedTouches[0].clientX-swX;swX=null;
+  if(dx<-50&&swP===swipeLast()&&swipePage()===swipeLast())swipeWrap(0);else if(dx>50&&swP===0&&swipePage()===0)swipeWrap(swipeLast())},{passive:true});
 $('#k-games').addEventListener('click',e=>{const g=e.target.closest('[data-kgame]');if(g){Snd.ready();startGame(g.dataset.kgame);return}
   if(e.target.closest('[data-kid="spot"]')&&T&&!Spot.active){Snd.ready();Tel.feature('spot');Spot.start()}});
 $('#k-storyplay').addEventListener('click',()=>{Snd.ready();if(T.arrived)return;setPlay(!T.running)});
@@ -3131,7 +3259,7 @@ document.addEventListener('keydown',e=>{if(!Game.running)return;if(e.key==='Arro
 let tsx=null;$('#gcv').addEventListener('touchstart',e=>{tsx=e.touches[0].clientX},{passive:true});$('#gcv').addEventListener('touchend',e=>{if(tsx==null)return;const dx=e.changedTouches[0].clientX-tsx;if(Math.abs(dx)>30)Game.move(dx>0?1:-1);tsx=null});
 $('#cel-close').addEventListener('click',()=>{$('#celebrate').hidden=true;showNextCel()});
 $('#cel-use').addEventListener('click',e=>{S.car.body=e.target.dataset.body;saveS();$('#celebrate').hidden=true;if(!$('#view-settings').hidden)renderSettings();showNextCel()});
-$('#view-stats').addEventListener('click',e=>{const a=e.target.dataset.act;if(a==='sample')loadSample();if(a==='reset'){confirmReset=true;renderStats()}if(a==='reset-no'){confirmReset=false;renderStats()}if(a==='reset-yes'){stats={trips:[],sim:{trips:0,miles:0,score:0}};saveStats();confirmReset=false;renderStats()}});
+$('#view-stats').addEventListener('click',e=>{if(e.target.closest('[data-act="seen"]')){seenOpen=!seenOpen;renderStats();return}const a=e.target.dataset.act;if(a==='sample')loadSample();if(a==='reset'){confirmReset=true;renderStats()}if(a==='reset-no'){confirmReset=false;renderStats()}if(a==='reset-yes'){stats={trips:[],sim:{trips:0,miles:0,score:0}};saveStats();confirmReset=false;renderStats()}});
 
 const VS=$('#view-settings');
 VS.addEventListener('toggle',e=>{const d=e.target;if(!d.dataset||!d.dataset.sec)return;d.open?openSecs.add(d.dataset.sec):openSecs.delete(d.dataset.sec);store.set('open',[...openSecs])},true);
@@ -3151,9 +3279,9 @@ VS.addEventListener('click',e=>{
   if(a==='delplace'){S.places.splice(+b.dataset.i,1)}
   if(a==='svget'){SV.load();renderSettings();return}
   if(a==='svpick'){S.sound.voice=b.dataset.id;saveS();renderSettings();svPrepare(T&&T.route);return}
-  if(a==='svhear'){const n=(SV.VOICES.find(v=>v[0]===S.sound.voice)||[0,'your storyteller'])[1];Voice.say([`Hello! I’m ${n}, your AWTY storyteller.`,'Are you ready for an adventure?'],true,true);return} // waits a few seconds so it's really that voice
+  if(a==='svhear'){const n=(SV.VOICES.find(v=>v[0]===S.sound.voice)||[0,'your storyteller'])[1];previewSay(b,[`Hello! I’m ${n}, your AWTY storyteller.`,'Are you ready for an adventure?'],true);return} // waits until it's really that voice
   if(a==='svremove'){SV.remove().then(()=>{S.sound.voice='bf_alice';saveS();renderSettings()});return}
-  if(a==='hearvoice'){Voice.say(['Hello! I’m your AWTY storyteller.','Are you ready for an adventure?','Then let’s go… the road is waiting!'],true);return}
+  if(a==='hearvoice'){previewSay(b,['Hello! I’m your AWTY storyteller.','Are you ready for an adventure?','Then let’s go… the road is waiting!'].map(t=>({phone:t})));return} // the phone voice picked here, even when Alice tells the stories
   if(a==='report'){reportAsk=b.dataset.id;reportMsg='';renderSettings();return}
   if(a==='reportcancel'){reportAsk='';renderSettings();return}
   if(a==='reportwhy'){reportPart(S.route||makeRoute(S.from,S.to),b.dataset.id,b.dataset.why);renderSettings();return}
@@ -3182,7 +3310,7 @@ VS.addEventListener('click',e=>{
   if(a==='commonlist'){S.spot.off={};Object.keys(S.spot.cats).forEach(k=>S.spot.cats[k]=k!=='shapes'||S.age==='4-5')}
   if(a==='trygame'){showTab('kid');Snd.ready();startGame(b.dataset.id);return}
   if(a==='gameoff'){const id=b.dataset.id;S.bonus.off[id]=!S.bonus.off[id]}
-  if(a==='previewlm'){const lm=T.route.landmarks.find(l=>!T.announced.has(l.id))||T.route.landmarks[0]||{id:'castle',mile:0};Voice.stop();Voice.say(buildSpeech(lm));return}
+  if(a==='previewlm'){const lm=T.route.landmarks.find(l=>!T.announced.has(l.id))||T.route.landmarks[0]||{id:'castle',mile:0};previewSay(b,buildSpeech(lm),true);return}
   if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);greet();beginStory();return}
   saveS();applyLive();renderSettings();
 });

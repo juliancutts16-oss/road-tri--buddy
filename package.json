@@ -1,6 +1,6 @@
 {
   "name": "awty",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "AWTY – Are We There Yet?: road-trip app for kids, plus small server functions for Google Maps, AI stories, usage stats and the developer dashboard.",
   "type": "module",

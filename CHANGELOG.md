@@ -4,7 +4,27 @@ Every release gets a number. Bump the **middle** number for new features (0.1 �
 See `RELEASING.md` for the step-by-step.
 
 ## Unreleased
-_Changes waiting for the next release go here._
+_Changes waiting for the next release go here. Deploy only when the owner says so._
+
+## 0.2.2 — quicker stories, My car page, slide to unlock
+- Trip screen: Hoot's circle and the "Next stop" bubble are gone (Hoot stays on the Story page). The Map / Games / Story box is taller instead.
+- New loading globe: while Alice gets the story ready, the AWTY globe appears above the box with "Getting the story ready · 40%". It starts grey and fills with colour from the bottom up. When she's ready, it bounces, shrinks away, and the box grows into its space. It only shows if there's actually a wait (never for less than about half a second), and only once at the start, not separately for the greeting and the opening.
+- Stories with Alice start much sooner:
+  - She no longer waits for a whole chapter to be ready. The app measures how fast this phone makes her voice and starts reading as soon as she's far enough ahead not to be caught up. If a line is ever not quite ready, she waits for it rather than switching to the phone's voice mid-chapter.
+  - The route is planned on the Search screen as soon as the destination and the start are both chosen (picked from the list, saved, or typed as a full address or postcode). The story starts being written and Alice starts on the greeting while everyone gets ready, before Go is pressed. Vague names like "Tesco" still wait for Go so the right one can be picked.
+- Search bar: tapping it selects what's already there, so typing replaces the old destination straight away. Opening the app again later (after more than half an hour away, e.g. the next day) starts with an empty "Search destination". Coming back within half an hour keeps it, in case the phone closed the app while a parent looked something up.
+- Our trips: the "Most spotted things" list now folds away inside the green "Seen most" tile. Tap the tile (it has a little arrow) to open it full width, and tap again to close.
+- Our trips: the "Score by trip" chart can no longer push the page wider than a small phone once there are 9 or more trips. It scrolls sideways inside its own box instead.
+- Parent lock: the lock is now slid to the right to unlock, like a phone's "slide to unlock". The bar says "Parents only · Slide to unlock ›". Sliding all the way asks for the PIN. Letting go early springs it back, and a tap only gives a little wiggle as a hint.
+- Trip screen: a new "My car" page in the swipe box (after Map, Games and Story). It shows the children's car, every car with the locked ones marked by a 🔒 and what unlocks them, a bar showing how close the next car is, and the colours (if "Car colour" is allowed for the kids). Only unlocked cars can be picked. With usage stats on, the developer dashboard counts how often a car is picked there.
+- Trip screen: the swipe box goes round. Swiping on from the last page (or the › arrow there) comes back to the Map, and swiping back from the Map goes to the last page. The box fades over the jump, so it doesn't rewind through every page.
+- Search screen: the "From · My location · Type address" line is centred under the search bar.
+- Settings: the ▶ voice previews work more reliably.
+  - They play even if the app's sound is switched off.
+  - "▶ Hear Alice" says "Getting Alice ready…" while she prepares, then "Playing…". Her two preview lines are now made ahead of time with the other everyday lines.
+  - "▶ Hear this voice" (Prompts) always plays the phone voice picked there, even when Alice tells the stories.
+  - "▶ Preview next landmark" waits for Alice instead of mixing in the phone's voice.
+- New town atmosphere: "Quiet Town Ambience" from Pixabay (freesound_community) replaces the old one, which had dogs barking that could sound scary. It's made into the same 24-second seamless loop at the same quiet level. Phones that already have the sounds download only this one file again (about 0.2 MB, not the whole 8 MB), and the old copy is removed.
 
 ## 0.2.1 (fixes)
 - Spot-it ("Can you spot…") comes now and then instead of constantly: a random gap of 6–12 miles between rounds, and never while Hoot is talking, a question is up or a game is open.

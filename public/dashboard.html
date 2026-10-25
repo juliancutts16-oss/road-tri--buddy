@@ -85,8 +85,9 @@ button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line
     </div>
 
     <section class="card"><h2>Crashes <span class="muted" style="font-weight:400">· grouped by error</span></h2><div class="tbl" id="crashes"></div></section>
+    <section class="card"><h2>Story reports</h2><p class="muted" style="font-size:.85rem;margin:0 0 8px">AI-written story parts a parent flagged with "Report a problem". On the phone that part was swapped for the built-in story straight away and a new version was written. Names show as {NAMES} / {BUDDY} and the destination as {DEST}.</p><div class="tbl" id="reports"></div></section>
     <section class="card"><h2>Issue reports from parents</h2><div class="tbl" id="issues"></div></section>
-    <p class="muted" style="font-size:.85rem;margin-top:16px">Usage events are kept for 90 days and issue reports for 180 days; older ones are deleted automatically when this page loads. Only installs whose parents switched on "Help improve AWTY" are counted.</p>
+    <p class="muted" style="font-size:.85rem;margin-top:16px">Usage events are kept for 90 days and issue and story reports for 180 days; older ones are deleted automatically when this page loads. Only installs whose parents switched on "Help improve AWTY" are counted.</p>
   </div>
 </main>
 <script>
@@ -97,6 +98,7 @@ let key='';try{key=localStorage.getItem('awty.statsKey')||''}catch(e){}
 const FEATURE_NAMES={spot:'Spot-it round',story_time:'Story time button',mic:'Listen for answers',landmark:'Landmark story/fact',bonus_yes:'Bonus game accepted',bonus_no:'Bonus game skipped',map:'Journey map',here:'Use my current location',saved_place:'Saved place used',kid_car:'My car page (car picked)',read_story:'Read the story (parents)',music:'Background music'};
 const GAME_NAMES={bubbles:'Bubble Pop',colours:'Colour Cars',count:'Count with Me',pairs3:'Memory Match',coinroad:'Coin Road',traffic:'Traffic Lights',letters:'Missing Letter',sums:'Car Sums',racer:'Neon Racer',pairs6:'Memory Grid',tables:'Times Table Turbo',scramble:'Word Scramble'};
 const ISSUE_NAMES={broke:'Something broke',story:'A story wasn’t right',maps:'Maps or location',other:'Something else'};
+const REPORT_NAMES={scary:'Scary or upsetting',age:'Not right for their age',unsafe:'Shows unsafe behaviour',other:'Something else'};
 function bars(obj,names={}){const e=Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]);if(!e.length)return'<p class="empty">Nothing yet.</p>';const max=e[0][1];
   return e.map(([k,v])=>`<div class="hbar"><span class="n">${esc(names[k]||k)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="c">${v}</span></div>`).join('')}
 function tile(label,value,note,target,ok){return`<div class="tile"><span class="lbl">${esc(label)}</span><b>${value==null?'–':esc(value)}</b>${target?`<span class="target ${value==null?'':ok?'ok':'low'}">Target ${esc(target)}</span><br>`:''}<small>${esc(note)}</small></div>`}
@@ -126,6 +128,8 @@ function render(d){
   $('#versions').innerHTML=bars(d.versions)+'<hr style="border:0;border-top:1px solid var(--line)">'+bars(d.platforms);
   $('#crashes').innerHTML=d.crashes.length?`<table><thead><tr><th>Error</th><th>Where</th><th>Count</th><th>Last seen</th><th>Versions</th></tr></thead><tbody>${d.crashes.map(c=>`<tr><td>${esc(c.msg)}</td><td>${esc(c.where)}</td><td class="n">${c.count}</td><td class="n">${new Date(c.last).toLocaleString()}</td><td>${esc(c.versions.join(', '))}</td></tr>`).join('')}</tbody></table>`:'<p class="empty">No crashes reported. 🎉</p>';
   $('#issues').innerHTML=d.issues.length?`<table><thead><tr><th>When</th><th>Type</th><th>What they said</th><th>Version</th></tr></thead><tbody>${d.issues.map(i=>`<tr><td class="n">${new Date(i.at).toLocaleString()}</td><td>${esc(ISSUE_NAMES[i.cat]||i.cat)}</td><td>${esc(i.text)}</td><td>${esc(i.v)} · ${esc(i.platform)}</td></tr>`).join('')}</tbody></table>`:'<p class="empty">No issue reports yet.</p>';
+  const rp=d.reports||[];
+  $('#reports').innerHTML=rp.length?`<table><thead><tr><th>When</th><th>Part</th><th>Why</th><th>Age</th><th>The text that was reported</th><th>Version</th></tr></thead><tbody>${rp.map(r=>`<tr><td class="n">${new Date(r.at).toLocaleString()}</td><td>${esc(r.part)}${r.kind==='fact'?' (fun facts)':''}</td><td>${esc(REPORT_NAMES[r.reason]||r.reason)}</td><td>${esc(r.age)}</td><td>${esc(r.text)}</td><td>${esc(r.v||'')}</td></tr>`).join('')}</tbody></table>`:'<p class="empty">No story reports yet.</p>';
 }
 $('#keyform').addEventListener('submit',e=>{e.preventDefault();key=$('#key').value.trim();try{localStorage.setItem('awty.statsKey',key)}catch(_){}load()});
 $('#refresh').addEventListener('click',load);

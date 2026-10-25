@@ -6,6 +6,15 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.2.3 — story reports reviewed and rewritten, quicker start
+- Trip screen: swiping round from the last page to the Map (or back) no longer gets stuck halfway between two pages. The phone's own snapping is paused for the jump, so it always lands on one page.
+- Alice starts the story sooner:
+  - The greeting is now made one sentence at a time, so she can start on "Hello everyone!" while she makes the rest. Before, she waited for the whole greeting.
+  - The safety margin is a little smaller now that the app knows this phone's speed. In tests, the start came about 20% sooner, and she still never had to pause mid-chapter.
+- The loading globe's percentage now shows how much of the opening is ready. The story starts as soon as Alice can keep ahead (often well before 20%), and the rest is made while she reads.
+- Story reports now go somewhere to be reviewed. "⚑ Report a problem" (Settings → Prompts → Read the story) saves the report on our server and shows it in a new "Story reports" section of the developer dashboard. Each report has the date, which part, the reason, the age group, the reported text and the app version. Names stay as {NAMES} / {BUDDY}, and the destination is now swapped for {DEST} on the phone before sending. Reports are deleted after 180 days, like issue reports, and the privacy policy says so.
+- Reporting a part now rewrites it. The built-in story covers it straight away, and the AI writes a fresh version, told what the parent didn't like ("scary", "not right for their age", and so on) and asked to make it clearly gentler and simpler. It goes through all the usual safety checks before it's used. The beginning and the end keep the same hero and story. Settings says when the new version is ready to read, or if it couldn't be written (then the built-in story is read for that part).
+
 ## 0.2.2 — quicker stories, My car page, slide to unlock
 - Trip screen: Hoot's circle and the "Next stop" bubble are gone (Hoot stays on the Story page). The Map / Games / Story box is taller instead.
 - New loading globe: while Alice gets the story ready, the AWTY globe appears above the box with "Getting the story ready · 40%". It starts grey and fills with colour from the bottom up. When she's ready, it bounces, shrinks away, and the box grows into its space. It only shows if there's actually a wait (never for less than about half a second), and only once at the start, not separately for the greeting and the opening.

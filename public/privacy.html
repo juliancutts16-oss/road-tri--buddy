@@ -70,7 +70,7 @@
       <tr><td><b>Issue reports</b> (only when a parent sends one)</td><td>The kind of issue, the description you type (email addresses, phone numbers and postcodes are removed automatically), the app version and device type. Sent even if usage stats are off, because you chose to send it</td><td>Our own server, stored with Netlify Blobs</td><td>To fix problems you tell us about. Kept for <b>180 days</b></td></tr>
       <tr><td><b>AI-written stories</b></td><td>Landmark names and descriptions on the route, the destination name, the child's age group, story settings, and interests typed in (such as a favourite animal or "what the trip is for"). <b>Children's names are never sent</b>: the app replaces them with a placeholder and fills them in on the phone</td><td>Our server, which passes it to our AI provider, Anthropic</td><td>To write the trip story and fun facts</td></tr>
       <tr><td><b>AI replies to spoken answers</b> (off unless chosen)</td><td>The words recognised from a child's spoken answer and the question asked. Never the audio, and never names</td><td>Our server, which passes it to Anthropic</td><td>So the app can reply to what was said</td></tr>
-      <tr><td><b>Story reports</b> (only when a parent taps "Report a problem")</td><td>The AI-written part that was reported (with the name placeholders, never the children's names), the age group and the reason chosen</td><td>Our server's logs</td><td>So we can see what slipped through and improve the safety checks. [State how long reports are kept.]</td></tr>
+      <tr><td><b>Story reports</b> (only when a parent taps "Report a problem")</td><td>The AI-written part that was reported (with placeholders instead of the children's names and the destination; email addresses, phone numbers and postcodes are removed automatically), which part it was, the age group, the reason chosen and the app version. A new version of that part is then written by our AI provider, in the same way as the rest of the story</td><td>Our own server, stored with Netlify Blobs</td><td>So we can review what slipped through and improve the safety checks. Kept for <b>180 days</b>, then deleted automatically</td></tr>
     </tbody></table></div>
   <p>If a parent turns these off, AWTY still works using built-in stories, demo or timed routes, and on-phone answer checking.</p>
 
@@ -91,12 +91,12 @@
 
   <h2>Our service providers</h2>
   <ul>
-    <li><b>Netlify</b>: hosts the app and our server functions, and stores usage stats and issue reports (Netlify Blobs). Like most hosts, it keeps short-term technical logs (such as IP addresses) for security. We don't store IP addresses with usage stats.</li>
+    <li><b>Netlify</b>: hosts the app and our server functions, and stores usage stats, issue reports and story reports (Netlify Blobs). Like most hosts, it keeps short-term technical logs (such as IP addresses) for security. We don't store IP addresses with usage stats.</li>
     <li><b>Google Maps Platform</b>: routes, place suggestions and landmarks.</li>
     <li><b>Anthropic</b>: the AI that writes stories and, if chosen, replies to answers. [Confirm and state Anthropic's current data use and retention terms for API customers.]</li>
     <li><b>Google Play / Apple App Store</b>: app downloads and, in future, subscriptions. Payments are handled by them, not by us.</li>
   </ul>
-  <p>Apart from usage stats and issue reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
+  <p>Apart from usage stats, issue reports and story reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
 
   <h2>Children</h2>
   <p>AWTY is designed for children aged about 4 to 12 using it with a parent or carer. We follow the UK Age Appropriate Design Code (the Children's Code): high-privacy settings by default, collecting as little as possible, no nudges to share more, and a grown-up check before settings, purchases and links that leave the app. [If offered in the US, add a COPPA section covering parental consent and parents' rights.]</p>

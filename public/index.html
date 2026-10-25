@@ -1073,7 +1073,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.2';
+const APP_VERSION='0.2.3';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1653,15 +1653,18 @@ const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can y
 // Queues every line of this route's story (in the order it will be read), so it's ready before it's needed.
 // Lines queued for an earlier trip (or another voice) that haven't been made yet are dropped first.
 // (It also runs on the Search screen once the route is planned, so the greeting and opening are ready before Go.)
-function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(greetText(R),SV_STOCK[0])}catch(e){}if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
+function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}if(R)try{storyParts(R).forEach(p=>lines.push(...p.lines))}catch(e){}lines.push(...SV_STOCK);
   const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
   SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
   texts.forEach(t=>{SV.render(t)})}
 // Seconds still to wait before these lines can start, so that each one is ready before the ones ahead of it have
 // finished playing (0 = start now). Alice makes them in order; times not yet known are estimated, with a safety margin.
-function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.25+.1;let play=0,make=0,wait=0;
+function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let play=0,make=0,wait=0;
   for(const t of lines){const c=SV.clip(t);if(!c){make+=est(t)*f;wait=Math.max(wait,make-play)}play+=(c?c.pcm.length/c.rate:est(t))+.4}
   return wait}
+// How much of these lines is ready (0–1, by length of speech): the globe's percentage. The story starts as soon as
+// svAhead allows, usually well before 100%, and the rest is made while Alice reads.
+function svShare(lines){let all=0,ok=0;for(const t of lines){const c=SV.clip(t),d=c?c.pcm.length/c.rate:t.length/SV.cps+.3;all+=d;if(c)ok+=d}return all?ok/all:1}
 // The globe beside the trip's road: shown only while a chapter waits for Alice. It fills with colour as she gets ready,
 // bounces, shrinks away, and the Map / Games / Story box grows into its space.
 const Loader={on:false,pct:0,t:0,
@@ -1717,12 +1720,12 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
       if('calm' in it){this.calm=it.calm;this.next();return}
       if(it.gate){const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
         this.waitFor=new Set(it.gate);if(it.covered){this.next();return} // already allowed for by the chapter before it
-        const t0=Date.now(),bad=new Set(),asked=new Set(need);let went=false,tick=0;
+        const bad=new Set(),asked=new Set(need);let went=false,tick=0;
         const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
         // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
         const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
           later.forEach(t=>{if(!asked.has(t)){asked.add(t);SV.render(t).then(c=>{if(!c)bad.add(t);check()})}});
-          const w=svAhead([...it.gate,...later].filter(t=>!bad.has(t))),el=(Date.now()-t0)/1000;if(w<=0)go();else Loader.set(el/(el+w)*100)};
+          const all=[...it.gate,...later].filter(t=>!bad.has(t));if(svAhead(all)<=0)go();else Loader.set(svShare(all)*100)};
         this.gating=true;Loader.show();[...need].reverse().forEach(t=>SV.render(t,true));need.forEach(t=>SV.render(t).then(c=>{if(!c)bad.add(t);check()}));tick=setInterval(check,400);check();return}
       if(it.listen){Ear.listen().then(h=>judge(it.listen,h)).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return}
       if(it.ask){Ask.run(it.ask).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return} // a choice or "help me spot…"
@@ -2695,7 +2698,7 @@ function storyParts(R){
 const readable=lines=>fillNames(lines.join(' ').replace(/\{sfx:[a-z]+\}\s*/g,''));
 function storyReadBody(R){const parts=storyParts(R);
   const why=[['scary','Scary or upsetting'],['age','Not right for their age'],['unsafe','Shows unsafe behaviour'],['other','Something else']];
-  return`<p class="note">Read what the app will say on this route before you set off. If anything isn’t right, tap “Report a problem”: that part is swapped for the built-in story straight away${API.ai?', and we’re told so we can fix it':''}.</p>
+  return`<p class="note">Read what the app will say on this route before you set off. If anything isn’t right, tap “Report a problem”: that part is swapped for the built-in story straight away${API.ai?', a new version is written for you, and the report is sent to us to review':''}.</p>
     ${reportMsg?`<div class="status">${esc(reportMsg)}</div>`:''}
     <div class="list">${parts.length?parts.map(p=>`<div class="li story-part"><div class="grow"><b>${esc(p.label)}</b> <small>${p.ai?'AI-written · checked':'Built-in'}</small><p class="story-text">${esc(readable(p.lines))}</p>
       ${p.ai?reportAsk===p.id?`<div class="chips-row small"><span class="note">What’s wrong?</span>${why.map(([k,t])=>`<button type="button" class="mini" data-act="reportwhy" data-id="${esc(p.id)}" data-why="${k}">${t}</button>`).join('')}<button type="button" class="mini" data-act="reportcancel">Cancel</button></div>`
@@ -2703,12 +2706,30 @@ function storyReadBody(R){const parts=storyParts(R);
       :'<p class="note">No AI-written fun facts for this route yet, so the built-in facts will be used.</p>'}</div>`}
 // Hides a reported part (the built-in version is used instead) and, if the server is there, sends the text so it can be looked at.
 // Only the AI text is sent, which has {NAMES}/{BUDDY} in place of the children's names.
+// Then a fresh version of that part is written (told what was wrong) and goes through the same safety checks; once it
+// arrives it replaces the built-in one. The report itself is kept for review on the developer dashboard.
 function reportPart(R,id,why){const p=storyParts(R).find(x=>x.id===id);if(!p||!p.ai)return;
   if(S.landmark.type==='story'){R.saga.blocked=[...new Set([...(R.saga.blocked||[]),id])]}else{const l=R.landmarks.find(x=>x.id===id);if(l&&l.gen)l.gen.blocked=true}
-  saveS();saveRoutes();reportAsk='';reportMsg='Thanks. That part is hidden and the built-in story will be read instead.';
-  if(API.ai&&allowed('ai'))api('report',{part:p.label,text:p.lines.join(' '),age:S.age,reason:why},15000)
-    .then(()=>{reportMsg='Thanks. That part is hidden, the built-in story will be read instead, and your report has been sent.';if(!$('#view-settings').hidden)renderSettings()})
-    .catch(()=>{})}
+  saveS();saveRoutes();reportAsk='';const online=API.ai&&allowed('ai'),show=m=>{reportMsg=m;if(!$('#view-settings').hidden)renderSettings()};
+  reportMsg=online?`Thanks. That part is hidden and a new version of “${p.label}” is being written. The built-in story will be read until it’s ready.`:'Thanks. That part is hidden and the built-in story will be read instead.';
+  if(!online)return;
+  const dest=destName(R),text=p.lines.join(' ').split(dest).join('{DEST}'); // the destination stays on the phone too
+  api('report',{part:p.label,kind:S.landmark.type==='story'?'story':'fact',text,age:S.age,reason:why,v:APP_VERSION},15000).catch(()=>{});
+  rewritePart(R,id,why).then(ok=>show(ok?`Thanks. A new version of “${p.label}” is ready: have a read below.`:`Thanks. We couldn’t write a new version of “${p.label}” just now, so the built-in story will be read for that part.`))}
+// Writes a new version of one reported part. Resolves true once it's in place (and passed the phone's own check too).
+async function rewritePart(R,id,avoid){
+  try{if(S.landmark.type!=='story'){const lm=R.landmarks.find(x=>x.id===id);if(!lm)return false;const L=lmInfo(lm);
+      const g=await api('story',{name:L.name,kind:lm.kind||'landmark',summary:lm.summary||'',type:S.landmark.type,sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),avoid},60000);
+      lm.gen={key:genKey(),sentences:g.sentences,question:g.question,word:g.word,quiz:g.quiz||null};if(!aiOk(lm.gen,false))return false}
+    else{const sg=R.saga;if(!sg||sg.key!==sagaKey(R))return false;
+      if(id==='intro'||id==='ending'){const th=storyTheme(),stops=storyStops(R).map(l=>l.road?'':lmInfo(l).name).filter(Boolean);
+        const g=await api('story',{sentences:S.landmark.sentences,lang:S.landmark.lang,age:S.age,kids:privateKids(),sounds:th.cues,moods:Object.keys(MOODS),choices:S.landmark.choices!==false,
+          mode:'intro',from:R.from||'Home',to:destName(R),stops,redo:id,bible:sg.bible,avoid},60000);
+        if(id==='intro'){sg.intro=g.intro;if(g.choice)sg.choice=g.choice}else sg.ending=g.ending}
+      else{const stops=storyStops(R),i=stops.findIndex(l=>l.id===id);if(i<0)return false;const body={...chapterBody(R,sg,i),avoid};
+        sg.chapters[id]={...await api('story',body,60000),helpItem:body.help?helpItem(R,stops[i]):null}}
+      sg.blocked=(sg.blocked||[]).filter(x=>x!==id);if(!sagaFor(R).ai[id])return false}
+    saveS();saveRoutes();svPrepare(R);return true}catch(e){return false}}
 function renderSettings(){
   const unl=unlockedSet(),R=S.route||makeRoute(S.from,S.to),th=S.thresholds[S.unlockMetric],mv=metricValue(S.unlockMetric);
   const tripBody=`${toggle('demoMode','Demo driving','Simulates the drive so you can test at home. Turn off in the car to follow the real GPS.')}
@@ -3023,11 +3044,12 @@ const MOUNTAIN=`<svg class="mtn" viewBox="0 0 390 880" preserveAspectRatio="xMid
   <g class="climb"><g transform="translate(-19 -22) scale(.6)"><path d="M14 18 Q18 5 31 5 L39 5 Q50 6 54 18 Z" fill="#E8453C" stroke="#14203F" stroke-width="3" stroke-linejoin="round"/><path d="M20 17 Q23 9 30 9 L30 17 Z M34 9 L38 9 Q45 10 48 17 L34 17 Z" fill="#CDEBFF"/><rect x="4" y="16" width="56" height="15" rx="7.5" fill="#E8453C" stroke="#14203F" stroke-width="3"/><rect x="10" y="23" width="36" height="3" rx="1.5" fill="#FFD23F"/><circle cx="18" cy="31" r="7" fill="#14203F"/><circle cx="46" cy="31" r="7" fill="#14203F"/></g>
     <animateMotion dur="16s" repeatCount="indefinite" path="${ROAD_UP}"/></g>
 </svg>`;
-function greetText(r=T.route){
+// The greeting, one sentence at a time, so the storyteller voice can start on the first while she makes the rest.
+function greetLines(r=T.route){
   const who=kidNames(),reason=prof('reason');
   const where=r.timerOnly?`Our drive takes about ${fmtMins(r.mins)}.`:`We’re going to ${destName(r)}, which is ${Math.round(r.miles)} miles away.`;
-  return`Hello ${who||'everyone'}! ${reason?`Today’s adventure is ${reason}! `:''}${where} Watch the car on the road to see how far we’ve got. Let’s go!`}
-function greet(){Voice.say([greetText()],false,true)}
+  return[`Hello ${who||'everyone'}!`,...(reason?[`Today’s adventure is ${reason}!`]:[]),where,'Watch the car on the road to see how far we’ve got.','Let’s go!']}
+function greet(){Voice.say(greetLines(),false,true)}
 async function startTrip(){
   if(startBusy)return;Snd.ready();
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
@@ -3202,8 +3224,11 @@ SW.addEventListener('scroll',()=>{clearTimeout(SW.t);SW.t=setTimeout(swipeUi,60)
 $('.swipe-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)swipeTo(+b.dataset.page)});
 // The pages go round: swiping on from the last page (or the › arrow there) comes back to the Map, and swiping back
 // from the Map goes to the last page. The box fades over the jump so it doesn't rewind through every page.
-function swipeWrap(i){if(S.access.reduceMotion||calmMotion()){SW.scrollTo({left:i*SW.clientWidth});return}
-  SW.style.transition='opacity .15s';SW.style.opacity='0';setTimeout(()=>{SW.scrollTo({left:i*SW.clientWidth,behavior:'instant'});SW.style.opacity='';setTimeout(()=>{SW.style.transition=''},200)},150)}
+// (The phone's own snapping and fling are switched off for the jump, or they fight it and leave half of each page showing.)
+function swipeWrap(i){const jump=()=>{SW.style.overflowX='hidden';SW.style.scrollSnapType='none';SW.scrollLeft=i*SW.clientWidth;
+    setTimeout(()=>{SW.scrollLeft=i*SW.clientWidth;SW.style.overflowX='';SW.style.scrollSnapType='';swipeUi()},50)};
+  if(S.access.reduceMotion||calmMotion()){jump();return}
+  SW.style.transition='opacity .15s';SW.style.opacity='0';setTimeout(()=>{jump();setTimeout(()=>{SW.style.opacity='';setTimeout(()=>{SW.style.transition=''},200)},60)},150)}
 $('#k-swnext').addEventListener('click',()=>{const p=swipePage();if(p>=swipeLast())swipeWrap(0);else swipeTo(p+1)});
 let swX=null,swP=0;
 SW.addEventListener('touchstart',e=>{swX=e.touches[0].clientX;swP=swipePage()},{passive:true});

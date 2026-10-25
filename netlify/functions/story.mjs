@@ -162,6 +162,13 @@ export default async (req) => {
   const helpItem = safeDetail(clip(body.help, 40));
   const chose = safeDetail(clip(body.chose, 80));
   const helpAt = Math.ceil(n / 2);
+  // A rewrite after a parent tapped "Report a problem": what was wrong with the last version (from a fixed list only).
+  const AVOID = { scary: "scary or upsetting", age: "not right for the children's age", unsafe: "showing unsafe behaviour", other: "not quite right" };
+  const avoidNote = AVOID[body.avoid]
+    ? `\n\nA parent reported the previous version of this part as ${AVOID[body.avoid]}. Write a completely fresh version that is clearly gentler, calmer and simpler, with nothing at all like that.`
+    : "";
+  // Rewriting only the beginning or the end of a story that already exists: keep its hero, goal and problem.
+  const keepBible = mode === "intro" && ["intro", "ending"].includes(body.redo) ? clip(body.bible, 600) : "";
 
   let prompt, schema, withChoice = false, withHelp = false;
   if (mode === "intro") {
@@ -205,6 +212,9 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
         : `Write a made-up story of exactly ${n} sentences in which this place plays a part. It must have a clear beginning (a friendly animal hero and a goal), a middle (a fun challenge at this place) and an end (the goal reached happily), finishing by linking it to the family driving past right now.`;
     prompt = `${about}\n\n${task}\n${level}${aboutKids}${type === "story" ? soundsNote : ""}\n\n${EXTRAS}`;
   }
+
+  if (keepBible) prompt += `\n\nThis story already exists, so keep it the same story. The story so far: ${keepBible} Use the same hero, friends, goal and problem.`;
+  prompt += avoidNote;
 
   // Writes one attempt and returns what to send back plus every sentence that will be heard (for checking).
   async function write(feedback) {

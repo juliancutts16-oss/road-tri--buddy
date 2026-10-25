@@ -41,6 +41,16 @@ export default async (req) => {
   }));
   issues.sort((a, b) => b.at - a.at);
 
+  // ---- story reports from "Report a problem" (and delete expired ones)
+  const reportList = await store.list({ prefix: "reports/" });
+  const reports = [];
+  await Promise.all(reportList.blobs.map(async (b) => {
+    if (keyDay(b.key, 1) < now - 180 * DAY) { await store.delete(b.key); return; }
+    const it = await store.get(b.key, { type: "json" });
+    if (it) reports.push(it);
+  }));
+  reports.sort((a, b) => b.at - a.at);
+
   // ---- work out the numbers
   const tripsByDay = {}, features = {}, games = {}, crashes = {}, versions = {}, platforms = {}, ages = {}, modes = {};
   let started = 0, finished = 0, withStart = 0, withFinish = 0, secondTrip = 0, eligibleSecond = 0;
@@ -97,6 +107,7 @@ export default async (req) => {
     features, games, ages, modes, versions, platforms,
     crashes: Object.values(crashes).map((c) => ({ ...c, versions: Object.keys(c.versions) })).sort((a, b) => b.count - a.count).slice(0, 50),
     issues: issues.slice(0, 100),
+    reports: reports.slice(0, 100),
   });
 };
 

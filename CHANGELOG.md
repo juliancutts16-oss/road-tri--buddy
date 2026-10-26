@@ -6,6 +6,13 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.2.5 (fixes)
+- My car page: the big picture of the car is drawn a little smaller, so the top of the car is no longer cut off.
+- After a choice, the story no longer seems to stop:
+  - Alice now says where it carries on ("We'll find out what happens next when we get to Bluebell Lake Park!"). This line is prepared ahead like the rest.
+  - The Story page shows "Next part at … · 8 miles" while she's quiet. It used to just say "Hoot is reading along".
+- Alice can no longer go silent for good. If the phone stops her in the middle of a line (for example while the app was in the background), the app notices after at least 30 seconds, restarts her and carries on with the same lines in the same order. Restarts are counted in the crash stats (with usage stats on), so we can see if it happens.
+
 ## 0.2.4 — a different story every trip, Alice only
 - A library of 230 story ideas (`netlify/lib/ideas.mjs`), from the owner's list of 200 plus 30 new ones made for road trips and landmarks, grouped by age: 68 for ages 4–5, 72 for 6–7 and 90 for 8+.
   - Each new story usually starts from one idea for the children's age group (otherwise from the random spark mix below). The writer turns the idea into a journey, with something new happening at each place the car passes, and adds a twist and a running gag.

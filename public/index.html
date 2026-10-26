@@ -1073,7 +1073,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.4';
+const APP_VERSION='0.2.5';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1271,7 +1271,8 @@ function helpLines(route,lm,c){
 // The words for a story part's choice, then the on-screen buttons (the chosen option steers the next chapter).
 const choiceItems=(c,nextId)=>c&&nextId?[c.question,{ask:{kind:'choice',options:c.options,next:nextId}}]:[];
 // What's said after a choice (in one place, so the storyteller voice can prepare the very same lines ahead of time)
-const choiceSay={great:t=>`Great choice! ${t.charAt(0).toUpperCase()+t.slice(1)} it is!`,none:t=>`Nobody picked, so I’ll choose: ${t}!`,did:t=>`So, just like you chose, our hero decided to ${t}.`};
+const choiceSay={great:t=>`Great choice! ${t.charAt(0).toUpperCase()+t.slice(1)} it is!`,none:t=>`Nobody picked, so I’ll choose: ${t}!`,did:t=>`So, just like you chose, our hero decided to ${t}.`,
+  next:lm=>!lm||lm.road?`We’ll find out what happens next, further along the road!`:`We’ll find out what happens next when we get to ${lmInfo(lm).name}!`}; // says where the story carries on
 // The line that starts each landmark's chapter (or its fun facts)
 function chapterLead(lm){const L=lmInfo(lm),who=kidNames();
   return S.landmark.type==='fact'?`Look out${who?', '+who:''}! We're getting close to ${L.name}.`:lm.road?`${who?who+', i':'I'}t’s time for the next part of our story!`:`${who?who+', c':'C'}oming up soon, we'll pass ${L.name}! Here comes the next part of our story.`}
@@ -1645,7 +1646,8 @@ const SV={VOICES:[['bf_alice','Alice']],
       else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // a fresh download makes Alice the storyteller
         this.state='ready';store.set('sv',true);svUi();svPrepare(T?T.route:routeFresh()?S.route:null)}
       else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
-      else if(m.type==='audio'||m.type==='fail'){const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
+      else if(m.type==='audio'||m.type==='fail'){if(!this.wait.has(m.id))return;clearTimeout(this.dog); // (an answer from before a restart is ignored)
+        const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
         if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){const d=c.pcm.length/c.rate;
             if(d>.5){this.rtf=Math.round((this.rtf*.7+(performance.now()-job.t0)/1000/d*.3)*100)/100;this.cps=Math.round(this.cps*.7+job.t.length/d*.3);store.set('svRtf',this.rtf);store.set('svCps',this.cps)}
             this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
@@ -1659,7 +1661,14 @@ const SV={VOICES:[['bf_alice','Alice']],
       if(job){job.res.push(res);if(first){job.need=true;if(this.queue.includes(job)){this.queue.splice(this.queue.indexOf(job),1);this.queue.unshift(job)}}}
       else{job={key,t,v:this.voice(),sp:this.speed(),res:[res],need:!!first};first?this.queue.unshift(job):this.queue.push(job)}this.pump()})},
   pump(){if(this.working||this.state!=='ready'||!this.queue.length)return;const job=this.queue.shift(),id=++this.seq;this.working=true;this.wait.set(id,job);job.t0=performance.now();
+    // watchdog: a line that takes far longer than it should (at least 30 s) restarts the voice (checked while the app is on screen)
+    const limit=Math.max(30000,job.t.length/this.cps*Math.max(1,this.rtf)*6000);clearTimeout(this.dog);
+    const dog=()=>{if(!this.wait.has(id))return;if(document.hidden){this.dog=setTimeout(dog,5000);return}this.restart()};this.dog=setTimeout(dog,limit);
     this.w.postMessage({type:'say',id,text:job.t,voice:job.v,speed:job.sp})},
+  // The voice stopped answering (for example the phone paused it in the background): start it again and carry on
+  // with the same lines in the same order, so the story never stays silent.
+  restart(){const jobs=[...this.wait.values(),...this.queue];clearTimeout(this.dog);try{this.w&&this.w.terminate()}catch(e){}
+    this.w=null;this.wait.clear();this.queue=jobs;this.working=false;this.state='off';Tel.crash('Storyteller voice stopped answering and was restarted','SV');this.load()},
   // removes the download from the phone (the phone's own voice is used again)
   async remove(){try{this.w&&this.w.terminate()}catch(e){}this.w=null;this.state='off';Pack.remove();this.clips.clear();this.queue=[];this.working=false;store.set('sv',false);
     try{for(const k of ['awty-voice','kokoro-voices','transformers-cache'])await caches.delete(k)}catch(e){}svUi()}
@@ -1686,7 +1695,7 @@ const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can y
 function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}
   if(R)try{const sg=S.landmark.type==='story'?sagaFor(R):null,stops=sg?storyStops(R):R.landmarks;
     storyParts(R).forEach(p=>{const lm=stops.find(l=>l.id===p.id),c=!sg?null:p.id==='intro'?sg.choice:sg.chapters[p.id]&&sg.chapters[p.id].choice;
-      if(lm)lines.push(chapterLead(lm));lines.push(...p.lines);if(c&&c.options)c.options.forEach(o=>lines.push(choiceSay.great(o.text),choiceSay.did(o.text)))})}catch(e){}
+      if(lm)lines.push(chapterLead(lm));lines.push(...p.lines);if(c&&c.options){c.options.forEach(o=>lines.push(choiceSay.great(o.text),choiceSay.did(o.text)));lines.push(choiceSay.next(stops[p.id==='intro'?0:stops.findIndex(l=>l.id===p.id)+1]))}})}catch(e){}
   lines.push(...SV_STOCK);
   const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
   SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
@@ -1914,8 +1923,9 @@ const Ask={done:null,timer:0,
   reply(a,i){
     if(a.kind==='spot'){if(i<0)return['That’s okay! Keep looking out of the window. Our hero spotted one too.'];addScore(50);Snd.chime();return[a.thanks]}
     const k=i<0?Math.floor(Math.random()*2):i,text=a.options[k].text;storyChose(a.next,text);
-    if(i<0)return[choiceSay.none(text)];
-    addScore(50);Snd.chime();return[choiceSay.great(text)]},
+    const nx=T?storyStops(T.route).find(l=>l.id===a.next):null; // after the choice, the story carries on at the next stop: say so
+    if(i<0)return[choiceSay.none(text),choiceSay.next(nx)];
+    addScore(50);Snd.chime();return[choiceSay.great(text),choiceSay.next(nx)]},
   cancel(){if(this.done)this.done(-1,'cancel')}
 };
 // Decides whether the answer was right and what to say back. Returns sentences to speak.
@@ -2389,7 +2399,7 @@ function setPlay(on){if(!T)return;const was=T.running;T.running=on&&!T.arrived;
   if(T.running&&!T.startedAt){T.startedAt=Date.now();Tel.log('trip_start',{mode:tripMode(),miles:Math.round(T.route.miles),age:S.age,style:S.displayStyle});
     if(S.landmark.listen)Tel.feature('mic');if(S.sound.on&&S.sound.music)Tel.feature('music')}
   if(was&&!T.running)Voice.pause();else if(!was&&T.running)Voice.resume();const b=$('#d-play');b.textContent=T.running?'❚❚':'▶';b.setAttribute('aria-label',T.running?'Pause trip':'Start trip');
-  const sp=$('#k-storyplay');sp.classList.toggle('paused',!T.running);sp.setAttribute('aria-label',T.running?'Pause the trip and the story':'Carry on');$('#k-storystate').textContent=T.running?'Hoot is reading along':'Paused';
+  const sp=$('#k-storyplay');sp.classList.toggle('paused',!T.running);sp.setAttribute('aria-label',T.running?'Pause the trip and the story':'Carry on');hud(true);
   if(T.running&&liveGps())Geo.start();else Geo.stop();keepAwake(T.running);if(T.running)Music.start();else Music.stop();Amb.update();renderTripPanel()}
 function step(dt){
   if(!T.running||T.arrived)return;
@@ -2427,6 +2437,9 @@ function hud(force){
   else if(S.age==='8+'){const d=new Date(Date.now()+minsLeft*60000);extra=T.arrived?'':`Arrive ${d.toTimeString().slice(0,5)}${liveGps()&&Geo.speed!=null?` · ${Math.round(Geo.speed)} mph`:''}`}
   ex.hidden=!extra;set('#k-extra',extra);if(!S.demoMode)renderTripPanel();
   set('#k-score',T.score.toLocaleString());
+  // the Story page says where the next part of the story happens, so a quiet stretch never looks like the story stopped
+  const nx=T.running&&!Voice.busy&&S.landmark.enabled&&S.landmark.type==='story'&&!T.arrived?storyStops(r).find(l=>!T.announced.has(l.id)&&l.mile>=T.milesR-.2):null,mi=nx?Math.max(0,nx.mile-T.milesR):0;
+  set('#k-storystate',!T.running?(T.arrived?'We made it!':'Paused'):nx?`Next part ${nx.road?'on the open road':'at '+lmInfo(nx).name.replace(/^the /,'The ')} · ${mi<1?'nearly there':Math.round(mi)+' mile'+(Math.round(mi)===1?'':'s')}`:'Hoot is reading along');
   const pct=Math.round(T.miles/T.total*100);set('#k-pct',T.arrived?'Arrived! 🎉':pct>=50&&pct<55?'Halfway! ⭐':`${pct}% of the way`);
   set('#k-from',r.from||'Home');set('#k-to',destName(r));
 }
@@ -2951,7 +2964,7 @@ function importData(file){
     catch(e){backupMsg='That file isn’t an AWTY backup.'}renderSettings()};fr.readAsText(file);
 }
 function drawThumbs(){$$('canvas[data-thumb]').forEach(cv=>{const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);const W=cv.width,H=cv.height;
-  if(cv.dataset.thumb==='car'){const locked=cv.dataset.locked==='true';const col=locked?'#B8BCC6':COLORS[cv.dataset.color||S.car.color];g.fillStyle='rgba(0,0,0,.06)';g.fillRect(0,H*.82,W,H*.18);drawCar(g,W/2,H*.86,W*.6,cv.dataset.body,col,1,{t:1})}
+  if(cv.dataset.thumb==='car'){const locked=cv.dataset.locked==='true';const col=locked?'#B8BCC6':COLORS[cv.dataset.color||S.car.color];g.fillStyle='rgba(0,0,0,.06)';g.fillRect(0,H*.82,W,H*.18);drawCar(g,W/2,H*.86,W*(cv.classList.contains('kc-hero')?.42:.6),cv.dataset.body,col,1,{t:1})}
   else{const tp=cv.dataset.type;const w=tp==='flats'?H*.55:tp==='terrace'?H*.58:W*.4;drawHouse(g,W/2,H*.95,w,tp,cv.dataset.color,{flag:cv.dataset.flag==='true'})}})}
 async function lookupPlate(){
   const p=(S.plate||'').toUpperCase().replace(/[^A-Z0-9]/g,'');

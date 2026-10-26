@@ -44,10 +44,18 @@ const READING = {
   "6-7": { avg: 15, max: 22, longLen: 10, longShare: 0.12 },
   "8+": { avg: 22, max: 32, longLen: 12, longShare: 0.2 },
 };
+// The writer's limit, told to it up front: a little under what the check allows, so a good attempt passes first time.
+export function lengthRule(ageKey, rich) {
+  const r = READING[ageKey] || READING["6-7"], loosen = rich ? 1.3 : 1;
+  const avg = Math.round(r.avg * loosen * 0.8), max = Math.round(r.max * loosen * 0.8);
+  return `Sentence length (this is checked by counting words, and longer ones are rejected): each item in a list is ONE sentence. Keep sentences to about ${avg} words, and never more than ${max}. If a thought needs more words, split it into two sentences. Dialogue counts too: keep what characters say short.`;
+}
 export function readingIssues(sentences, ageKey, rich) {
   const r = READING[ageKey] || READING["6-7"], loosen = rich ? 1.3 : 1;
   const clean = (s) => String(s).replace(/\{[^}]*\}/g, " ").replace(/[^A-Za-z' -]/g, " ");
-  const lists = sentences.map((s) => clean(s).split(/\s+/).filter(Boolean)).filter((w) => w.length);
+  // measured per real sentence: one item can hold a few (for example a line of dialogue and who said it)
+  const split = (s) => String(s).split(/(?<=[.!?][’"”']?)\s+(?=[“"'‘]?[A-Z{])/);
+  const lists = sentences.flatMap(split).map((s) => clean(s).split(/\s+/).filter(Boolean)).filter((w) => w.length);
   if (!lists.length) return [];
   const words = lists.flat(), avg = words.length / lists.length, longest = Math.max(...lists.map((w) => w.length));
   const longShare = words.filter((w) => w.replace(/['-]/g, "").length >= r.longLen).length / words.length;

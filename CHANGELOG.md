@@ -6,6 +6,27 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.2.6 (fixes)
+- Demo driving is now off for new users, so a family's first real trip follows the real drive: the GPS if location is on, otherwise the clock. Before, it was on by default and the car raced along at 10 times speed. Phones that already have the app keep their current setting. Demo driving can still be switched on in Settings for testing at home.
+- The story no longer plays underneath a game. Hoot already paused when a game opened, but a new chapter could still start during the game (on a test trip, a whole chapter, its "Can you spot a tractor?" and its quiz played while the child was doing Car Sums). Now:
+  - A chapter that comes due during a game waits, and starts as soon as the game closes. The arrival ending waits too.
+  - A game is only offered while Hoot is quiet, never in the middle of a story or a question.
+  - After a game, the next one isn't offered for about 3 minutes of driving. Before, Traffic Lights popped up 7 seconds after Car Sums ended.
+- With "Listen for their answers" on, the app no longer answers for the child. On a test trip it said "You found a tractor!", picked a story choice and said "I heard you have a go" when nobody had spoken: any sound at all (the car, the music, or Hoot's own voice coming back through the microphone) counted as an answer. Now:
+  - Only real words count. A sound with no words is ignored, and the child can still tap, as before.
+  - Words that are mostly what Hoot has just said are ignored, as that's the phone hearing itself.
+  - The music and road sounds go quiet while the app is listening.
+  - For a choice, the app no longer picks one at random when it can't tell which was said. It listens once more, then the buttons stay up until the timer runs out, as before.
+- The trip story now lasts the whole journey. Before, a route with only one or two landmarks got just two middle chapters, so on a test trip (Bath to Bradford on Avon, 28 minutes) the story went quiet for the last 16 minutes. Now "open road" chapters fill any long gap, so there's a part at least every 7 minutes or so (every eighth of the trip on long drives), right up to arriving. That test trip now gets 4 middle chapters instead of 2.
+  - The built-in story has a new "found it" moment for each plot and more open-road scenes, so the extra chapters don't repeat each other. The flying machine is now "missing some parts" rather than "three", as there can be more than three chapters.
+- AI trip stories were often turned down for long sentences, so children got the built-in story instead (seen on a test trip: rejected twice, "average 31 words, one sentence has 70"). Three fixes on the server:
+  - The writer is now told the exact sentence length for the age (for 6–7: about 12 words, never more than 18), and that each line is one sentence.
+  - The length check now counts real sentences. Before, a line holding a few sentences (for example a bit of dialogue and who said it) was counted as one very long sentence.
+  - The second try now actually happens. It was only allowed if the first try took under 6 seconds, but writing takes about 12, so it never ran. Since Netlify now allows 60 seconds, a second try (and its safety review) runs if there's time to finish by about 45 seconds. The phone waits 60.
+- The opening chapter no longer waits up to 2½ minutes for Alice. When it waited behind the greeting, its sentences were put at the back of her list, so she made the rest of the story first. They now go straight after the greeting.
+- While a chapter or a sentence waits for Alice, the "Getting the story ready" percentage now moves smoothly. Before, it only moved each time she finished a whole sentence (every 8–13 seconds on a test phone), or stayed at 0% for a single sentence, so it looked stuck.
+- Demo trips now drive at real speed while Alice is behind (starting up, still making the story, or a chapter is waiting for her), then go back to the chosen demo speed. The demo controls show "×1 · Alice catching up" meanwhile. Before, a 10× demo trip reached the next chapter long before she'd made it, so chapters waited up to 53 seconds.
+
 ## 0.2.5 (fixes)
 - My car page: the big picture of the car is drawn a little smaller, so the top of the car is no longer cut off.
 - After a choice, the story no longer seems to stop:

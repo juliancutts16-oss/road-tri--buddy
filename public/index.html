@@ -972,8 +972,9 @@ const AGE={
   '6-7':{displayStyle:'explorer',landmark:{type:'story',sentences:5,lang:'simple',interactive:'question'},spot:{time:60,count:4,every:2},cats:['animals','vehicles','nature','places'],bonusCount:2,access:{decoSize:1},child:{color:true,bg:false,road:false,sound:false,style:false,spotNow:true}},
   '8+':{displayStyle:'teen',landmark:{type:'fact',sentences:5,lang:'academic',interactive:'question'},spot:{time:45,count:5,every:3},cats:['animals','vehicles','nature','places'],bonusCount:3,access:{decoSize:.9},child:{color:true,bg:true,road:true,sound:true,style:true,spotNow:true}}
 };
+// (demo driving starts off, so a new family's first trip follows the real drive; phones that already saved settings keep theirs)
 const DEFAULTS={
-  age:'6-7',demoMode:true,passcode:'',pin:'',consent:null,places:[],toPlace:null,fromPlace:null,profile:{names:'',animal:'',likes:'',buddy:'',reason:''},tripMode:'connected',from:'',to:'',route:null,offlineMins:90,offlineRouteId:'',
+  age:'6-7',demoMode:false,passcode:'',pin:'',consent:null,places:[],toPlace:null,fromPlace:null,profile:{names:'',animal:'',likes:'',buddy:'',reason:''},tripMode:'connected',from:'',to:'',route:null,offlineMins:90,offlineRouteId:'',
   car:{body:'saloon',color:'red'},plate:'',
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
@@ -1073,7 +1074,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.5';
+const APP_VERSION='0.2.6';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1147,10 +1148,14 @@ function storyTheme(){
   const themeCues=[...new Set(hits.flatMap(h=>h.cues))];
   return{themeCues,cues:[...new Set([...themeCues,...BASE_CUES])].slice(0,12),mood:(hits[0]||{}).mood||(S.age==='4-5'?'magical':S.age==='8+'?'heroic':'happy')};
 }
-// Landmarks plus, if there are fewer than two, "open road" chapters part-way through the trip.
+// Landmarks plus "open road" chapters wherever the story would otherwise go quiet for too long: a part at least
+// every 7 minutes or so (every eighth of the trip on long ones), from setting off to arriving, and two parts at least.
 function storyStops(route){
-  const lms=route.landmarks.slice(),need=Math.max(0,2-lms.length),extra=[];
-  for(let k=1;k<=need;k++)extra.push({id:'road'+k,mile:+(route.miles*(need===1?.5:k===1?.35:.68)).toFixed(2),name:'the open road',kind:'road',road:true,emoji:'🛣️'});
+  const lms=route.landmarks.slice().sort((a,b)=>a.mile-b.mile),miles=route.miles||0,mins=Math.max(1,route.mins||60);
+  const gap=miles/mins*Math.max(7,mins/8),pts=[0,...lms.map(l=>l.mile),miles],at=[];
+  if(gap>0)for(let i=0;i<pts.length-1;i++){const d=pts[i+1]-pts[i],n=Math.ceil(d/gap-.15)-1;for(let k=1;k<=n;k++)at.push(pts[i]+d*k/(n+1))}
+  const need=Math.max(0,2-lms.length-at.length);for(let k=1;k<=need;k++)at.push(miles*(need===1?.5:k===1?.35:.68));
+  const extra=at.sort((a,b)=>a-b).map((m,k)=>({id:'road'+(k+1),mile:+m.toFixed(2),name:'the open road',kind:'road',road:true,emoji:'🛣️'}));
   return[...lms,...extra].sort((a,b)=>a.mile-b.mile);
 }
 const sagaKey=route=>genKey()+`|v3|c${S.landmark.choices===false?0:1}h${S.landmark.helpSpot===false?0:1}|`+storyStops(route).map(l=>l.id).join(',');
@@ -1210,16 +1215,16 @@ async function prepareSaga(route){
 // Its plot is picked for each trip, so it isn't the same story every time.
 const PLOTS=[
   {problem:h=>`But there’s a problem! The ${h}’s map has blown away in the wind, so it will need to find clues along the way.`,
-    found:[(h,f)=>`There, a friendly ${f} pointed the way, and gave the ${h} the first clue.`,(h,f,d)=>`Hidden under a leaf was a shiny clue pointing towards ${d}!`,h=>`The ${h} found another clue, and the map was nearly complete.`],
+    found:[(h,f)=>`There, a friendly ${f} pointed the way, and gave the ${h} the first clue.`,(h,f,d)=>`Hidden under a leaf was a shiny clue pointing towards ${d}!`,h=>`A clue was tucked inside a pine cone, and the ${h} read it out loud.`,h=>`The ${h} found another clue, and the map was nearly complete.`],
     again:h=>`Clutching the clue, the ${h} set off again. We’re getting closer!`,last:h=>`Clutching all the clues, the ${h} knew the way at last. We’re nearly there!`,use:'Using all the clues'},
   {problem:h=>`But there’s a problem! The ${h}’s favourite song has lost its notes, and nobody can remember how it goes.`,
-    found:[(h,f)=>`There, a friendly ${f} hummed a happy note, and the ${h} caught it in a jar.`,h=>`A little note was bouncing along a fence, so the ${h} scooped it up.`,h=>`The ${h} found another note, and the song was nearly whole again.`],
+    found:[(h,f)=>`There, a friendly ${f} hummed a happy note, and the ${h} caught it in a jar.`,h=>`A little note was bouncing along a fence, so the ${h} scooped it up.`,h=>`A tiny note was hiding in a flower, humming to itself, and the ${h} found it.`,h=>`The ${h} found another note, and the song was nearly whole again.`],
     again:h=>`Humming the new note, the ${h} set off again. We’re getting closer!`,last:h=>`With every note found, the ${h} could hum the whole tune. We’re nearly there!`,use:'Singing the whole song'},
   {problem:h=>`But there’s a problem! The rainbow has lost its colours, and the ${h} has promised to find them all.`,
-    found:[(h,f)=>`There, a friendly ${f} shared a splash of bright red.`,h=>`A puddle shone with sunny yellow, and the ${h} scooped it up.`,h=>`The ${h} found a stripe of blue, and the rainbow was nearly bright again.`],
+    found:[(h,f)=>`There, a friendly ${f} shared a splash of bright red.`,h=>`A puddle shone with sunny yellow, and the ${h} scooped it up.`,h=>`Some leaves were the greenest green ever, so the ${h} borrowed a little.`,h=>`The ${h} found a stripe of blue, and the rainbow was nearly bright again.`],
     again:h=>`Carrying the new colour, the ${h} set off again. We’re getting closer!`,last:h=>`With every colour found, the ${h} was ready to paint the rainbow. We’re nearly there!`,use:'Painting the rainbow bright again'},
-  {problem:h=>`But there’s a problem! The ${h}’s amazing flying machine is missing three parts, and the big show is today.`,
-    found:[(h,f)=>`There, a friendly ${f} handed over a shiny spring.`,h=>`A little cog was twinkling in the grass, so the ${h} popped it in a pocket.`,h=>`The ${h} found a bendy bolt, and the machine was nearly ready.`],
+  {problem:h=>`But there’s a problem! The ${h}’s amazing flying machine is missing some parts, and it needs them all today.`,
+    found:[(h,f)=>`There, a friendly ${f} handed over a shiny spring.`,h=>`A little cog was twinkling in the grass, so the ${h} popped it in a pocket.`,h=>`A wiggly wheel was rolling down the road, and the ${h} caught it.`,h=>`The ${h} found a bendy bolt, and the machine was nearly ready.`],
     again:h=>`Holding the new part, the ${h} set off again. We’re getting closer!`,last:h=>`With every part found, the ${h} could mend the machine at last. We’re nearly there!`,use:'Flying the mended machine'}];
 function sagaFallback(route){
   const hero=sagaHero(),dest=destName(route),buddy=prof('buddy'),reason=prof('reason'),likes=likesList(),n=S.landmark.sentences,who=kidNames(),P=PLOTS[Math.floor((T?T.seed:0)/7)%PLOTS.length];
@@ -1231,11 +1236,13 @@ function sagaFallback(route){
     buddy?`Luckily, ${buddy}, the ${hero}’s best friend, is coming to help.`:`Luckily, the ${hero} is brave and clever, and ready to help.`,
     `So keep watching out of the window, and let’s see what happens!`];
   const stops=storyStops(route),chapters={};
-  stops.forEach((lm,i)=>{const L=lm.road?null:lmInfo(lm),fr=FRIENDS[(i+hashStr(lm.id||''))%FRIENDS.length],last=i===stops.length-1;
+  // what's found: the first find, then the middle ones in turn, and "nearly there" in the last chapter
+  const fi=i=>i===stops.length-1?P.found.length-1:i===0?0:1+(i-1)%(P.found.length-2);
+  stops.forEach((lm,i)=>{const L=lm.road?null:lmInfo(lm),fr=FRIENDS[(i+hashStr(lm.id||''))%FRIENDS.length],last=i===stops.length-1,ri=stops.slice(0,i).filter(s=>s.road).length;
     chapters[lm.id]={sentences:pickN([
-      `${cue(i+1)}${CONNECT[i%CONNECT.length]}, ${L?`the ${hero} reached ${L.name} ${L.sight}`:`the ${hero} was zooming along the open road`}.`,
-      L?`The ${hero} ${L.bit}.`:[`Suddenly, a gust of wind tickled the ${hero}’s nose. Ah… ah… achoo!`,`Then a rainbow appeared over the road, and the ${hero} followed it over the hill.`,`Along the way, the ${hero} counted ten cows, three tractors and one very sleepy sheep.`][(i+(lm.id==='road2'?1:0))%3],
-      P.found[i%3](hero,fr,dest),
+      `${cue(i+1)}${CONNECT[i%CONNECT.length]}, ${L?`the ${hero} reached ${L.name} ${L.sight}`:`the ${hero} was ${['zooming along the open road','whizzing down a long, straight road','bumping along a country lane','rolling up and over a big hill'][ri%4]}`}.`,
+      L?`The ${hero} ${L.bit}.`:[`Suddenly, a gust of wind tickled the ${hero}’s nose. Ah… ah… achoo!`,`Then a rainbow appeared over the road, and the ${hero} followed it over the hill.`,`Along the way, the ${hero} counted ten cows, three tractors and one very sleepy sheep.`,`A cheeky squirrel did a little dance on a branch, and the ${hero} giggled.`][ri%4],
+      P.found[fi(i)](hero,fr,dest),
       likes.length?`It reminded the ${hero} of ${likes[i%likes.length]}, which made it smile.`:`It was the most exciting part of the adventure so far!`,
       last?P.last(hero):P.again(hero),
       `${buddy||'Everyone'} cheered as they set off again.`,`I wonder what we’ll find next?`],n),
@@ -1531,7 +1538,7 @@ const Amb={cur:null,key:null,gain:null,
   update(){const k=this.want();if(k===this.key){if(this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.4);return}
     if(this.cur)this.cur.stop(3);this.cur=null;this.key=k;if(!k)return;Snd.init();const ac=Snd.ac;if(!ac)return;
     if(!this.gain){this.gain=ac.createGain();this.gain.connect(Snd.out)}this.gain.gain.value=this.level();this.cur=Pack.loop(k,this.gain,3)},
-  level(){return .55*S.sound.musicVol/.25*(Voice.busy?.6:1)}};
+  level(){return Ear.rec?0:.55*S.sound.musicVol/.25*(Voice.busy?.6:1)}};
 
 /* ================= Background music ================= */
 // Gentle tunes made on the phone (no files, nothing copyrighted), one per age style. Four chords loop under an
@@ -1563,7 +1570,7 @@ const Music={on:false,timer:0,next:0,step:0,gain:null,style:null,noiseBuf:null,m
   // story music on (a mood name) or off (null); off goes back to the driving music only while the trip is moving
   setMood(m){if(this.mood===m)return;this.mood=m;if(!m&&!(T&&T.running)){this.stop();return}this.stop(true);this.start()},
   stop(quick){if(this.real){this.real.stop(quick?.4:1.5);this.real=null;this.realKey=null}if(!this.on)return;this.on=false;clearInterval(this.timer);if(this.gain)this.gain.gain.setTargetAtTime(0,Snd.ac.currentTime,quick?.05:.6)},
-  level(){return S.sound.musicVol*(Voice.busy||('speechSynthesis' in window&&speechSynthesis.speaking)?.3:1)},
+  level(){return Ear.rec?0:S.sound.musicVol*(Voice.busy||('speechSynthesis' in window&&speechSynthesis.speaking)?.3:1)},
   duck(){if(this.on&&this.gain)this.gain.gain.setTargetAtTime(this.level(),Snd.ac.currentTime,.25);Amb.update()},
   build(){const st=this.style,md=this.mood&&MOODS[this.mood];
     this.bpm=md?md.bpm:{playful:96,explorer:112,teen:100,pixel:120}[st]||100;
@@ -1709,7 +1716,13 @@ function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let pla
   return wait}
 // How much of these lines is ready (0–1, by length of speech): the globe's percentage. The story starts as soon as
 // svAhead allows, usually well before 100%, and the rest is made while Alice reads.
-function svShare(lines){let all=0,ok=0;for(const t of lines){const c=SV.clip(t),d=c?c.pcm.length/c.rate:t.length/SV.cps+.3;all+=d;if(c)ok+=d}return all?ok/all:1}
+// The line she's making right now counts in part (by how long it usually takes), so the globe keeps moving between lines.
+// True while the storyteller voice is starting, still has story lines to make, or a chapter is waiting for her.
+function svBehind(){return SV.on()&&(SV.state==='loading'||SV.queue.length>0||Voice.gating)}
+function svShare(lines){const cur=SV.working?[...SV.wait.values()][0]:null;let all=0,ok=0;
+  for(const t of lines){const c=SV.clip(t),d=c?c.pcm.length/c.rate:t.length/SV.cps+.3;all+=d;if(c)ok+=d;
+    else if(cur&&cur.key===SV.key(t))ok+=d*Math.min(.9,(performance.now()-cur.t0)/1000/(d*Math.max(.2,SV.rtf)))}
+  return all?ok/all:1}
 // The globe beside the trip's road: shown only while a chapter waits for Alice. It fills with colour as she gets ready,
 // bounces, shrinks away, and the Map / Games / Story box grows into its space.
 const Loader={on:false,pct:0,t:0,
@@ -1774,7 +1787,9 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
         const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
         // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
         const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
-          later.forEach(t=>{if(!asked.has(t)){asked.add(t);SV.render(t).then(c=>{if(!c)bad.add(t);check()})}});
+          // its lines jump the queue too (just behind this chapter's own), or Alice would make the rest of the story first
+          const fresh=later.filter(t=>!asked.has(t));fresh.forEach(t=>asked.add(t));
+          if(fresh.length){[...fresh].reverse().forEach(t=>SV.render(t,true));[...need].reverse().forEach(t=>SV.render(t,true));fresh.forEach(t=>SV.render(t).then(c=>{if(!c)bad.add(t);check()}))}
           const all=[...it.gate,...later].filter(t=>!bad.has(t));if(svAhead(all)<=0)go();else Loader.set(svShare(all)*100)};
         this.gating=true;Loader.show();[...need].reverse().forEach(t=>SV.render(t,true));need.forEach(t=>SV.render(t).then(c=>{if(!c)bad.add(t);check()}));tick=setInterval(check,400);check();return}
       if(it.listen){Ear.listen().then(h=>judge(it.listen,h)).then(replies=>{if(tok!==this.token)return;this.queue.unshift(...replies);this.next()});return}
@@ -1790,7 +1805,8 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     // up, everything waits for her. Only if she can't make it (or it takes over 20 seconds) does the phone's voice read it.
     if(it&&this.svLoading(raw,tok))return;
     if(it&&SV.on()&&SV.state==='ready'&&!SV.clip(it)&&!this.tried.has(it)){this.tried.add(it);if(this.tried.size>60)this.tried=new Set([it]);
-      let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);this.gating=false;Loader.done();this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000);
+      let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000),
+        tick=setInterval(()=>{if(tok!==this.token)return clearInterval(tick);Loader.set(svShare([it])*100)},400); // (the globe moves while she makes it)
       this.gating=true;Loader.show(2500);SV.render(it,true).then(go);return}
     if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
     const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,3):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
@@ -1871,14 +1887,16 @@ const Ear={rec:null,
   active(){return S.landmark.listen&&this.ok()},
   listen(ms=7000){return new Promise(res=>{
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R||micDenied)return res(null);
-    let done=false,alts=[],tried=false;const r=new R();this.rec=r;r.lang='en-GB';r.interimResults=false;r.maxAlternatives=5;r.continuous=false;
-    // a child who spoke but couldn't be made out still counts as having a go ({tried:true} with no words)
-    const fin=()=>{if(done)return;done=true;clearTimeout(t);try{r.abort()}catch(_){}this.rec=null;$('#mic-badge').hidden=true;res(alts.length?{text:alts[0],alts,tried:true}:tried?{text:'',alts:[],tried:true}:null)};
-    r.onspeechstart=()=>{tried=true};r.onnomatch=()=>{tried=true};
-    r.onresult=e=>{tried=true;alts=[...e.results[0]].map(a=>a.transcript.trim()).filter(Boolean)};
+    let done=false,alts=[];const r=new R();this.rec=r;r.lang='en-GB';r.interimResults=false;r.maxAlternatives=5;r.continuous=false;
+    // Only real words count. A sound with no words (the car, the music, Hoot's own voice) is not an answer, and nor are
+    // words that are mostly what Hoot just said (the phone hearing its own speaker).
+    const recent=new Set(normWords(StoryLog.lines.slice(-3).join(' ')).split(' ')),
+      echo=a=>{const w=normWords(a).split(' ').filter(Boolean);return w.length>=4&&w.filter(x=>recent.has(x)).length/w.length>=.75};
+    const fin=()=>{if(done)return;done=true;clearTimeout(t);try{r.abort()}catch(_){}this.rec=null;$('#mic-badge').hidden=true;Music.duck();res(alts.length?{text:alts[0],alts,tried:true}:null)};
+    r.onresult=e=>{alts=[...e.results[0]].map(a=>a.transcript.trim()).filter(a=>a&&!echo(a))};
     r.onend=fin;r.onerror=e=>{if((e.error==='not-allowed'||e.error==='service-not-allowed')&&micState==='denied')micDenied=true;fin()}; // only give up for good if the phone really says "blocked"
     const t=setTimeout(fin,ms);
-    Snd.tone(880,.12,'sine',.12);setTimeout(()=>{if(done)return;try{r.start();$('#mic-badge').hidden=false}catch(e){fin()}},250)})},
+    Snd.tone(880,.12,'sine',.12);setTimeout(()=>{if(done)return;try{r.start();$('#mic-badge').hidden=false;Music.duck()}catch(e){fin()}},250)})}, // (music and road sounds go quiet while listening)
   stop(){if(this.rec)try{this.rec.abort()}catch(e){}}
 };
 const normWords=s=>String(s||'').toLowerCase().replace(/[^a-z0-9' ]/g,' ').replace(/\s+/g,' ').trim();
@@ -1908,17 +1926,17 @@ const Ask={done:null,timer:0,
       :`<button type="button" class="ask-btn found" data-i="0"><span class="em">${esc(a.item.emoji)}</span><span>We spotted it!</span></button><button type="button" class="ask-btn" data-i="-1"><span class="em">🙈</span><span>Not this time</span></button>`;
     $('#ask-bar').style.width='100%';ov.hidden=false;
     this.timer=setInterval(()=>{const f=1-(Date.now()-start)/total;$('#ask-bar').style.width=Math.max(0,f*100)+'%';if(f<=0)finish(-1,'timeout')},250);
-    // listening: once for a choice (then it's buttons), a few times for spotting as it can take a while
-    if(Ear.active()){let tries=a.kind==='choice'?1:3;const go=()=>{if(over||tries--<=0)return;Ear.listen(8000).then(h=>{if(over)return;const i=h?this.match(a,h):-1;if(i>=0)finish(i,'voice');else go()})};go()}
+    // listening: twice for a choice (then it's buttons), a few times for spotting as it can take a while
+    if(Ear.active()){let tries=a.kind==='choice'?2:3;const go=()=>{if(over||tries--<=0)return;Ear.listen(8000).then(h=>{if(over)return;const i=h?this.match(a,h):-1;if(i>=0)finish(i,'voice');else go()})};go()}
   })},
-  // Any speech while spotting counts (they're telling us they saw it). For a choice, words that sound like an option
-  // pick it; if they clearly had a go but it can't be told which, one is picked for them rather than ignoring them.
+  // Any words while spotting count (they're telling us they saw it). For a choice, words that sound like an option
+  // pick it; if it can't be told which, nothing is picked and the buttons stay up (or the timer picks one, and says so).
   match(a,h){const heard=' '+normWords(h.alts.join(' '))+' ',has=w=>heard.includes(' '+w+' ');
-    if(a.kind==='spot')return h.tried||heard.trim()?0:-1;
+    if(a.kind==='spot')return heard.trim()?0:-1;
     const heardW=heard.trim().split(' ').filter(Boolean);
     const score=a.options.map(o=>normWords(o.text).split(' ').filter(w=>w.length>2&&!STOP_W.includes(w)).filter(w=>heardW.some(x=>soundsLike(x,w))).length);
     if(['second','two','2nd','other','last'].some(has))score[1]+=1;else if(['first','1st'].some(has)||heard.trim()==='one')score[0]+=1;
-    if(score[0]===score[1])return h.tried?Math.floor(Math.random()*2):-1;
+    if(score[0]===score[1])return -1;
     return score[0]>score[1]?0:1},
   reply(a,i){
     if(a.kind==='spot'){if(i<0)return['That’s okay! Keep looking out of the window. Our hero spotted one too.'];addScore(50);Snd.chime();return[a.thanks]}
@@ -1932,10 +1950,6 @@ const Ask={done:null,timer:0,
 async function judge(q,h){
   const first=(kidNames().split(/,| and /)[0]||'').trim(),ans=q.answers[0]||'';
   if(!h){return q.kind==='quiz'?[`That’s okay! The answer was ${ans}.`]:q.kind==='repeat'?[`Let’s say it together next time: ${ans}!`]:['That’s okay, you can tell me later!']}
-  // they spoke but the phone couldn't make out any words: still a good go
-  if(!h.text){if(q.kind==='repeat'){addScore(100);Snd.chime();return[`Great try${first?', '+first:''}! ${ans}! You’re getting so good at that.`]}
-    if(q.kind==='quiz'){addScore(50);return[`I heard you have a go${first?', '+first:''}! The answer was ${ans}. Well done for trying!`]}
-    return['Ooh, what a great idea!']}
   if(API.ai&&allowed('aiAnswers')){try{const r=await api('answer',{kind:q.kind,question:q.question,answers:q.answers,heard:h.text,alts:h.alts,names:kidNames()?'{NAMES}':'',age:S.age},8000); // opt-in only; names stay on the phone
     if(r&&r.reply){if(r.correct&&q.kind!=='open'){addScore(100);Snd.chime()}return[r.reply]}}catch(e){}}
   const heard=' '+normWords(h.alts.join(' '))+' ';
@@ -2404,7 +2418,9 @@ function setPlay(on){if(!T)return;const was=T.running;T.running=on&&!T.arrived;
 function step(dt){
   if(!T.running||T.arrived)return;
   if(liveGps())return; // the GPS watcher moves the car
-  const speed=S.demoMode?demo.speed:1; // real offline trips run on the clock
+  // real offline trips run on the clock; a demo trip drops to real speed while Alice is behind, so chapters don't wait for her
+  const slow=S.demoMode&&svBehind(),speed=S.demoMode?(slow?1:demo.speed):1;
+  if(slow!==step.slow){step.slow=slow;$('#d-speedv').textContent=slow?'×1 · Alice catching up':'×'+demo.speed}
   const mps=T.total/(T.mins*60)*speed;T.miles=Math.min(T.total,T.miles+mps*dt);events();
 }
 function renderTripPanel(){
@@ -2419,9 +2435,12 @@ function events(){
   if(T.miles>=T.nextSpot&&!Spot.active&&!gameOpen()&&!Bonus.open&&$('#ask').hidden&&!Voice.busy)Spot.start();
   // start each story about 1½ minutes' drive before the landmark, so it finishes as you go past
   const lead=clamp(T.route.miles/Math.max(1,T.route.mins)*1.5,.8,2.5);
-  if(S.landmark.enabled)(S.landmark.type==='story'?storyStops(T.route):T.route.landmarks).forEach(lm=>{if(!T.announced.has(lm.id)&&T.milesR>=lm.mile-lead&&T.milesR<lm.mile+.3)announce(lm)});
-  if(T.bonusIdx<T.bonusAts.length&&T.miles>=T.bonusAts[T.bonusIdx]&&!gameOpen()&&!Spot.active&&!Bonus.open){T.bonusIdx++;Bonus.show()}
-  if(T.miles>=T.total&&!T.arrived)arrive();
+  // while a game is open, a part that comes due waits, and is told as soon as the game closes
+  const late=T.late||(T.late=new Set());
+  if(S.landmark.enabled)(S.landmark.type==='story'?storyStops(T.route):T.route.landmarks).forEach(lm=>{if(!T.announced.has(lm.id)&&T.milesR>=lm.mile-lead&&(T.milesR<lm.mile+.3||late.has(lm.id))){if(gameOpen())late.add(lm.id);else announce(lm)}});
+  // a game is only offered while Hoot is quiet, and never straight after another one (about 3 minutes' drive apart)
+  if(T.bonusIdx<T.bonusAts.length&&T.miles>=T.bonusAts[T.bonusIdx]&&T.miles>=(T.gameGap||0)&&!gameOpen()&&!Spot.active&&!Bonus.open&&!Voice.busy&&$('#ask').hidden){T.bonusIdx++;Bonus.show()}
+  if(T.miles>=T.total&&!T.arrived&&!gameOpen())arrive(); // (the ending waits for a game to finish too)
 }
 function addScore(n){T.score+=n;const b=$('#k-score-box');b.classList.remove('bump');void b.offsetWidth;b.classList.add('bump')}
 let hudCache={};
@@ -2676,7 +2695,7 @@ const gamesFor=age=>Object.values(GAMES).filter(g=>g.age===age);
 function nextGame(){const all=gamesFor(S.age),on=all.filter(g=>!S.bonus.off[g.id]),list=(on.length?on:all).map(g=>g.id);
   if(!T.gameBag||!T.gameBag.length)T.gameBag=shuffle(list);return T.gameBag.shift()}
 function startGame(id){Voice.pause();Tel.feature('game:'+id);MG.start(id)}
-function closeGame(){MG.reset();Game.close();if(T&&T.running)Voice.resume()}
+function closeGame(){MG.reset();Game.close();if(T){T.gameGap=T.miles+T.total/Math.max(1,T.mins)*3;if(T.running)Voice.resume()}}
 
 /* ================= Arrival, stats & unlocks ================= */
 function metricValue(m){const t=stats.trips;return(m==='trips'?t.length:m==='miles'?t.reduce((a,b)=>a+b.miles,0):t.reduce((a,b)=>a+b.score,0))+(stats.sim[m]||0)}

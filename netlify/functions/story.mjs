@@ -9,7 +9,7 @@
 // if it fails again (or there isn't time), the app is told to use its built-in story instead.
 import Anthropic from "@anthropic-ai/sdk";
 import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
-import { AGE_RULES, ALWAYS_RULES, FACT_RULES, blockedWords, readingIssues, safeDetail } from "../lib/safety.mjs";
+import { AGE_RULES, ALWAYS_RULES, FACT_RULES, blockedWords, readingIssues, lengthRule, safeDetail } from "../lib/safety.mjs";
 import { pickIdea } from "../lib/ideas.mjs";
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the server's environment
@@ -143,7 +143,7 @@ export default async (req) => {
 
   const level = (rich
     ? `Use rich, interesting vocabulary for a confident child aged ${age}.`
-    : `Use simple, short words for a child aged ${age}.`) + `\n${AGE_RULES[ageKey]}${type === "fact" && mode === "landmark" ? `\n${FACT_RULES}` : ""}`;
+    : `Use simple, short words for a child aged ${age}.`) + `\n${AGE_RULES[ageKey]}\n${lengthRule(ageKey, rich)}${type === "fact" && mode === "landmark" ? `\n${FACT_RULES}` : ""}`;
 
   // Optional details the parent typed on the start screen, to make it feel made for these children.
   // Anything unsuitable is dropped here as well as on the phone.
@@ -273,17 +273,20 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
     return { payload, heard: [...sentences, ...helpText, ...choiceText], extra: [payload.question, payload.word, payload.quiz ? payload.quiz.question : ""] };
   }
 
+  // Time budget: Netlify lets a function run for 60 seconds and the phone waits 60. A write takes about 12 seconds
+  // and a review about 6, so a rewrite starts only if both it and its review can finish by about 45 seconds.
+  const RETRY_BY = 22000, REVIEW_BY = 38000;
   try {
     const started = Date.now();
     let feedback = "", problems = ["the writer returned nothing"];
     for (let attempt = 1; attempt <= 2; attempt++) {
-      if (attempt === 2 && Date.now() - started > 6000) break; // not enough time left for a rewrite and a second review
+      if (attempt === 2 && Date.now() - started > RETRY_BY) break; // not enough time left for a rewrite and a second review
       const out = await write(feedback);
       if (!out) { problems = ["the writer declined"]; continue; }
       // 1) quick checks on the server: banned words and reading level for the age
       problems = [...blockedWords([...out.heard, ...out.extra].join(" ")), ...readingIssues(out.heard, ageKey, rich)];
       // 2) a separate AI review against the age rulebook (only if the quick checks passed and there's time)
-      if (!problems.length) problems = Date.now() - started < 8000 ? await aiReview([...out.heard, ...out.extra].filter(Boolean).join("\n"), ageKey, type) : ["no time left to review it"];
+      if (!problems.length) problems = Date.now() - started < REVIEW_BY ? await aiReview([...out.heard, ...out.extra].filter(Boolean).join("\n"), ageKey, type) : ["no time left to review it"];
       if (!problems.length) return json(out.payload);
       feedback = `\n\nYour previous attempt was rejected for these reasons. Write it again and fix every one:\n- ${problems.join("\n- ")}`;
     }

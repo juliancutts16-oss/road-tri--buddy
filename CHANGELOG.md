@@ -6,6 +6,16 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.2.7 (fixes)
+- Shorter waits between chapters with Alice. On a phone she takes longer to make her voice than to speak (even a fast computer needs about 1.2 seconds for each second of speech), so any wasted work made later chapters wait a minute or more. Her time now goes on what's read next:
+  - When the children choose, the rewritten next chapter no longer jumps ahead of the chapter she's already making. It's made straight after it, and only read if it's fully ready in time. Before, it could hold up the chapter itself, and was then often thrown away.
+  - Parts already told, the "just like you chose" lines for options nobody picked, and the greeting once the story has started are no longer made.
+  - While the AI is writing the story, she no longer makes the built-in story it's about to replace. She starts on each AI chapter as soon as it arrives.
+  - The everyday lines ("Well done!", "Can you spot these?") are made just after the opening, so they're ready for the first chapter.
+- Alice's finished sentences are now saved on the phone (for 3 days), so if Android restarts the app or her mid-trip, she carries on where she was instead of starting again. They take half the memory they used to. "Remove the download" and "Reset everything" delete them too.
+- With "Help improve AWTY" on, the app now records how long the story waits for Alice (starting up, the opening, a chapter or one sentence, in seconds), how fast the phone makes her voice, whether it can use several processor cores, and how long she takes to start. Never any story text or names. The developer dashboard has a new "Storyteller voice (Alice)" card showing it, so waits on real phones can be seen instead of guessed. Parents see these events in plain words under "What we collect", and the privacy policy lists them.
+- Alice is no longer restarted just because the app was in the background for a while (for example while a parent checked the map). The phone slows her down there, so she now gets a fresh go when the app comes back.
+
 ## 0.2.6 (fixes)
 - Demo driving is now off for new users, so a family's first real trip follows the real drive: the GPS if location is on, otherwise the clock. Before, it was on by default and the car raced along at 10 times speed. Phones that already have the app keep their current setting. Demo driving can still be switched on in Settings for testing at home.
 - The story no longer plays underneath a game. Hoot already paused when a game opened, but a new chapter could still start during the game (on a test trip, a whole chapter, its "Can you spot a tractor?" and its quiz played while the child was doing Car Sums). Now:

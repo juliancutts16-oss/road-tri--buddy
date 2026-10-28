@@ -52,10 +52,12 @@ export default async (req) => {
   reports.sort((a, b) => b.at - a.at);
 
   // ---- work out the numbers
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : null);
   const tripsByDay = {}, features = {}, games = {}, crashes = {}, versions = {}, platforms = {}, ages = {}, modes = {};
   let started = 0, finished = 0, withStart = 0, withFinish = 0, secondTrip = 0, eligibleSecond = 0;
   let active30 = 0, finishes30 = 0, active7 = 0;
   const ratings = [];
+  const voiceEv = [], voiceRtf = [], voiceTrips = []; // the storyteller voice: every wait, each install's latest speed, trips read by Alice
   for (const [, rec] of installs) {
     const ev = rec.events.sort((a, b) => a.at - b.at);
     versions[rec.v || "?"] = (versions[rec.v || "?"] || 0) + 1;
@@ -85,9 +87,30 @@ export default async (req) => {
         c.count++; c.last = Math.max(c.last, e.at); c.versions[rec.v || "?"] = true;
       }
       if (e.t === "rating" && Number.isFinite(e.score)) ratings.push(e.score);
+      if (e.t === "voice") voiceEv.push({ ...e, v: rec.v || "?", platform: rec.platform || "other" });
+      if (e.t === "trip_end" && e.sv) voiceTrips.push(e);
     }
+    const lastV = ev.filter((e) => e.t === "voice" && Number.isFinite(e.rtf)).pop();
+    if (lastV) voiceRtf.push(lastV);
   }
-  const pct = (a, b) => (b ? Math.round((a / b) * 100) : null);
+  // middle value and the value 9 in 10 are under
+  const q = (arr, p) => { const a = arr.filter(Number.isFinite).sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(p * a.length))] : null; };
+  const waitKinds = {};
+  for (const w of ["start", "opening", "chapter", "line"]) {
+    const s = voiceEv.filter((e) => e.w === w).map((e) => e.s);
+    waitKinds[w] = { count: s.length, median: q(s, 0.5), p90: q(s, 0.9), max: s.length ? Math.max(...s) : null };
+  }
+  const voice = {
+    phones: voiceRtf.length,
+    rtfMedian: q(voiceRtf.map((e) => e.rtf), 0.5),
+    multiCorePct: pct(voiceRtf.filter((e) => e.iso).length, voiceRtf.length),
+    loadMedian: q(voiceEv.filter((e) => e.w === "load").map((e) => e.s), 0.5),
+    trips: voiceTrips.length,
+    tripsNoWaitPct: pct(voiceTrips.filter((e) => !e.waits).length, voiceTrips.length),
+    waitKinds,
+    recent: voiceEv.filter((e) => e.w !== "load").sort((a, b) => b.at - a.at).slice(0, 40)
+      .map(({ at, w, s, rtf, q: left, iso, cores, v, platform }) => ({ at, w, s, rtf, left, iso, cores, v, platform })),
+  };
   const days = [];
   for (let i = 29; i >= 0; i--) { const d = new Date(now - i * DAY).toISOString().slice(0, 10); days.push({ day: d, trips: tripsByDay[d] || 0 }); }
 
@@ -104,7 +127,7 @@ export default async (req) => {
       recommendCount: ratings.length,
     },
     tripsByDay: days,
-    features, games, ages, modes, versions, platforms,
+    features, games, ages, modes, versions, platforms, voice,
     crashes: Object.values(crashes).map((c) => ({ ...c, versions: Object.keys(c.versions) })).sort((a, b) => b.count - a.count).slice(0, 50),
     issues: issues.slice(0, 100),
     reports: reports.slice(0, 100),

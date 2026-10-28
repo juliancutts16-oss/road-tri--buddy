@@ -1074,7 +1074,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.6';
+const APP_VERSION='0.2.7';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1204,7 +1204,7 @@ async function prepareSaga(route){
       sg={key,intro:g.intro,ending:g.ending,bible:g.bible,choice:g.choice||null,chapters:{}};route.saga=sg;saveS();saveRoutes();svPrepare(route);if(T&&T.route===route&&T.running)tellIntro()}
     const todo=stopList.map((lm,i)=>({lm,i})).filter(x=>!sg.chapters[x.lm.id]);let done=0,failed=0;
     const work=async({lm,i})=>{const body=chapterBody(route,sg,i);
-      try{sg.chapters[lm.id]={...await api('story',body,60000),helpItem:body.help?helpItem(route,lm):null}}catch(e){failed++}
+      try{sg.chapters[lm.id]={...await api('story',body,60000),helpItem:body.help?helpItem(route,lm):null};svPrepare(route)}catch(e){failed++} // (Alice starts on each chapter as it arrives)
       done++;upd(`Writing the middle of the story… ${done} of ${todo.length}`)};
     const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
     sg.done=!failed;upd(failed?`Trip story ready. ${failed} chapter${failed>1?'s':''} will use the built-in story.`:`Trip story ready: a beginning, ${stopList.length} middle chapter${stopList.length===1?'':'s'} and an end.`)}
@@ -1269,7 +1269,7 @@ function storyChose(nextId,text){if(!T||!nextId)return;T.chose[nextId]=text;
   if(i<0||!API.ai||!allowed('ai')||!s||s.key!==sagaKey(route)||!s.bible)return;
   const t=T,body={...chapterBody(route,s,i),chose:text};
   api('story',body,60000).then(c=>{if(T!==t)return;T.rewrites[nextId]={...c,helpItem:body.help?helpItem(route,stops[i]):null};
-    svSoon([...(c.sentences||[]),c.helpAsk,c.helpThanks,c.choice&&c.choice.question,...(c.choice&&c.choice.options||[]).flatMap(o=>[choiceSay.great(o.text),choiceSay.did(o.text)])])}).catch(()=>{})} // the storyteller voice makes it next
+    svSoon([...(c.sentences||[]),c.helpAsk,c.helpThanks,c.choice&&c.choice.question,...(c.choice&&c.choice.options||[]).flatMap(o=>[choiceSay.great(o.text),choiceSay.did(o.text)])],nextId)}).catch(()=>{})} // the storyteller voice makes it once the chapter she already planned is ready
 // The "help me spot…" moment in a chapter: the AI's own words if it wrote them, otherwise the built-in ones.
 function helpLines(route,lm,c){
   if(c&&c.helpAsk&&c.helpThanks&&c.helpItem)return{item:c.helpItem,ask:c.helpAsk,thanks:c.helpThanks,at:c.helpAt||Math.ceil((c.sentences||[]).length/2)};
@@ -1311,7 +1311,7 @@ async function loadRoute(){
   else origin=S.fromPlace&&S.fromPlace.placeId&&S.fromPlace.address===S.from?{placeId:S.fromPlace.placeId}:{address:S.from.trim()};
   const toId=S.toPlace&&S.toPlace.placeId&&S.toPlace.address===S.to?S.toPlace.placeId:undefined;
   const r=await api('route',{origin,destination:S.to.trim(),destinationPlaceId:toId});
-  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();svPrepare(S.route);prepareStories(S.route);return S.route;
+  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();prepareStories(S.route);svPrepare(S.route);return S.route; // (the story starts being written first, so Alice doesn't start on the built-in one)
 }
 // Plans the route quietly as soon as the destination and start are both chosen on the Search screen (before Go),
 // so the story is being written and Alice is getting the greeting ready while everyone buckles in.
@@ -1634,6 +1634,19 @@ function bestVoice(allowOnline=true){const vs='speechSynthesis' in window?speech
 // A parent downloads it once (about 116 MB, best on Wi-Fi, plus the 8 MB sound pack); after that it works with no signal. A phone makes this
 // speech a little slower than it's spoken, so the trip's story lines are turned into audio ahead of time, in order,
 // as soon as the story is ready. Anything that isn't ready in time is read by the phone's own voice instead.
+// Her finished sentences are also saved on the phone (as 16-bit sound, half the size), so if the phone restarts the app
+// or her mid-trip, nothing she's made is lost. They're kept for 3 days (the newest 400).
+const toI16=f=>{if(f instanceof Int16Array)return f;const p=new Int16Array(f.length);for(let i=0;i<f.length;i++){const x=f[i];p[i]=x<-1?-32768:x>1?32767:x*32767}return p};
+const ClipDB={db:null,
+  open(){return this.db||(this.db=new Promise((res,rej)=>{const r=indexedDB.open('awty-clips',1);r.onupgradeneeded=()=>r.result.createObjectStore('c');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))},
+  // puts the saved sentences back into the clips map (dropping old ones)
+  load(clips){return this.open().then(db=>new Promise(res=>{const all=[],st=db.transaction('c','readwrite').objectStore('c'),old=Date.now()-3*864e5;
+    st.openCursor().onsuccess=e=>{const cur=e.target.result;if(cur){const v=cur.value;if(v&&v.at>old&&v.pcm instanceof Int16Array)all.push([cur.key,v]);else cur.delete();cur.continue();return}
+      all.sort((a,b)=>a[1].at-b[1].at);all.slice(0,-400).forEach(([k])=>st.delete(k));
+      all.slice(-400).forEach(([k,v])=>{if(!clips.has(k))clips.set(k,{pcm:v.pcm,rate:v.rate})});res()};
+    st.transaction.onerror=()=>res()})).catch(()=>{})},
+  put(key,c){this.open().then(db=>db.transaction('c','readwrite').objectStore('c').put({pcm:c.pcm,rate:c.rate,at:Date.now()},key)).catch(()=>{})},
+  clear(){const d=this.db;this.db=null;return Promise.resolve(d).then(x=>x&&x.close()).catch(()=>{}).then(()=>{try{indexedDB.deleteDatabase('awty-clips')}catch(e){}})}};
 const SV={VOICES:[['bf_alice','Alice']],
   w:null,state:'off',pct:0,err:'',clips:new Map(),wait:new Map(),queue:[],working:false,seq:0,
   // how fast this phone makes her voice (seconds of work per second of speech) and how fast she speaks (letters a second),
@@ -1646,38 +1659,41 @@ const SV={VOICES:[['bf_alice','Alice']],
   key(t,v){return`${v||this.voice()}|${this.speed()}|${t}`},
   clip(t){return this.clips.get(this.key(t))},
   // starts the voice: downloads it the first time, or loads it from the phone after that
-  load(){if(this.w)return;this.state='loading';this.err='';this.pct=0;svUi();Pack.load(); // the recorded sounds come with the voice
+  load(){if(this.w)return;this.state='loading';this.err='';this.pct=0;svUi();Pack.load();this.t0=performance.now(); // the recorded sounds come with the voice
+    if(this.installed()&&!this.restored)this.restored=ClipDB.load(this.clips); // (what she made earlier, back from the phone's storage)
     try{this.w=new Worker('voice-worker.js',{type:'module'})}catch(e){this.fail('This phone can’t run the storyteller voice.');return}
     this.w.onmessage=e=>{const m=e.data;
       if(m.type==='progress'){if(this.state==='loading'){this.pct=Math.round(m.pct);svUi()}} // (a late update must not hide "Ready")
       else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // a fresh download makes Alice the storyteller
-        this.state='ready';store.set('sv',true);svUi();svPrepare(T?T.route:routeFresh()?S.route:null)}
+        const fresh=!this.installed();Promise.resolve(this.restored).then(()=>{if(!this.w)return;this.state='ready';store.set('sv',true);svUi();if(!fresh)svLog('load',performance.now()-this.t0);svPrepare(T?T.route:routeFresh()?S.route:null)})}
       else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
       else if(m.type==='audio'||m.type==='fail'){if(!this.wait.has(m.id))return;clearTimeout(this.dog); // (an answer from before a restart is ignored)
         const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
-        if(job){const c=m.type==='audio'?{pcm:m.pcm,rate:m.rate}:null;if(c){const d=c.pcm.length/c.rate;
+        if(job){const c=m.type==='audio'?{pcm:toI16(m.pcm),rate:m.rate}:null;if(c){const d=c.pcm.length/c.rate;
             if(d>.5){this.rtf=Math.round((this.rtf*.7+(performance.now()-job.t0)/1000/d*.3)*100)/100;this.cps=Math.round(this.cps*.7+job.t.length/d*.3);store.set('svRtf',this.rtf);store.set('svCps',this.cps)}
-            this.clips.set(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
+            this.clips.set(job.key,c);ClipDB.put(job.key,c);if(this.clips.size>400)this.clips.delete(this.clips.keys().next().value)}job.res.forEach(r=>r(c))}
         this.pump()}};
     this.w.onerror=()=>this.fail('Couldn’t start the storyteller voice.');
     this.w.postMessage({type:'load',voices:this.VOICES.map(v=>v[0])})},
   fail(msg){this.state='error';this.err=msg;try{this.w&&this.w.terminate()}catch(e){}this.w=null;[...this.queue,...this.wait.values()].forEach(j=>j.res.forEach(r=>r(null)));this.queue=[];this.wait.clear();this.working=false;svUi()},
   // asks for a sentence's audio; first=true jumps the queue (it's needed now). Resolves with the clip, or null.
-  render(t,first){const key=this.key(t),have=this.clips.get(key);if(have)return Promise.resolve(have);
+  // after=a chapter's id: an optional line (a chapter rewritten after a choice), made only once that chapter's own lines are done
+  render(t,first,after){const key=this.key(t),have=this.clips.get(key);if(have)return Promise.resolve(have);
     return new Promise(res=>{let job=this.queue.find(j=>j.key===key)||[...this.wait.values()].find(j=>j.key===key);
-      if(job){job.res.push(res);if(first){job.need=true;if(this.queue.includes(job)){this.queue.splice(this.queue.indexOf(job),1);this.queue.unshift(job)}}}
-      else{job={key,t,v:this.voice(),sp:this.speed(),res:[res],need:!!first};first?this.queue.unshift(job):this.queue.push(job)}this.pump()})},
+      if(job){job.res.push(res);if(first){job.need=true;job.after=null;if(this.queue.includes(job)){this.queue.splice(this.queue.indexOf(job),1);this.queue.unshift(job)}}}
+      else{job={key,t,v:this.voice(),sp:this.speed(),res:[res],need:!!first,after:first?null:after||null};first?this.queue.unshift(job):this.queue.push(job)}this.pump()})},
   pump(){if(this.working||this.state!=='ready'||!this.queue.length)return;const job=this.queue.shift(),id=++this.seq;this.working=true;this.wait.set(id,job);job.t0=performance.now();
-    // watchdog: a line that takes far longer than it should (at least 30 s) restarts the voice (checked while the app is on screen)
-    const limit=Math.max(30000,job.t.length/this.cps*Math.max(1,this.rtf)*6000);clearTimeout(this.dog);
-    const dog=()=>{if(!this.wait.has(id))return;if(document.hidden){this.dog=setTimeout(dog,5000);return}this.restart()};this.dog=setTimeout(dog,limit);
+    // watchdog: a line that takes far longer than it should (at least 30 s) restarts the voice (checked while the app is on screen).
+    // Time with the app in the background doesn't count: the phone slows or pauses her then, so coming back gives her a fresh go.
+    const limit=Math.max(30000,job.t.length/this.cps*Math.max(1,this.rtf)*6000);clearTimeout(this.dog);let away=false;
+    const dog=()=>{if(!this.wait.has(id))return;if(document.hidden){away=true;this.dog=setTimeout(dog,5000);return}if(away){away=false;this.dog=setTimeout(dog,limit);return}this.restart()};this.dog=setTimeout(dog,limit);
     this.w.postMessage({type:'say',id,text:job.t,voice:job.v,speed:job.sp})},
   // The voice stopped answering (for example the phone paused it in the background): start it again and carry on
   // with the same lines in the same order, so the story never stays silent.
   restart(){const jobs=[...this.wait.values(),...this.queue];clearTimeout(this.dog);try{this.w&&this.w.terminate()}catch(e){}
     this.w=null;this.wait.clear();this.queue=jobs;this.working=false;this.state='off';Tel.crash('Storyteller voice stopped answering and was restarted','SV');this.load()},
   // removes the download from the phone (the phone's own voice is used again)
-  async remove(){try{this.w&&this.w.terminate()}catch(e){}this.w=null;this.state='off';Pack.remove();this.clips.clear();this.queue=[];this.working=false;store.set('sv',false);
+  async remove(){try{this.w&&this.w.terminate()}catch(e){}this.w=null;this.state='off';Pack.remove();this.clips.clear();this.queue=[];this.working=false;store.set('sv',false);this.restored=null;await ClipDB.clear();
     try{for(const k of ['awty-voice','kokoro-voices','transformers-cache'])await caches.delete(k)}catch(e){}svUi()}
 };
 // The words Hoot actually says for a story line: names filled in on the phone, sound-effect tags taken out.
@@ -1699,16 +1715,31 @@ const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can y
 // chapter's opening line, its sentences, and what's said after its choice ("Great choice! …", "So, just like you chose…").
 // Lines queued for an earlier trip (or another voice) that haven't been made yet are dropped first.
 // (It also runs on the Search screen once the route is planned, so the greeting and opening are ready before Go.)
-function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[];if(R)try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}
-  if(R)try{const sg=S.landmark.type==='story'?sagaFor(R):null,stops=sg?storyStops(R):R.landmarks;
-    storyParts(R).forEach(p=>{const lm=stops.find(l=>l.id===p.id),c=!sg?null:p.id==='intro'?sg.choice:sg.chapters[p.id]&&sg.chapters[p.id].choice;
-      if(lm)lines.push(chapterLead(lm));lines.push(...p.lines);if(c&&c.options){c.options.forEach(o=>lines.push(choiceSay.great(o.text),choiceSay.did(o.text)));lines.push(choiceSay.next(stops[p.id==='intro'?0:stops.findIndex(l=>l.id===p.id)+1]))}})}catch(e){}
+// So that her time goes on what's read next, during a trip it leaves out:
+//  - the parts already told (everything before the latest chapter),
+//  - the built-in parts while the AI is still writing the story (each AI chapter is added as it arrives),
+//  - the "just like you chose" lines for the options the children didn't pick.
+// Her list is kept in reading order; a chapter rewritten after a choice comes straight after that chapter's own lines.
+function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[],ends={},trip=!!R&&!!T&&T.route===R,told=trip?T.announced:new Set();
+  if(R&&!(trip&&T.introTold))try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}
+  if(R)try{const sg=S.landmark.type==='story'?sagaFor(R):null,stops=sg?storyStops(R):R.landmarks,parts=storyParts(R),writing=!!sg&&prepareSaga.busy===R,
+      hp=S.landmark.helpSpot!==false,chs=S.landmark.choices!==false,cur=parts.reduce((m,p,i)=>told.has(p.id)?i:m,-1);let carry=[];
+    parts.forEach((p,i)=>{const lm=stops.find(l=>l.id===p.id),rw=trip&&T.rwUsed[p.id]&&T.rewrites[p.id],
+        ch=rw?{...rw,choice:rw.choice||(sg.chapters[p.id]||{}).choice}:null,h=ch&&hp?helpLines(R,lm,ch):null,
+        c=ch?ch.choice:!sg?null:p.id==='intro'?sg.choice:sg.chapters[p.id]&&sg.chapters[p.id].choice,chose=trip&&T.chose[p.id],
+        own=[...(lm?[chapterLead(lm)]:[]),...(rw?[]:chose?[choiceSay.did(chose)]:carry),...(ch?[...(ch.sentences||[]),...(h?[h.ask,h.thanks]:[]),...(chs&&c?[c.question]:[])]:p.lines)];
+      carry=[];if(c&&c.options){own.push(...c.options.map(o=>choiceSay.great(o.text)),choiceSay.next(stops[p.id==='intro'?0:stops.findIndex(l=>l.id===p.id)+1]));carry=c.options.map(o=>choiceSay.did(o.text))}
+      if(i<cur||writing&&!p.ai)return;lines.push(...own);ends[p.id]=lines.length-1;
+      if(p.id==='intro')lines.push(...SV_STOCK.slice(1))})}catch(e){} // (the everyday lines come next, so they're ready for the first chapter)
   lines.push(...SV_STOCK);
-  const texts=lines.map(l=>typeof l==='string'?speakable(l).t:'').filter(Boolean),want=new Set(texts.map(t=>SV.key(t)));
-  SV.queue=SV.queue.filter(j=>{if(j.need||want.has(j.key))return true;j.res.forEach(r=>r(null));return false});
-  texts.forEach(t=>{SV.render(t)})}
-// Puts these lines at the front of the storyteller voice's queue, in order (e.g. a chapter rewritten after a choice).
-function svSoon(lines){if(!SV.on()||SV.state!=='ready')return;lines.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean).reverse().forEach(t=>SV.render(t,true))}
+  const texts=[],order=new Map();lines.forEach((l,i)=>{const t=typeof l==='string'?speakable(l).t:'';if(!t)return;texts.push(t);const k=SV.key(t);if(!order.has(k))order.set(k,i)});
+  SV.queue=SV.queue.filter(j=>{if(j.need||order.has(j.key)||j.after&&!told.has(j.after))return true;j.res.forEach(r=>r(null));return false});
+  texts.forEach(t=>{SV.render(t)});
+  const rank=j=>j.need&&!j.after?-1:Math.min(order.has(j.key)?order.get(j.key):1e9,j.after?(j.after in ends?ends[j.after]+.5:1e9-1):1e9);
+  SV.queue.sort((a,b)=>rank(a)-rank(b))}
+// A chapter rewritten after a choice: her optional lines, made once that chapter's own (already planned) lines are ready,
+// so the rewrite never holds up the chapter itself. It's only read if all of it is ready in time.
+function svSoon(lines,after){if(!SV.on()||SV.state!=='ready')return;lines.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean).forEach(t=>SV.render(t,false,after));svPrepare(T&&T.route)}
 // Seconds still to wait before these lines can start, so that each one is ready before the ones ahead of it have
 // finished playing (0 = start now). Alice makes them in order; times not yet known are estimated, with a safety margin.
 function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let play=0,make=0,wait=0;
@@ -1719,6 +1750,12 @@ function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let pla
 // The line she's making right now counts in part (by how long it usually takes), so the globe keeps moving between lines.
 // True while the storyteller voice is starting, still has story lines to make, or a chapter is waiting for her.
 function svBehind(){return SV.on()&&(SV.state==='loading'||SV.queue.length>0||Voice.gating)}
+// Usage stats (only with "Help improve AWTY" on): how long the story waited for Alice and what for ("load" = her start-up
+// from the phone, "start" = waiting for that, "opening"/"chapter" = a story part, "line" = one sentence), with how fast
+// this phone makes her voice, whether it can use several cores, and how many sentences she still had to make. No text.
+function svLog(w,ms){if(Voice.preview||w!=='load'&&ms<1000)return;const s=Math.round(ms/100)/10;
+  if(T&&w!=='load'){T.svWaits=(T.svWaits||0)+1;T.svWaitS=Math.round(((T.svWaitS||0)+s)*10)/10}
+  Tel.log('voice',{w,s,rtf:SV.rtf,q:SV.queue.length,iso:self.crossOriginIsolated?1:0,cores:navigator.hardwareConcurrency||0})}
 function svShare(lines){const cur=SV.working?[...SV.wait.values()][0]:null;let all=0,ok=0;
   for(const t of lines){const c=SV.clip(t),d=c?c.pcm.length/c.rate:t.length/SV.cps+.3;all+=d;if(c)ok+=d;
     else if(cur&&cur.key===SV.key(t))ok+=d*Math.min(.9,(performance.now()-cur.t0)/1000/(d*Math.max(.2,SV.rtf)))}
@@ -1773,7 +1810,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
   // the storyteller voice is still starting up (e.g. just after the app opened): wait for her, then carry on with this item
   svLoading(item,tok){if(!SV.on()||SV.state!=='loading'||this.svGaveUp)return false;this.gating=true;Loader.show(1500);const t0=Date.now();
     const iv=setInterval(()=>{if(tok!==this.token){clearInterval(iv);return}if(SV.state==='loading'&&Date.now()-t0<60000)return;if(SV.state==='loading')this.svGaveUp=true; // (after a minute, carry on without her)
-      clearInterval(iv);this.gating=false;Loader.done();this.queue.unshift(item);this.next()},300);return true},
+      clearInterval(iv);this.gating=false;Loader.done();svLog('start',Date.now()-t0);this.queue.unshift(item);this.next()},300);return true},
   say(items,priority,gate){if(!this.ok())return false;if(priority)this.stop();
     if(gate&&SV.on()&&SV.state!=='error')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
     this.queue.push(...items);if(!this.busy)this.next();return true},
@@ -1783,8 +1820,8 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
       if('calm' in it){this.calm=it.calm;this.next();return}
       if(it.gate){if(this.svLoading(it,tok))return;const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
         if(it.covered){this.next();return} // already allowed for by the chapter before it
-        const bad=new Set(),asked=new Set(need);let went=false,tick=0;
-        const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
+        const bad=new Set(),asked=new Set(need),t0=Date.now();let went=false,tick=0;
+        const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog(T&&T.announced.size?'chapter':'opening',Date.now()-t0);this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
         // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
         const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
           // its lines jump the queue too (just behind this chapter's own), or Alice would make the rest of the story first
@@ -1805,7 +1842,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     // up, everything waits for her. Only if she can't make it (or it takes over 20 seconds) does the phone's voice read it.
     if(it&&this.svLoading(raw,tok))return;
     if(it&&SV.on()&&SV.state==='ready'&&!SV.clip(it)&&!this.tried.has(it)){this.tried.add(it);if(this.tried.size>60)this.tried=new Set([it]);
-      let went=false;const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000),
+      let went=false;const t0=Date.now(),go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog('line',Date.now()-t0);this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000),
         tick=setInterval(()=>{if(tok!==this.token)return clearInterval(tick);Loader.set(svShare([it])*100)},400); // (the globe moves while she makes it)
       this.gating=true;Loader.show(2500);SV.render(it,true).then(go);return}
     if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
@@ -1821,7 +1858,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
   playClip(c,it,tok,known){Snd.init();const ac=Snd.ac;if(!ac){this.speakPhone(it,it,tok,known);return}if(ac.state==='suspended')ac.resume();
     const gap=this.prosody(it).gap+(this.queue[0]&&this.queue[0].ask?300:0),wait=known.length?650+(known.length-1)*550:0;
     let done=false;const fin=()=>{if(done||tok!==this.token)return;done=true;this.src=null;StoryLog.end(it);setTimeout(()=>{if(tok===this.token)this.next()},gap)};
-    setTimeout(()=>{if(tok!==this.token)return;const b=ac.createBuffer(1,c.pcm.length,c.rate);b.copyToChannel(c.pcm,0);
+    setTimeout(()=>{if(tok!==this.token)return;const b=ac.createBuffer(1,c.pcm.length,c.rate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=c.pcm[i]/32768;
       const s=ac.createBufferSource(),g=ac.createGain();g.gain.value=S.sound.volume;s.buffer=b;s.connect(g);g.connect(ac.destination);
       s.onended=fin;this.src=s;s.start();StoryLog.start(it,1,b.duration*1000);setTimeout(fin,b.duration*1000+1500);
       // each mid-sentence sound lands as its word finishes (the word timings come from the clip's real length)
@@ -2405,7 +2442,7 @@ function newTrip(){
   const route=currentRoute();Voice.stop();Spot.end(true);Bonus.hide();Geo.stop();Geo.idx=0;
   T={route,total:route.miles,mins:route.mins,miles:0,milesR:0,running:false,score:0,coins:0,spotted:{},spotBucket:0,mileBucket:0,announced:new Set(),
     // mini-game prompts spread across the middle of the trip, one in each slice, at a random point within it
-    bonusAts:Array.from({length:S.bonus.count||0},(_,i)=>route.miles*(.15+.7*(i+.2+.6*Math.random())/S.bonus.count)),bonusIdx:0,gameBag:[],chose:{},rewrites:{},arrived:false,recorded:false,kidZone:null,seed:Math.floor(Math.random()*1e6)};
+    bonusAts:Array.from({length:S.bonus.count||0},(_,i)=>route.miles*(.15+.7*(i+.2+.6*Math.random())/S.bonus.count)),bonusIdx:0,gameBag:[],chose:{},rewrites:{},rwUsed:{},arrived:false,recorded:false,kidZone:null,seed:Math.floor(Math.random()*1e6)};
   scene.traffic=[];scene.zone=null;scene.prev=null;StoryLog.chapter('Today’s trip story','Read along with Hoot');
   $('#arrive').hidden=true;setPlay(false);hud(true);
 }
@@ -2511,7 +2548,7 @@ function buildSpeech(lm){
   // earlier is read, starting "So, just like you chose…", so there's never a long wait)
   const svReady=t=>!(SV.on()&&SV.state==='ready')||(t.sentences||[]).every(x=>SV.clip(speakable(x).t));
   const sg=st.type==='story'&&T?sagaFor(T.route):null,rw=sg&&T.rewrites[lm.id]&&aiOk(T.rewrites[lm.id])&&svReady(T.rewrites[lm.id])?T.rewrites[lm.id]:null;
-  const ch=sg&&(rw?{...rw,choice:rw.choice||sg.chapters[lm.id].choice}:sg.chapters[lm.id]);let storyChoice=null,nextId=null;
+  const ch=sg&&(rw?{...rw,choice:rw.choice||sg.chapters[lm.id].choice}:sg.chapters[lm.id]);let storyChoice=null,nextId=null;if(rw)T.rwUsed[lm.id]=true;
   const g=!ch&&lm.gen&&lm.gen.key===genKey()&&aiOk(lm.gen,lm.gen.blocked)?lm.gen:null,src=ch||g,word=src&&src.word||L.word;
   const who=kidNames();
   out.push(chapterLead(lm));
@@ -2544,6 +2581,7 @@ function announce(lm){
   StoryLog.chapter(sst?`Chapter ${ci+2} of ${sst.length+2}`:'Fun facts',lm.road?'On the open road':L.name.replace(/^the /,'The '));
   const parts=[...buildSpeech(lm),{fn:()=>{clearTimeout(badgeTimer);badgeTimer=setTimeout(()=>b.hidden=true,2500)}}];
   const spoke=Voice.say(S.landmark.type==='story'?withStoryMusic(parts):parts,false,true);
+  svPrepare(T.route); // Alice drops what's no longer needed (earlier parts, a rewrite that wasn't used) and carries on with what's next
   b.classList.toggle('quiet',!spoke);clearTimeout(badgeTimer);if(!spoke)badgeTimer=setTimeout(()=>b.hidden=true,8000);
 }
 
@@ -2713,7 +2751,7 @@ function arrive(){
   const n=Object.values(T.spotted).reduce((a,b)=>a+b,0);
   $('#arrive').innerHTML=`<p class="big">We made it to ${esc(destName(T.route))}!</p><div class="arrive-stats"><span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span></div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>${askRating()?`<div id="rate-box"><button class="linkish" data-act="rate">For grown-ups: one quick question</button></div>`:''}`;
   $('#arrive').hidden=false;
-  if(!T.recorded){T.recorded=true;Tel.log('trip_end',{mode:tripMode(),miles:Math.round(T.route.miles),mins:Math.round((Date.now()-(T.startedAt||Date.now()))/60000)});Tel.flush();const before=unlockedSet();stats.trips.push({date:Date.now(),route:`${T.route.from||'Home'} → ${destName(T.route)}`,miles:Math.round(T.route.miles),score:T.score,coins:T.coins,spotted:T.spotted});saveStats();setTimeout(()=>checkUnlocks(before),1800)}
+  if(!T.recorded){T.recorded=true;Tel.log('trip_end',{mode:tripMode(),miles:Math.round(T.route.miles),mins:Math.round((Date.now()-(T.startedAt||Date.now()))/60000),...(SV.on()?{sv:1,waits:T.svWaits||0,waitS:T.svWaitS||0}:{})});Tel.flush();const before=unlockedSet();stats.trips.push({date:Date.now(),route:`${T.route.from||'Home'} → ${destName(T.route)}`,miles:Math.round(T.route.miles),score:T.score,coins:T.coins,spotted:T.spotted});saveStats();setTimeout(()=>checkUnlocks(before),1800)}
   hud(true);
 }
 // "How likely are you to recommend AWTY?" Asked once, after the second real trip, only if usage stats are on.
@@ -2957,7 +2995,8 @@ const MODE_WORDS={demo:'demo driving',gps:'live GPS',timer:'journey-time clock',
 function telWords(e){
   if(e.t==='open')return'Opened AWTY';
   if(e.t==='trip_start')return`Started a trip (${MODE_WORDS[e.mode]||e.mode}, about ${e.miles} miles, age group ${e.age})`;
-  if(e.t==='trip_end')return`Finished a trip (about ${e.miles} miles, ${e.mins} min)`;
+  if(e.t==='trip_end')return`Finished a trip (about ${e.miles} miles, ${e.mins} min)${e.sv?`, the story waited for Alice ${e.waits} time${e.waits===1?'':'s'}`:''}`;
+  if(e.t==='voice')return e.w==='load'?`Alice’s voice took ${e.s} s to start up`:`The story waited ${e.s} s for Alice (${{start:'starting up',opening:'the opening',chapter:'a chapter',line:'one sentence'}[e.w]||e.w})`;
   if(e.t==='feature')return e.f.startsWith('game:')?`Played a mini-game: ${(GAMES[e.f.slice(5)]||{name:e.f.slice(5)}).name}`:FEATURE_WORDS[e.f]||e.f;
   if(e.t==='crash')return`Error report: ${e.msg}`;
   if(e.t==='rating')return`Recommend score: ${e.score} out of 10`;
@@ -3398,7 +3437,7 @@ VS.addEventListener('click',e=>{
   if(a==='reset-cancel'){resetAsk='';renderSettings();return}
   if(a==='reset-settings'){const pc=S.passcode,cs=S.consent,pin=S.pin;S=deepMerge(DEFAULTS,{});S.passcode=pc;S.consent=cs;S.pin=pin;resetAsk='';saveS();applyStyle();newTrip();applyLive();showTab('start');return}
   if(a==='reset-all'){const pc=S.passcode;try{Object.keys(localStorage).filter(k=>k.startsWith('rtb.')).forEach(k=>localStorage.removeItem(k))}catch(e){}
-    store.set('settings',{passcode:pc});location.reload();return}
+    store.set('settings',{passcode:pc});ClipDB.clear().then(()=>location.reload());return} // (Alice's saved sentences go too: they can hold the children's names)
   if(a==='connect'){fetchRoute();return}
   if(a==='stories'){const R=S.route;if(R)prepareStories(R);return}
   if(a==='export')exportData();

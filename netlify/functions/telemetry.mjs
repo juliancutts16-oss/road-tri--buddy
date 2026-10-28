@@ -10,7 +10,8 @@ import { getStore } from "@netlify/blobs";
 import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
 
 const ID_OK = /^[a-f0-9-]{16,40}$/i;
-const TYPES = new Set(["open", "trip_start", "trip_end", "feature", "crash", "rating"]);
+const TYPES = new Set(["open", "trip_start", "trip_end", "feature", "crash", "rating", "voice"]);
+const VOICE_WAITS = new Set(["load", "start", "opening", "chapter", "line"]);
 const MODES = new Set(["demo", "gps", "timer", "offline"]);
 const AGES = new Set(["4-5", "6-7", "8+"]);
 const PLATFORMS = new Set(["android", "iphone", "ipad", "desktop", "other"]);
@@ -38,6 +39,12 @@ function cleanEvent(e, now) {
   if (e.f) out.f = clip(e.f, 40).replace(/[^a-z0-9_:-]/gi, "");
   if (e.t === "crash") { out.msg = scrub(e.msg, 160); out.where = clip(e.where, 60).replace(/[^\w.:/-]/g, ""); }
   if (e.t === "rating") out.score = num(e.score, 10);
+  // the storyteller voice: how long the story waited for her, how fast this phone makes her voice, its cores (numbers only)
+  if (e.t === "voice") {
+    if (!VOICE_WAITS.has(e.w)) return null;
+    Object.assign(out, { w: e.w, s: num(e.s, 600), rtf: num(e.rtf, 50), q: num(e.q, 1000), iso: e.iso ? 1 : 0, cores: num(e.cores, 128) });
+  }
+  if (e.t === "trip_end" && e.sv) Object.assign(out, { sv: 1, waits: num(e.waits, 500), waitS: num(e.waitS, 20000) });
   return out;
 }
 

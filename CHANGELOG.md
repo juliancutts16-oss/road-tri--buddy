@@ -6,6 +6,25 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.3.1
+- Welcome screen: "nothing sold" now reads "we never sell your data", so it's clear it's about data, not about selling things.
+- Welcome screen: the "Help improve AWTY" text now reads properly (it showed "Data &amp; services" by mistake), and the line under the choices is clearer.
+- Start screen: removed the "Use maps" and "No signal: set the time" buttons from Trip details. With no signal, the app now switches to the drive time by itself (see below).
+- Destination search: fixed places showing as about 3,500 miles away. When the phone hadn't shared where it was, the distance was measured from a point in the sea off West Africa. Now no distance is shown unless the phone's position is known.
+- Destination search: when "Use this phone's location" is on, searching now asks the phone where it is (the first time, Android shows its permission pop-up), so places show their real distance and nearby ones come first.
+- Start screen, like Citymapper: once a destination is typed, a "Starting point" bar appears above it at the top, with the 📍 button for "start from where I am". If location is off or refused, it says "Type starting address". Pressing "Let's go!" without a starting point makes the bar shake. Saved places show underneath as quick picks. This replaces the old "From" pop-up and the "Trip details" box at the bottom (Trip details now only appears for no-signal trips).
+- Trip map: a small "N" compass arrow in the top corner shows that north is up (only on real Google routes, which are drawn the right way round; no-signal and demo trips don't get one).
+- No more made-up routes: if "Live routes from Google Maps" is switched off (or Google isn't answering), the app used to invent a pretend distance (18–68 miles) and show it as if it were real. Now the start screen says so (with a "Turn them on" link) and asks how long the drive is, and the car moves by the clock. Demo driving, for testing at home, still makes its pretend route.
+- Settings → Music: clearer wording for the music download ("Better music (optional download)"), explaining what you get with and without it.
+- Settings → Safety: removed the "End trip & go to main menu" button and its "Get unstuck" heading (the Search button already does this). The reset buttons now sit under a "Reset" heading.
+- Free: the trip screen now always locks for the kids. The "Lock the trip screen for the kids" switch is gone from Settings → Safety, and the Parent PIN text explains the lock instead.
+- Settings: the "Report an issue" form is no longer repeated inside Data & services. The "Report a problem" button now opens its own page with just the form.
+- Settings → Screen: the three look sliders now say what they do in words (Smaller / Normal / Bigger, Very few / Fewer / All, Softer / Normal / Brighter) instead of percentages, which all read "100%" at different places on each slider. Their names are plainer too ("Size of the sun, clouds and trees", "How many clouds and trees", "Colour brightness").
+- Free, Settings → Places: removed the "Demo driving" switch and the "Connected (Maps) / Offline (no signal)" choice. With no signal the trip already moves by the drive time by itself, and a saved route ("Use this route") still works with no signal. Demo driving is hidden, with no "Demo driving is on" box on the start screen either; for testing, hold the Settings button for 15 seconds to open Places with the switch showing.
+- Free: removed the made-up example saved route ("Grandma's (example)", Home → Oakville, 30 miles), including from phones that already had it.
+- Start screen: tapping the destination or starting point bar now shows a blue ring round it and a blue blinking cursor, so it's clear where you're typing.
+- Free: removed the "Who's coming?" box from the start screen. There's no age choice any more: Free is always set for ages 4–5 (the trip screen shows the drive in cartoons).
+
 ## 0.3.0 — AWTY Free
 - The test version of the app (the `test` branch on Netlify) now keeps its usage stats, issue reports and story reports separate from the live app, so trips taken while testing don't appear on the live developer dashboard. The test site's own dashboard shows only test data. The daily clean-up deletes old test data on the same schedule as live data.
 - **AWTY Free.** The live app (the `main` branch) is now the free version. The full version with everything is kept on the `test` branch for future work. The extras are switched off with one setting (`EDITION='free'` in `public/index.html` and `EDITION = "free"` in `netlify/lib/common.mjs`), not deleted, so they can come back later as paid extras.

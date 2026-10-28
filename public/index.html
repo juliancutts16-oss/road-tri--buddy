@@ -602,8 +602,9 @@ body.kid-locked #demo{display:none}
 .start-rows .fold > summary{padding:0 14px;min-height:48px;gap:8px}
 .start-rows .fold-h{font-size:calc(.98rem*var(--ds));line-height:1.15}
 .start-rows .fold .sec-sub{font-size:.74rem;line-height:1.3}
-.search input::placeholder{color:var(--navy);opacity:.72;font-size:min(.94rem,3.7vw)}
-@media (max-width:420px){.hero-bar{gap:6px}.hero-bar .logo{width:40px;height:44px}.search{gap:6px;padding-left:12px}.search .icon-btn{width:38px;height:38px}}
+.search input::placeholder{color:var(--muted);opacity:.8;font-size:min(.94rem,3.7vw)}
+.search .bar-lbl{font:700 .85rem var(--body);color:var(--blue);white-space:nowrap;flex:none} /* Citymapper style: a bold label, then a light hint where you type */
+@media (max-width:420px){.hero-bar{gap:6px}.hero-bar .logo{width:40px;height:44px}.search{gap:6px;padding-left:12px}.search .icon-btn{width:38px;height:38px}.search .bar-lbl{font-size:.78rem}}
 .hero .mtn{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* the whole mountain always fits; the hills and sky carry on past the edges */
 .hero-bar{position:absolute;top:calc(6vh + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:10px;z-index:3}
 .hero-bar .logo{width:50px;height:55px}
@@ -997,7 +998,8 @@ let S=deepMerge(DEFAULTS,store.get('settings',{}));
 function freeForce(){if(!FREE)return;if(S.age!=='4-5')applyAge('4-5'); // Free is always ages 4–5 (the drive in cartoons); no age choice
   Object.assign(S.landmark,{enabled:false,listen:false});S.spot.enabled=false;S.bonus.count=0;
   Object.assign(S.child,{color:false,style:false,spotNow:false,lock:true}); // Free always locks the trip screen
-  S.tripMode='connected'; // no Connected/Offline switch: without Google (no signal) the trip runs on the drive time by itselfS.car={...DEFAULTS.car};S.houseStart={...DEFAULTS.houseStart};S.houseEnd={...DEFAULTS.houseEnd};
+  S.tripMode='connected'; // no Connected/Offline switch: without Google (no signal) the trip runs on the drive time by itself
+  S.car={...DEFAULTS.car};S.houseStart={...DEFAULTS.houseStart};S.houseEnd={...DEFAULTS.houseEnd};
   Object.assign(S.sound,{voice:'phone',mileSound:'off',arrival:'off',chime:false,tick:false,storyFx:false});if(S.sound.music)S.sound.on=true;
   if(S.consent){S.consent.ai=false;S.consent.aiAnswers=false}if(S.route&&S.route.landmarks)S.route.landmarks=[]}
 freeForce();
@@ -1094,7 +1096,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.3.1';
+const APP_VERSION='0.3.2';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -3158,7 +3160,7 @@ function likesRaw(){return String(S.profile.likes||'').split(',').map(s=>s.trim(
 function likesList(){return likesRaw().filter(s=>!unsafeText(s))} // only the suitable ones go into stories
 function renderStart(){
   const P=S.profile,teen=S.age==='8+',likes=likesList().map(s=>s.toLowerCase());
-  const fresh=routeFresh(),off=noMaps()&&S.tripMode==='connected',conn=S.tripMode==='connected'&&!off,two=conn&&!!(S.to.trim()||S.from.trim());
+  const fresh=routeFresh(),off=noMaps()&&S.tripMode==='connected',conn=S.tripMode==='connected'&&!off,two=conn&&!!S.to.trim(); // (a remembered start stays saved, but its bar waits for a destination)
   if(off)startOpen.add('trip'); // no Google routes: the drive time is the one thing to set, so show it
   // the top of the screen is just the logo and the search bar over the mountain; saved places sit behind the bookmark button.
   // Once a destination is in, a "Starting point" bar appears above it (like Citymapper), with the 📍 button for "where I am now".
@@ -3166,10 +3168,10 @@ function renderStart(){
     <div class="hero ${two?'two':''}">${MOUNTAIN}
       <div class="hero-bar"><svg class="logo" viewBox="0 0 400 440" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg>
         ${conn?`<div class="bars">${two?`<div class="search from ${startNudge?'nudge':''}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.8" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="6"/></svg>
-          <label class="sr" for="s-from">Starting point</label><input type="text" id="s-from" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()?`📍 Where you are now${S.here.area?` (near ${esc(S.here.area)})`:''}`:noLoc()?'Type starting address':'Starting point'}">
+          <label class="bar-lbl" for="s-from">Start</label><input type="text" id="s-from" aria-label="Starting point" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()?`📍 Where you are now${S.here.area?` (near ${esc(S.here.area)})`:''}`:noLoc()?'Type an address':'Where from?'}">
           <button type="button" class="icon-btn ib-here ${hereOn()?'on':''}" data-start="here" aria-label="Start from my current location" aria-pressed="${!!hereOn()}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div>`:''}
           <div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <label class="sr" for="s-to">Search destination</label><input type="text" id="s-to" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Search destination">
+          <label class="bar-lbl" for="s-to">End</label><input type="text" id="s-to" aria-label="Destination" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Where to?">
           <button type="button" class="icon-btn ib-saved" data-start="saved" aria-label="Saved places" aria-expanded="${savedOpen}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button></div></div>`
         :`<div class="search" style="padding:14px 18px;font-weight:600">${off?'🕒 Set the drive time below':'✈️ No-signal trip: set the time below'}</div>`}
       </div>

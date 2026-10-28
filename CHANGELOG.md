@@ -6,6 +6,11 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.3.2 (fixes)
+- Free: everyone gets the red saloon and the default houses again. In 0.3.1 a slip switched this off, so a phone that had picked a different car or house in an older version kept it, with no way to change it in Free.
+- Start screen: the "Start" bar now only appears once a destination is typed in (after 0.3.1 it showed straight away if you'd used a starting place before).
+- Start screen: the two bars now look like Citymapper, with a bold "Start" or "End" label and a hint ("Where from?" / "Where to?") where you type.
+
 ## 0.3.1
 - Welcome screen: "nothing sold" now reads "we never sell your data", so it's clear it's about data, not about selling things.
 - Welcome screen: the "Help improve AWTY" text now reads properly (it showed "Data &amp; services" by mistake), and the line under the choices is clearer.

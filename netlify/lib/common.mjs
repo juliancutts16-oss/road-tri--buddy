@@ -16,7 +16,7 @@ export function json(data, status = 200) {
 
 // Which version this branch is. "free" (the live branch, main): no AI stories, no AI replies to spoken answers and no
 // number-plate lookup, so those helpers say no and /api/health reports them as off. The test branch sets "full".
-export const EDITION = "free";
+export const EDITION = "full";
 export const notInFree = () => (EDITION === "free" ? json({ error: "This isn’t part of AWTY Free." }, 404) : null);
 
 // Optional protection: if APP_PASSCODE is set on the server, every request must send it.

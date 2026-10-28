@@ -214,7 +214,8 @@ export default async (req) => {
     }
   });
 
-  const landmarks = await findLandmarks(key, encoded, points, cum, totalMiles).catch(() => []);
+  // (the Free version asks for none, which saves a Places search on every route)
+  const landmarks = body.landmarks === false ? [] : await findLandmarks(key, encoded, points, cum, totalMiles).catch(() => []);
   const steps = (route.legs || []).flatMap((l) => l.steps || []);
   const zones = zonesFromSteps(steps, totalMiles, landmarks);
 

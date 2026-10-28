@@ -3,11 +3,10 @@
 // (not linked to a person or the phone), the app version, a coarse device type and a small list of events.
 // Nothing here ever contains names, interests, locations, voice or story text: every field is checked
 // against an allow-list and anything else is dropped.
-// Stored in Netlify Blobs (store "awty-stats"):
+// Stored in Netlify Blobs (store "awty-stats", or "awty-stats-test" on the test site):
 //   ev/<installId>/<yyyy-mm-dd>/<random>   a batch of events   (deleted after 90 days)
 //   issues/<yyyy-mm-dd>/<random>            a parent's issue report (deleted after 180 days)
-import { getStore } from "@netlify/blobs";
-import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
+import { json, checkPasscode, readBody, clip, statsStore } from "../lib/common.mjs";
 
 const ID_OK = /^[a-f0-9-]{16,40}$/i;
 const TYPES = new Set(["open", "trip_start", "trip_end", "feature", "crash", "rating", "voice"]);
@@ -48,7 +47,7 @@ function cleanEvent(e, now) {
   return out;
 }
 
-export default async (req) => {
+export default async (req, context) => {
   const denied = checkPasscode(req);
   if (denied) return denied;
   let body;
@@ -57,7 +56,7 @@ export default async (req) => {
   } catch (e) {
     return json({ error: e.message }, 400);
   }
-  const store = getStore("awty-stats");
+  const store = statsStore(context);
   const now = Date.now();
   const version = clip(body.v, 12).replace(/[^\w.-]/g, "");
   const platform = PLATFORMS.has(body.platform) ? body.platform : "other";

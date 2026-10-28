@@ -6,6 +6,22 @@ See `RELEASING.md` for the step-by-step.
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
+## 0.3.0 — AWTY Free
+- The test version of the app (the `test` branch on Netlify) now keeps its usage stats, issue reports and story reports separate from the live app, so trips taken while testing don't appear on the live developer dashboard. The test site's own dashboard shows only test data. The daily clean-up deletes old test data on the same schedule as live data.
+- **AWTY Free.** The live app (the `main` branch) is now the free version. The full version with everything is kept on the `test` branch for future work. The extras are switched off with one setting (`EDITION='free'` in `public/index.html` and `EDITION = "free"` in `netlify/lib/common.mjs`), not deleted, so they can come back later as paid extras.
+  - Free keeps: the map, miles and time left, the car on the road at the top, background music, the Stats page, Settings, the parent PIN and the kids' lock.
+  - Free has no storyteller voice or phone voice, no stories, no landmarks, no games or Spot-it, no pop-ups, no number-plate lookup and no choice of car or houses (everyone gets the red saloon and the default houses). The microphone is never used. Only the music makes a sound.
+  - The trip screen shows only the Map page (no Games, Story or My car pages, and no points counter).
+  - Settings has four tiles: Music, Safety, Screen and Places. The Search screen's "Who's coming?" box only asks for the age group, and "Make the stories theirs" is gone.
+  - The recorded music (11 tunes and 4 quiet road sounds, about 8 MB) can be downloaded on its own in Settings → Music. Until then the phone makes its own tune.
+  - Stats shows trips, miles, the longest trip, time on the road and a "Miles by trip" chart. Trips now remember how long they took.
+  - The arrival card shows the miles and the time the trip took, in place of points, spotting and coins.
+  - The privacy choices screen is shorter (Google Maps, location and usage stats only) and is version 3, so every parent sees it once more. Earlier choices are kept.
+  - The privacy policy now describes only what the Free version does. The app's store description no longer mentions games or stories.
+  - On the server, the AI story, AI answer and number-plate helpers say no in the Free version, and routes no longer search Google for landmarks (one less Google charge per route).
+- The trip map now shows the route the way it really looks on a map, with north at the top. Before, it was turned and stretched so it always ran straight down the screen, so Birmingham to Cornwall looked like a straight line; now you can see it head south-west down the M5 and turn west at Exeter. The finish is also kept clear of the menu bar at the bottom of the screen.
+- Fewer paid Google lookups for place suggestions while typing a start or destination. Suggestions now appear once 3 letters are typed (was 2) and after a half-second pause (was a third of a second), and anything already looked up is remembered until the app is closed. Typing the same text again, or pressing Go after typing a place without picking it from the list, no longer asks Google a second time.
+
 ## 0.2.7 (fixes)
 - Shorter waits between chapters with Alice. On a phone she takes longer to make her voice than to speak (even a fast computer needs about 1.2 seconds for each second of speech), so any wasted work made later chapters wait a minute or more. Her time now goes on what's read next:
   - When the children choose, the rewritten next chapter no longer jumps ahead of the chapter she's already making. It's made straight after it, and only read if it's fully ready in time. Before, it could hold up the chapter itself, and was then often thrown away.

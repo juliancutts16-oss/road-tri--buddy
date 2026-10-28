@@ -694,6 +694,9 @@ body.kid-locked #demo{display:none}
   .kid-main > .swipe-tabs{grid-column:2}
   .swipe{height:min(72vh,600px)}
 }
+/* AWTY Free: the trip screen is the road, the countdown and the map (no points, landmarks, games, story or car pages) */
+html.free #k-score-box,html.free #lm-badge,html.free #mic-badge,html.free #k-swnext,html.free .swipe-tabs,html.free #pg-games,html.free #pg-story,html.free #pg-car,
+html.free [data-demo="spot"],html.free [data-demo="landmark"],html.free [data-demo="bonus"]{display:none!important}
 </style>
 
 <div class="app" id="app">
@@ -921,6 +924,9 @@ const STYLES={
 // which stays false until subscriptions exist (none in 0.1). Without it the app always falls back to Basic.
 const PREMIUM_THEMES={'4-5':'rainbow','6-7':'popart','8+':'neonglow'};
 const hasPremium=()=>false;
+// AWTY Free (the live branch, main): the map, the countdown, the car at the top and music. No stories or voice, no games
+// or pop-ups, no landmarks, no microphone and no car or house choices. The test branch sets EDITION='full' to keep everything.
+const EDITION='free',FREE=EDITION==='free';document.documentElement.classList.toggle('free',FREE);
 const BASIC_ART='playful'; // how the road and map pictures are drawn in the Basic look
 const SPOT_CATS=[
   {id:'animals',label:'Animals',items:[['cow','🐄','Cow','countryside'],['horse','🐎','Horse','countryside'],['sheep','🐑','Sheep','countryside'],['dog','🐕','Dog','town any'],['duck','🦆','Duck','countryside forest'],['bird','🐦','Bird','any'],['deer','🦌','Deer','forest'],['squirrel','🐿️','Squirrel','forest town'],['crab','🦀','Crab','beach'],['camel','🐫','Camel','desert']]},
@@ -989,6 +995,13 @@ const DEFAULTS={
 
 /* ================= State ================= */
 let S=deepMerge(DEFAULTS,store.get('settings',{}));
+// Free keeps the extras off (and the default car and houses), whatever an older version or a backup file saved.
+// Only the music makes a sound. Runs on every save too.
+function freeForce(){if(!FREE)return;Object.assign(S.landmark,{enabled:false,listen:false});S.spot.enabled=false;S.bonus.count=0;
+  Object.assign(S.child,{color:false,style:false,spotNow:false});S.car={...DEFAULTS.car};S.houseStart={...DEFAULTS.houseStart};S.houseEnd={...DEFAULTS.houseEnd};
+  Object.assign(S.sound,{voice:'phone',mileSound:'off',arrival:'off',chime:false,tick:false,storyFx:false});if(S.sound.music)S.sound.on=true;
+  if(S.consent){S.consent.ai=false;S.consent.aiAnswers=false}if(S.route&&S.route.landmarks)S.route.landmarks=[]}
+freeForce();
 if(S.to==="Grandma's House, Oakville"&&!S.toPlace)S.to=''; // the old example destination (0.1.3 and earlier): the search bar now starts empty
 // Opening the app again (e.g. the next day) starts with an empty search bar. Coming back within half an hour keeps it,
 // in case the phone closed the app while a parent looked something up.
@@ -998,7 +1011,7 @@ addEventListener('visibilitychange',()=>{if(document.hidden){store.set('seen',Da
   if(Date.now()-store.get('seen',Date.now())>30*60e3&&!(T&&T.running)&&!$('#view-start').hidden&&S.to){S.to='';S.toPlace=null;saveS();renderStart()}});addEventListener('pagehide',()=>store.set('seen',Date.now()));
 if(!S.consent)S.child.lock=true; // anyone who hasn't been through the new consent screen gets the grown-up gate switched on
 // What the parent agreed to send off the phone. Until they've chosen, nothing online is used.
-const allowed=k=>!!(S.consent&&S.consent[k]);
+const allowed=k=>!!(S.consent&&S.consent[k])&&!(FREE&&(k==='ai'||k==='aiAnswers'));
 // Children's names never leave the phone: the AI writes {NAMES} / {BUDDY} and the phone fills them in when reading aloud.
 function fillNames(s){return String(s).replace(/\{NAMES\}/g,kidNames()||'everyone').replace(/\{BUDDY\}/g,prof('buddy')||'their best friend')}
 function privateKids(){return{...S.profile,animal:prof('animal'),reason:prof('reason'),likes:likesList().join(', '),names:kidNames()?'{NAMES}':'',buddy:prof('buddy')?'{BUDDY}':''}}
@@ -1019,7 +1032,7 @@ const aiOk=(p,blocked)=>!!(p&&!blocked&&!unsafeText([...(p.sentences||[]),p.ques
 let savedCars=store.get('cars',[{name:'Mum’s car (example)',body:'suv',color:'white'}]);
 let routes=store.get('routes',[{...DEFAULT_ROUTE,id:'s-example',name:'Grandma’s (example)'}]);
 let stats=store.get('stats',{trips:[],sim:{trips:0,miles:0,score:0}});
-const saveS=()=>store.set('settings',S), saveCars=()=>store.set('cars',savedCars), saveRoutes=()=>store.set('routes',routes), saveStats=()=>store.set('stats',stats);
+const saveS=()=>{freeForce();store.set('settings',S)}, saveCars=()=>store.set('cars',savedCars), saveRoutes=()=>store.set('routes',routes), saveStats=()=>store.set('stats',stats);
 const openSecs=new Set(store.get('open',['trip']));
 let demo={speed:10};
 let T=null;
@@ -1032,7 +1045,7 @@ function applyAge(age){
 
 /* ================= Routes ================= */
 function makeRoute(from,to){
-  if(to.trim().toLowerCase()===DEFAULT_ROUTE.to.toLowerCase())return{...DEFAULT_ROUTE,from};
+  if(to.trim().toLowerCase()===DEFAULT_ROUTE.to.toLowerCase())return noLm({...DEFAULT_ROUTE,from});
   const rng=mulberry(hashStr(from+'|'+to));const miles=Math.round(18+rng()*50);const mins=Math.round(miles*60/(38+rng()*14));
   const pool=['countryside','motorway','forest','countryside','city','beach','motorway'];
   const first=Math.min(3,miles*.1);const zones=[{until:+first.toFixed(1),zone:'town'}];let m=first,guard=0;
@@ -1041,14 +1054,15 @@ function makeRoute(from,to){
   const used=new Set(),landmarks=[];let prev=0;
   zones.forEach((z,i)=>{const start=i?zones[i-1].until:0;const id=Object.keys(LANDMARKS).find(k=>LANDMARKS[k].zone===z.zone&&!used.has(k));
     if(id&&i>0&&landmarks.length<5){const mile=+((start+z.until)/2).toFixed(1);if(mile-prev>2.5&&mile<miles-1){used.add(id);landmarks.push({mile,id});prev=mile}}});
-  return{id:'r'+hashStr(from+to),name:'',from,to,miles,mins,zones,landmarks};
+  return{id:'r'+hashStr(from+to),name:'',from,to,miles,mins,zones,landmarks:FREE?[]:landmarks};
 }
+const noLm=r=>FREE&&r&&r.landmarks&&r.landmarks.length?{...r,landmarks:[]}:r; // Free has no landmarks (a route saved by an older version may have some)
 function currentRoute(){
   if(S.tripMode==='offline'){
-    const r=routes.find(r=>r.id===S.offlineRouteId);if(r)return{...r,offline:true};
+    const r=routes.find(r=>r.id===S.offlineRouteId);if(r)return noLm({...r,offline:true});
     const mins=S.offlineMins;return{id:'timer',from:'Start',to:'Destination',miles:+(mins*40/60).toFixed(1),mins,zones:[],landmarks:[],offline:true,timerOnly:true};
   }
-  return S.route||makeRoute(S.from,S.to);
+  return noLm(S.route||makeRoute(S.from,S.to));
 }
 const shortName=s=>String(s||'').split(',')[0].replace(/\s+House$/i,'').trim()||'Destination';
 // A place picked from the suggestions or from saved places carries an exact Google place ID and a friendly name.
@@ -1074,7 +1088,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.2.7';
+const APP_VERSION='0.3.0';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1310,7 +1324,7 @@ async function loadRoute(){
     const c=h?{latitude:h.lat,longitude:h.lng}:await getPosition();origin={lat:round2(c.latitude),lng:round2(c.longitude)}} // about 1 km: enough for directions, not your front door
   else origin=S.fromPlace&&S.fromPlace.placeId&&S.fromPlace.address===S.from?{placeId:S.fromPlace.placeId}:{address:S.from.trim()};
   const toId=S.toPlace&&S.toPlace.placeId&&S.toPlace.address===S.to?S.toPlace.placeId:undefined;
-  const r=await api('route',{origin,destination:S.to.trim(),destinationPlaceId:toId});
+  const r=await api('route',{origin,destination:S.to.trim(),destinationPlaceId:toId,...(FREE?{landmarks:false}:{})});
   S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();prepareStories(S.route);svPrepare(S.route);return S.route; // (the story starts being written first, so Alice doesn't start on the built-in one)
 }
 // Plans the route quietly as soon as the destination and start are both chosen on the Search screen (before Go),
@@ -1330,7 +1344,7 @@ function routeFresh(){const r=S.route;if(!r||r.to!==S.to.trim()||r.from!==fromLa
 // Returns true when the parent needs to choose. Postcodes, full addresses and picked or saved places go straight through.
 async function needsPick(){
   if(!API.maps||!allowed('maps')||!S.to.trim()||(S.toPlace&&S.toPlace.address===S.to)||isPostcode(S.to)||S.to.includes(','))return false;
-  try{const b=await biasCoords(),j=await api('places',{input:S.to.trim(),lat:b&&b.lat,lng:b&&b.lng},8000),items=j.suggestions||[];
+  try{const items=await placeMatches(S.to);
     if(items.length===1){S.to=items[0].text;S.toPlace={placeId:items[0].placeId,label:items[0].main,address:items[0].text};saveS();return false}
     if(!items.length)return false;suggest={field:'to',items};return true}catch(e){return false}
 }
@@ -1369,9 +1383,16 @@ async function biasCoords(){
   return null;
 }
 let suggest={field:null,items:[]},sugTimer=0;
+// Each Google lookup is charged, so matches are kept for the session: typing the same text again (or pressing Go) reuses them.
+const sugCache=new Map();
+async function placeMatches(text){const b=await biasCoords(),k=text.trim().toLowerCase()+'|'+(b?b.lat+','+b.lng:'');
+  if(sugCache.has(k))return sugCache.get(k);
+  const items=(await api('places',{input:text.trim(),lat:b&&b.lat,lng:b&&b.lng},8000)).suggestions||[];
+  if(sugCache.size>=100)sugCache.delete(sugCache.keys().next().value);sugCache.set(k,items);return items}
+// Asks only once 3 letters are typed and the typing has paused for half a second.
 function suggestFor(field,text){
-  clearTimeout(sugTimer);if(!API.maps||!allowed('maps')||text.trim().length<2){suggest={field:null,items:[]};renderSugg();return}
-  sugTimer=setTimeout(async()=>{const b=await biasCoords();try{const j=await api('places',{input:text.trim(),lat:b&&b.lat,lng:b&&b.lng},8000);suggest={field,items:j.suggestions||[]};renderSugg()}catch(e){}},300);
+  clearTimeout(sugTimer);if(!API.maps||!allowed('maps')||text.trim().length<3){suggest={field:null,items:[]};renderSugg();return}
+  sugTimer=setTimeout(async()=>{try{suggest={field,items:await placeMatches(text)};renderSugg()}catch(e){}},500);
 }
 function renderSugg(){$$('.sugg').forEach(el=>{const f=el.dataset.for,show=suggest.field===f&&suggest.items.length;
   el.innerHTML=show?suggest.items.map((s,i)=>`<button type="button" class="sugg-item" data-sugg="${i}" data-field="${f}"><span><b>${esc(s.main)}</b><small>${esc(s.secondary)}</small></span>${s.miles!=null?`<em>${s.miles} mi</em>`:''}</button>`).join(''):'';el.hidden=!show})}
@@ -1503,7 +1524,8 @@ const Pack={man:null,buf:new Map(),loading:new Map(),state:'off',
   has(k){return this.ready()&&!!this.man[k]},
   url(k,man=this.man){return`sounds/${k}.mp3?v=${(man&&man[k]&&man[k].v)||1}`},
   async load(){if(this.state==='ready'||this.state==='loading')return;this.state='loading';
-    try{const man=await (await fetch('sounds/manifest.json?v='+PACK_V)).json();
+    try{let man=await (await fetch('sounds/manifest.json?v='+PACK_V)).json();
+      if(FREE)man=Object.fromEntries(Object.entries(man).filter(([,m])=>m.kind!=='sfx')); // Free: just the music and the quiet road sounds (about 8 MB)
       await Promise.all(Object.keys(man).map(k=>fetch(this.url(k,man)).then(r=>{if(!r.ok)throw new Error(k);return r.arrayBuffer()})));
       this.man=man;this.state='ready';store.set('pack',true);
       caches.open('awty-sounds').then(c=>c.keys().then(ks=>ks.forEach(q=>{const u=new URL(q.url),k=u.pathname.split('/').pop().replace(/\.(mp3|json)$/,'');
@@ -1659,7 +1681,7 @@ const SV={VOICES:[['bf_alice','Alice']],
   key(t,v){return`${v||this.voice()}|${this.speed()}|${t}`},
   clip(t){return this.clips.get(this.key(t))},
   // starts the voice: downloads it the first time, or loads it from the phone after that
-  load(){if(this.w)return;this.state='loading';this.err='';this.pct=0;svUi();Pack.load();this.t0=performance.now(); // the recorded sounds come with the voice
+  load(){if(FREE||this.w)return;this.state='loading';this.err='';this.pct=0;svUi();Pack.load();this.t0=performance.now(); // the recorded sounds come with the voice
     if(this.installed()&&!this.restored)this.restored=ClipDB.load(this.clips); // (what she made earlier, back from the phone's storage)
     try{this.w=new Worker('voice-worker.js',{type:'module'})}catch(e){this.fail('This phone can’t run the storyteller voice.');return}
     this.w.onmessage=e=>{const m=e.data;
@@ -1781,7 +1803,7 @@ function previewSay(b,items,gate){Snd.init();if(Snd.ac&&Snd.ac.state==='suspende
   Voice.say([{fn:()=>{b.textContent='Playing…'}},...items,{fn:()=>{Voice.preview=null;back()}}],false,gate)}
 // Settings shows the download progress live, without redrawing the whole page.
 // The first-launch offer: shown once, after the privacy choices (and PIN) are done, on the Search screen.
-function svAsk(){if(SV.installed()||SV.state==='loading'||store.get('svAsked',false)||!('Worker' in window)||!$('#consent').hidden||!$('#gate').hidden||$('#view-start').hidden)return;
+function svAsk(){if(FREE||SV.installed()||SV.state==='loading'||store.get('svAsked',false)||!('Worker' in window)||!$('#consent').hidden||!$('#gate').hidden||$('#view-start').hidden)return;
   $('#sv-ask-data').hidden=!(navigator.connection&&navigator.connection.type==='cellular');$('#sv-ask-prog').hidden=true;$('#sv-ask-go').hidden=false;$('#sv-ask-later').textContent='Later';$('#sv-ask').hidden=false}
 $('#sv-ask-later').addEventListener('click',()=>{store.set('svAsked',true);$('#sv-ask').hidden=true});
 $('#sv-ask-go').addEventListener('click',()=>{store.set('svAsked',true);$('#sv-ask-go').hidden=true;$('#sv-ask-later').textContent='Carry on (it keeps downloading)';$('#sv-ask-prog').hidden=false;SV.load();svUi()});
@@ -1794,7 +1816,7 @@ function svStatus(){const s=SV.state;
   if(s==='error')return`<span class="err">${esc(SV.err)}</span>`;
   return SV.installed()?'Downloaded. It starts when you next plan a trip.':'Not downloaded yet.'}
 const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:false,src:null,
-  ok(){return 'speechSynthesis' in window&&(S.sound.on||!!this.preview)}, // a parent's ▶ preview in Settings plays even with the sound off
+  ok(){return !FREE&&'speechSynthesis' in window&&(S.sound.on||!!this.preview)}, // a parent's ▶ preview in Settings plays even with the sound off
   pick(){const chosen=S.landmark.voice&&speechSynthesis.getVoices().find(v=>v.name===S.landmark.voice);
     return chosen||bestVoice(navigator.onLine!==false&&!this.netSlow)},
   // Storyteller pacing: questions lift and slow a little, exciting lines lift, long lines slow, the ending is calmer,
@@ -2374,15 +2396,21 @@ function renderScene(dt){
 }
 
 /* ================= Journey map ================= */
-// The real route (or a made-up winding one for demo and timer trips), turned so it always runs left to right,
-// with the driven part filled in, landmarks along the way and the car moving along it.
+// The real route drawn the way it lies on a map (north at the top, true shape), or a made-up winding one for demo
+// and timer trips turned to run along the box, with the driven part filled in, landmarks along the way and the car moving along it.
 const jmap={key:'',pts:null,cum:null};
 function mapPath(r,W,H){
   const key=`${r.id}|${W}x${H}|${r.points?r.points.length:0}|${r.miles}`;if(jmap.key===key)return jmap;
   let raw=[],cum=[];
   if(r.points&&r.points.length>1){const step=Math.max(1,Math.floor(r.points.length/220)),kx=Math.cos(r.points[0][0]*Math.PI/180),last=r.points.length-1;
     for(let i=0;i<=last;i+=step){raw.push([r.points[i][1]*kx,-r.points[i][0]]);cum.push(r.cum[i])}
-    if(last%step){raw.push([r.points[last][1]*kx,-r.points[last][0]]);cum.push(r.cum[last])}}
+    if(last%step){raw.push([r.points[last][1]*kx,-r.points[last][0]]);cum.push(r.cum[last])}
+    // same scale both ways and centred, with room round the edge for the houses and the car
+    // (and, in the trip screen's tall box, for the menu bar floating over its bottom)
+    let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;raw.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)});
+    const u=Math.min(W*.4,H)/100,padX=Math.max(W*.08,u*12),padT=Math.max(H*.1,u*14),padB=H>W*.85?Math.max(H*.26,u*14):padT,
+      sc=Math.min((W-padX*2)/Math.max(1e-9,x1-x0),(H-padT-padB)/Math.max(1e-9,y1-y0)),ox=W/2-(x0+x1)/2*sc,oy=padT+(H-padT-padB)/2-(y0+y1)/2*sc;
+    return Object.assign(jmap,{key,pts:raw.map(([x,y])=>[ox+x*sc,oy+y*sc]),cum})}
   else{const rng=mulberry(hashStr(String(r.id||r.to))),ph=rng()*6,ph2=rng()*6;
     for(let i=0;i<=80;i++){const t=i/80;raw.push([t,.12*Math.sin(t*Math.PI*2.2+ph)+.05*Math.sin(t*Math.PI*5+ph2)])}
     let acc=0;cum.push(0);for(let i=1;i<raw.length;i++){acc+=Math.hypot(raw[i][0]-raw[i-1][0],raw[i][1]-raw[i-1][1]);cum.push(acc)}cum=cum.map(c=>c/acc*r.miles)}
@@ -2749,9 +2777,9 @@ function arrive(){
   T.arrived=true;T.running=false;setPlay(false);Spot.end();Snd.arrive();confetti();
   if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)StoryLog.chapter('The end','We made it!');if(T===t)Voice.say(withStoryMusic([{fn:()=>Music.setMood('calm')},{calm:true},...end,{calm:false}]),false,true)},3000)} // the END of the trip story
   const n=Object.values(T.spotted).reduce((a,b)=>a+b,0);
-  $('#arrive').innerHTML=`<p class="big">We made it to ${esc(destName(T.route))}!</p><div class="arrive-stats"><span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span></div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>${askRating()?`<div id="rate-box"><button class="linkish" data-act="rate">For grown-ups: one quick question</button></div>`:''}`;
+  $('#arrive').innerHTML=`<p class="big">We made it to ${esc(destName(T.route))}!</p><div class="arrive-stats">${FREE?`<span class="chip">🛣️ ${Math.round(T.route.miles)} miles</span><span class="chip">⏱️ ${fmtMins(Math.max(1,Math.round((Date.now()-(T.startedAt||Date.now()))/60000)))}</span>`:`<span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span>`}</div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>${askRating()?`<div id="rate-box"><button class="linkish" data-act="rate">For grown-ups: one quick question</button></div>`:''}`;
   $('#arrive').hidden=false;
-  if(!T.recorded){T.recorded=true;Tel.log('trip_end',{mode:tripMode(),miles:Math.round(T.route.miles),mins:Math.round((Date.now()-(T.startedAt||Date.now()))/60000),...(SV.on()?{sv:1,waits:T.svWaits||0,waitS:T.svWaitS||0}:{})});Tel.flush();const before=unlockedSet();stats.trips.push({date:Date.now(),route:`${T.route.from||'Home'} → ${destName(T.route)}`,miles:Math.round(T.route.miles),score:T.score,coins:T.coins,spotted:T.spotted});saveStats();setTimeout(()=>checkUnlocks(before),1800)}
+  if(!T.recorded){T.recorded=true;Tel.log('trip_end',{mode:tripMode(),miles:Math.round(T.route.miles),mins:Math.round((Date.now()-(T.startedAt||Date.now()))/60000),...(SV.on()?{sv:1,waits:T.svWaits||0,waitS:T.svWaitS||0}:{})});Tel.flush();const before=unlockedSet();stats.trips.push({date:Date.now(),route:`${T.route.from||'Home'} → ${destName(T.route)}`,miles:Math.round(T.route.miles),mins:Math.round((Date.now()-(T.startedAt||Date.now()))/60000),score:T.score,coins:T.coins,spotted:T.spotted});saveStats();if(!FREE)setTimeout(()=>checkUnlocks(before),1800)}
   hud(true);
 }
 // "How likely are you to recommend AWTY?" Asked once, after the second real trip, only if usage stats are on.
@@ -2772,13 +2800,17 @@ function renderStats(){
   const miles=t.reduce((a,b)=>a+b.miles,0),pts=t.reduce((a,b)=>a+b.score,0);
   const fav=top[0]?ITEMS[top[0][0]]:null;
   const v=metricValue(S.unlockMetric),th=S.thresholds[S.unlockMetric];
+  // Free: trips and miles only (no points, spotting or cars to unlock)
+  const longest=Math.max(0,...t.map(x=>x.miles)),road=t.reduce((a,b)=>a+(b.mins||0),0),bestM=Math.max(1,...last.map(x=>x.miles));
+  const freeStats=`<div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Longest trip</small><b>${longest?longest+' mi':'–'}</b></div><div class="kpi"><small>On the road</small><b>${road?fmtMins(road):'–'}</b></div></div>
+    <div class="card"><h2 class="h">Miles by trip</h2>${last.length?`<div class="vchart" role="img" aria-label="Bar chart of miles for the last ${last.length} trips">${last.map(x=>`<div class="vcol ${x.miles===bestM?'best':''}" title="${esc(x.route)}"><span class="v">${x.miles}</span><span class="b" style="height:${Math.max(2,x.miles/bestM*100)}%"></span><span class="d">${new Date(x.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>`).join('')}</div><p class="note" style="margin-top:8px">Longest trip highlighted. Showing the last ${last.length} trip${last.length>1?'s':''}.</p>`:'<p class="empty">Finish a trip to see it compared here.</p>'}</div>`;
   $('#view-stats').innerHTML=`<div class="stats">
     <div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Our trips</h1><p>Kept on this phone</p></div>
-    <div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Total points</small><b>${pts.toLocaleString()}</b></div>
+    ${FREE?freeStats:`<div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Total points</small><b>${pts.toLocaleString()}</b></div>
     <div class="kpi kpi-more ${seenOpen?'open':''}"><button type="button" class="kpi-tap" data-act="seen" aria-expanded="${seenOpen}"><small>Seen most</small><b>${fav?fav.e:'–'}</b><span class="kpi-chev" aria-hidden="true"></span></button>
     ${seenOpen?`<div class="kpi-list"><h2 class="sr">Most spotted things</h2>${sample?'<span class="sample-tag">Sample data</span>':''}${top.length?top.map(([k,c])=>{const it=ITEMS[k]||{e:'❓',n:k};return`<div class="hbar"><span class="e">${it.e}</span><span class="n">${esc(it.n)}</span><span class="t"><i style="width:${c/max*100}%"></i></span><span class="c">${c}</span></div>`}).join(''):'<p class="empty">Play a round of Spot-it to see what gets spotted most.</p>'}</div>`:''}</div></div>
     <div class="card"><h2 class="h">Score by trip</h2>${last.length?`<div class="vchart" role="img" aria-label="Bar chart of points for the last ${last.length} trips">${last.map(x=>`<div class="vcol ${x.score===bestS?'best':''}" title="${esc(x.route)}"><span class="v">${x.score>=1000?(x.score/1000).toFixed(1)+'k':x.score}</span><span class="b" style="height:${Math.max(2,x.score/bestS*100)}%"></span><span class="d">${new Date(x.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>`).join('')}</div><p class="note" style="margin-top:8px">Best trip highlighted. Showing the last ${last.length} trip${last.length>1?'s':''}.</p>`:'<p class="empty">Finish a trip to see it compared here.</p>'}</div>
-    <div class="card"><h2 class="h">Garage progress <span class="sec-sub">unlock by ${metricWord[S.unlockMetric]}</span></h2>${UNLOCKABLE.map((id,i)=>`<div class="gbar"><span>${v>=th[i]?'🔓':'🔒'} ${BODIES[id].label}</span><span class="t"><i style="width:${clamp(v/th[i]*100,0,100)}%"></i></span><span class="c">${Math.min(v,th[i]).toLocaleString()}/${th[i].toLocaleString()}</span></div>`).join('')}</div>
+    <div class="card"><h2 class="h">Garage progress <span class="sec-sub">unlock by ${metricWord[S.unlockMetric]}</span></h2>${UNLOCKABLE.map((id,i)=>`<div class="gbar"><span>${v>=th[i]?'🔓':'🔒'} ${BODIES[id].label}</span><span class="t"><i style="width:${clamp(v/th[i]*100,0,100)}%"></i></span><span class="c">${Math.min(v,th[i]).toLocaleString()}/${th[i].toLocaleString()}</span></div>`).join('')}</div>`}
     <div class="confirm">${t.length?'':'<button class="btn ghost" data-act="sample">Load sample history</button>'}${confirmReset?'<span>Delete all trips and stats?</span><button class="btn primary" data-act="reset-yes">Yes, reset</button><button class="btn ghost" data-act="reset-no">Cancel</button>':'<button class="btn ghost" data-act="reset">Reset all stats</button>'}</div>
     <p class="note">Stats are kept on this device. In the Android app they'd live in the phone's local database so they persist between drives.</p></div>`;
 }
@@ -2790,7 +2822,11 @@ function toggle(path,label,desc=''){return`<label class="tgl" for="${idFor(path)
 function select(path,label,opts){const cur=getP(S,path);return`<div><label class="lbl" for="${idFor(path)}">${label}</label><select id="${idFor(path)}" data-bind="${path}">${opts.map(([v,l])=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${l}</option>`).join('')}</select></div>`}
 function range(path,label,min,max,step){const v=getP(S,path);return`<div class="rng"><label for="${idFor(path)}">${label}<b data-out="${path}">${Math.round(v*100)}%</b></label><input type="range" id="${idFor(path)}" data-bind="${path}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`}
 // Settings is six coloured tiles; each opens its own page (growing out of the tile) with these sections as cards.
-const SET_GROUPS={
+const SET_GROUPS=FREE?{ // Free: music, safety, screen and places only
+  sound:{c:'c1',icon:'🎵',title:'Music',sub:'Background music',secs:['sound']},
+  child:{c:'c2',icon:'🛡️',title:'Safety',sub:'PIN, lock & reset',secs:['child','data']},
+  acc:{c:'c3',icon:'📱',title:'Screen',sub:'Calm & colours',secs:['acc','bg']},
+  trip:{c:'c6',icon:'📍',title:'Places',sub:'Route & saved places',secs:['trip']}}:{
   sound:{c:'c1',icon:'🔊',title:'Voice',sub:'Sound & music',secs:['storyvoice','sound','sounds']},
   child:{c:'c2',icon:'🛡️',title:'Safety',sub:'PIN, lock & reset',secs:['child','data']},
   acc:{c:'c3',icon:'📱',title:'Screen',sub:'Calm & colours',secs:['acc','style','bg','car','house']},
@@ -2857,11 +2893,11 @@ function renderSettings(){
         <button type="button" class="btn ghost here-btn" data-act="here">📍 Use my current location</button>${hereNote()}${placeChips('from')}</div>
       <div class="ac"><label class="lbl" for="f-to">Destination</label><input type="text" id="f-to" data-bind="to" value="${esc(S.to)}" autocomplete="off" placeholder="A place, shop or postcode, e.g. Tesco or KT1 2AB"><div class="sugg" data-for="to" hidden></div>${placeChips('to')}</div>
       <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="connect">📍 ${API.maps&&allowed('maps')?'Get route from Google Maps':'Make a demo route'}</button><a class="btn ghost" href="${mapsLink()}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>
-      <div class="status">${routeMsg||`${R.points?'Route from Google Maps':'Demo route'}: <b>${R.miles} miles · ${fmtMins(R.mins)}</b> · ${R.landmarks.length} landmarks ${R.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`}</div>
+      <div class="status">${routeMsg||`${R.points?'Route from Google Maps':'Demo route'}: <b>${R.miles} miles · ${fmtMins(R.mins)}</b>${FREE?'':` · ${R.landmarks.length} landmarks ${R.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`}`}</div>
       ${API.ai&&allowed('ai')&&(R.landmarks.length||S.landmark.type==='story')?`<div class="row" style="align-items:center;flex-wrap:wrap"><button class="btn ghost" data-act="stories">✍️ ${S.landmark.type==='story'?'Write the trip story':'Write fun facts'} for this route</button><span class="note" id="storyStatus">${storyStatus}</span></div>`:''}
       <p class="note">Google Maps doesn’t share its navigation with other apps, so set the destination here. “Open in Google Maps” starts the same trip in Maps for the driver.</p>
       <div class="row"><input type="text" id="routeName" placeholder="Name this route, e.g. Grandma’s" aria-label="Route name"><button class="btn" data-act="saveroute">💾 Save offline</button></div></div>`
-    :`<div class="stack"><p class="note">No signal needed. Pick a saved route (keeps its scenery and landmarks) or just set how long the drive takes.</p>
+    :`<div class="stack"><p class="note">No signal needed. Pick a saved route (keeps its scenery${FREE?'':' and landmarks'}) or just set how long the drive takes.</p>
       <div class="grid2">${select('offlineMins','Journey time',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}
       ${select('offlineRouteId','Use saved route',[['','None, timer only'],...routes.map(r=>[r.id,esc(r.name)])])}</div></div>`}
     <div><span class="lbl">Saved places</span><div class="list">${S.places.length?S.places.map((p,i)=>`<div class="li"><div class="grow"><b>⭐ ${esc(p.name)}</b><small>${esc(p.address)}</small></div><button class="x" data-act="delplace" data-i="${i}" aria-label="Delete ${esc(p.name)}">✕</button></div>`).join(''):'<p class="note">None yet. Choose a destination, then tap “Save this place” to keep it, for example Home or Grandma’s.</p>'}</div></div>
@@ -2881,7 +2917,11 @@ function renderSettings(){
   const styleBody=`<div class="styles">${Object.entries(STYLES).map(([id,st])=>`<button class="style-card ${S.displayStyle===id?'on':''}" data-set="displayStyle" data-val="${id}" aria-pressed="${S.displayStyle===id}"><span class="sample" style="background:${st.sw[0]};font-family:${st.font},sans-serif;color:${id==='teen'?'#E8EBFF':'#1E2A4A'};border-radius:${id==='pixel'?0:id==='playful'?14:6}px"><span style="font-size:${id==='pixel'?'.7rem':'1.1rem'}">Aa</span><span><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${st.sw[1]}"></span> <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${st.sw[2]}"></span></span></span><b>${st.label}</b><small>${st.desc}</small></button>`).join('')}</div>`;
   const bgBody=`${toggle('bgAuto','Auto: match scenery to where you are','Uses the route’s location data (town, motorway, coast…)')}
     <div><span class="lbl">${S.bgAuto?'Used when there’s no location data':'Background'}</span>${chips('bgManual',Object.entries(ZONES).map(([k,[l,e]])=>[k,`${l} ${e}`]),S.bgManual)}</div>`;
-  const soundBody=`${toggle('sound.on','Sound effects & read-aloud')}${range('sound.volume','Volume',0,1,.05)}
+  const pk=Pack.state==='loading'?'Downloading the music…':Pack.ready()?'✅ Downloaded. It plays on every trip, even with no signal.':Pack.state==='error'?'<span class="err">Couldn’t download the music. Check the signal and try again.</span>':Pack.installed()?'Downloaded. It starts on the next trip.':'';
+  const soundBody=FREE?`${toggle('sound.music','🎵 Background music','A gentle tune while you drive. It only plays on the trip screen while you’re moving.')}${S.sound.music?range('sound.musicVol','Music volume',.05,.6,.05):''}
+    <div><span class="lbl">Recorded music</span><p class="note">Real recorded tunes and quiet road sounds (birdsong, the seaside, a busy town), in place of the tune the phone makes itself. About 8 MB, then it’s kept on the phone.</p>
+      ${pk?`<div class="status" style="margin-top:8px">${pk}</div>`:''}<div class="row" style="margin-top:8px;flex-wrap:wrap">${Pack.installed()||Pack.state==='loading'?'':'<button class="btn primary" data-act="packget">Download the music</button>'}${Pack.installed()&&Pack.state!=='loading'?'<button class="linkish" data-act="packremove">Remove the download from this phone</button>':''}${S.sound.music?'<button class="btn ghost" data-act="musictest">▶ Hear the music</button>':''}</div></div>`
+  :`${toggle('sound.on','Sound effects & read-aloud')}${range('sound.volume','Volume',0,1,.05)}
     ${toggle('sound.music','🎵 Background music','A gentle tune while you drive, matched to the display style. It goes quieter whenever the story is being read.')}${S.sound.music?range('sound.musicVol','Music volume',.05,.6,.05):''}
     <div class="grid2">${select('sound.mileSound','Distance sound',[['vroom','Vroom'],['beep','Beep beep'],['choo','Choo choo'],['off','Off']])}${select('sound.mileEvery','Play it every',[[1,'1 mile'],[2,'2 miles'],[5,'5 miles'],[10,'10 miles'],[20,'20 miles']])}${select('sound.arrival','On arrival',[['hooray','Hooray + fanfare'],['fanfare','Fanfare only'],['off','Off']])}</div>
     ${toggle('sound.chime','Chime for each thing spotted')}${toggle('sound.tick','Ticking on the bonus-game timer')}
@@ -2918,7 +2958,7 @@ function renderSettings(){
     <div><span class="lbl">Parent PIN</span><p class="note">Your 4-digit PIN unlocks the children’s screen. It’s also asked before links that leave the app and before privacy changes.</p>
       <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn ghost" data-act="changepin">${S.pin?'Change PIN':'Set up a PIN'}</button></div>${pinMsg?`<div class="status" style="margin-top:8px">${esc(pinMsg)}</div>`:''}</div>
     ${toggle('child.lock','Lock the trip screen for the kids','When a trip starts, the bottom bar shows only “Parents only” and the lock. Your PIN opens Search, Stats and Settings.')}
-    ${toggle('child.spotNow','Spot-it on the Games page','Lets children start a Spot-it round themselves.')}`;
+    ${FREE?'':toggle('child.spotNow','Spot-it on the Games page','Lets children start a Spot-it round themselves.')}`;
   const svName=(SV.VOICES.find(v=>v[0]===S.sound.voice)||['','the phone voice'])[1];
   const svBody=`<p class="note">Alice, a natural British storyteller voice that runs on this phone, so it needs no internet once it’s downloaded, and the children’s names never leave the phone.</p>
     <div class="sv-status" id="sv-status">${svStatus()}</div>
@@ -2929,7 +2969,7 @@ function renderSettings(){
     ${SV.installed()?`<button class="linkish" data-act="svremove" style="justify-self:start">Remove the download from this phone</button>`:''}`;
   const SECS={storyvoice:()=>sec('storyvoice','🦉','Storyteller voice',svBody),trip:()=>sec('trip','🗺️','Trip & route',tripBody),read:()=>sec('read','📖','Read the story',storyReadBody(R)),car:()=>sec('car','🚗','Car & garage',carBody),
     house:()=>sec('house','🏠','Houses',houseRow('houseStart','Starting house')+houseRow('houseEnd',`Destination (${esc(destName(R))})`)),style:()=>hasPremium()?sec('style','🎨','Display style',styleBody):'',
-    bg:()=>sec('bg','🌍','Background',bgBody),sound:()=>sec('sound','🔊','Sound',soundBody),sounds:()=>sec('sounds','🎧','Story sounds & music',storySoundsBody()),
+    bg:()=>sec('bg','🌍','Background',bgBody),sound:()=>FREE?sec('sound','🎵','Music',soundBody):sec('sound','🔊','Sound',soundBody),sounds:()=>sec('sounds','🎧','Story sounds & music',storySoundsBody()),
     spot:()=>sec('spot','🔍','Spot-it game',spotBody),bonus:()=>sec('bonus','🎮','Mini-games',bonusBody),lm:()=>sec('lm','📖','Landmarks',lmBody),
     acc:()=>sec('acc','🧩','Calm & accessibility',accBody),child:()=>sec('child','🔐','Parent controls',childBody),data:()=>sec('data','💾','Data & services',dataBody()),
     age:()=>`<section class="card spc" data-sec="age"><h2 class="h"><span class="sec-ico" aria-hidden="true">🎂</span>Child's age</h2>${chips('age',[['4-5','4–5 yrs'],['6-7','6–7 yrs'],['8+','8+ yrs']],S.age,'big')}<p class="note" style="margin-top:10px">Sets defaults for stories or fun facts, Spot-it timing and the mini-games. Everything can still be changed.</p></section>`};
@@ -2940,7 +2980,7 @@ function renderSettings(){
   else{const tile=id=>{const t=SET_GROUPS[id];return`<button class="stile ${t.c}" data-act="opensec" data-id="${id}"><span class="si" aria-hidden="true">${t.icon}</span><b>${t.title}</b><small>${t.sub}</small></button>`};
     $('#view-settings').innerHTML=`<div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Settings</h1><p>Grown-ups only</p></div>
       <div class="stiles">${Object.keys(SET_GROUPS).map(tile).join('')}</div>
-      <button class="report-btn" data-act="opensec" ${storyParts(R).some(p=>p.ai)?'data-id="read"':'data-id="data" data-focus="issue-text"'}><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg><span><b>Report a problem</b><small>Something in a story didn’t feel right?</small></span></button>
+      <button class="report-btn" data-act="opensec" ${storyParts(R).some(p=>p.ai)?'data-id="read"':'data-id="data" data-focus="issue-text"'}><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg><span><b>Report a problem</b><small>${FREE?'Something not working as it should?':'Something in a story didn’t feel right?'}</small></span></button>
       <button class="btn primary wide" data-act="start">Save & start trip</button>${ver}`}
   drawThumbs();renderSugg();
 }
@@ -2970,7 +3010,7 @@ function dataBody(){
   const ok=v=>v?'<b style="color:var(--good)">Connected</b>':'<span style="color:var(--muted)">Not set up · using demo</span>';
   const yn=v=>v?'<b style="color:var(--good)">Allowed</b>':'<span style="color:var(--muted)">Off</span>';
   const recent=Tel.recent.slice().reverse();
-  return`<div><span class="lbl">Privacy choices</span><div class="svc"><div><span>AI-written stories</span>${yn(allowed('ai'))}</div><div><span>Live routes from Google Maps</span>${yn(allowed('maps'))}</div><div><span>Use this phone’s location</span>${yn(allowed('location'))}</div><div><span>AI replies to spoken answers</span>${yn(allowed('aiAnswers'))}</div><div><span>Help improve AWTY (usage stats)</span>${yn(allowed('stats'))}</div></div>
+  return`<div><span class="lbl">Privacy choices</span><div class="svc">${FREE?'':`<div><span>AI-written stories</span>${yn(allowed('ai'))}</div>`}<div><span>Live routes from Google Maps</span>${yn(allowed('maps'))}</div><div><span>Use this phone’s location</span>${yn(allowed('location'))}</div>${FREE?'':`<div><span>AI replies to spoken answers</span>${yn(allowed('aiAnswers'))}</div>`}<div><span>Help improve AWTY (usage stats)</span>${yn(allowed('stats'))}</div></div>
       <p class="note" style="margin-top:6px">Children’s names never leave this phone. ${S.consent?`Chosen ${new Date(S.consent.date).toLocaleDateString()}.`:'Not chosen yet.'}</p>
       <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn ghost" data-act="consent">Change privacy choices</button><a class="btn ghost" href="privacy.html" data-gate="1" target="_blank" rel="noopener">Privacy policy</a></div></div>
     <div><span class="lbl">What we collect</span>
@@ -2979,10 +3019,10 @@ function dataBody(){
       <div class="row" style="margin-top:8px;flex-wrap:wrap">${allowed('stats')&&Tel.q.length?`<button class="btn ghost" data-act="telsend">Send now (${Tel.q.length} waiting)</button>`:''}<button class="btn ghost" data-act="teldelete">Delete my usage data</button></div>${telMsg?`<div class="status" style="margin-top:8px">${esc(telMsg)}</div>`:''}</div>
     <div><span class="lbl">Report an issue</span>
       <p class="note">Tell us what went wrong. Please don’t include names, addresses or other personal details. We keep reports for 180 days.</p>
-      <label class="lbl" for="issue-cat" style="margin-top:8px">What kind of issue?</label><select id="issue-cat"><option value="broke">Something broke or froze</option><option value="story">A story wasn’t right</option><option value="maps">Maps or location</option><option value="other">Something else</option></select>
-      <label class="lbl" for="issue-text" style="margin-top:8px">What happened?</label><textarea id="issue-text" rows="3" maxlength="500" placeholder="For example: the car stopped moving after a mini-game"></textarea>
+      <label class="lbl" for="issue-cat" style="margin-top:8px">What kind of issue?</label><select id="issue-cat"><option value="broke">Something broke or froze</option>${FREE?'':'<option value="story">A story wasn’t right</option>'}<option value="maps">Maps or location</option><option value="other">Something else</option></select>
+      <label class="lbl" for="issue-text" style="margin-top:8px">What happened?</label><textarea id="issue-text" rows="3" maxlength="500" placeholder="For example: ${FREE?'the car stopped moving halfway':'the car stopped moving after a mini-game'}"></textarea>
       <div class="row" style="margin-top:8px"><button class="btn" data-act="issue">Send report</button></div>${issueMsg?`<div class="status" style="margin-top:8px">${esc(issueMsg)}</div>`:''}</div>
-    <div><span class="lbl">Online services</span><div class="svc"><div><span>Google Maps routes & landmarks</span>${ok(API.maps)}</div><div><span>DVLA number plate lookup</span>${API.dvla?ok(true):'<span style="color:var(--muted)">Not set up · plate box hidden</span>'}</div><div><span>AI stories & fun facts</span>${ok(API.ai)}</div></div>
+    <div><span class="lbl">Online services</span><div class="svc"><div><span>Google Maps routes${FREE?'':' & landmarks'}</span>${ok(API.maps)}</div>${FREE?'':`<div><span>DVLA number plate lookup</span>${API.dvla?ok(true):'<span style="color:var(--muted)">Not set up · plate box hidden</span>'}</div><div><span>AI stories & fun facts</span>${ok(API.ai)}</div>`}</div>
     <p class="note" style="margin-top:8px">${API.checked?'These run on your own server, so the secret keys never sit on the phone. The README explains how to switch each one on.':'Checking…'}</p></div>
     <div><label class="lbl" for="f-passcode">Server passcode</label><input type="text" id="f-passcode" data-bind="passcode" value="${esc(S.passcode)}" placeholder="Only if you set APP_PASSCODE on the server" autocomplete="off"></div>
     <div><span class="lbl">Saved on this phone</span><p class="note">Stats, saved cars and routes are stored in the app on this device${persisted?' and protected from automatic clean-up':''}. Make a backup file to move them to another phone or keep them safe.</p>
@@ -3120,13 +3160,14 @@ function renderStart(){
       :`<div class="grid2">${select('offlineMins','How long is the drive?',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}</div>
       <p class="note">No signal needed: the car moves along the road by the clock.</p>`}
       <div class="sub">${chips('tripMode',[['connected','📍 Use maps'],['offline','✈️ No signal: set the time']],S.tripMode,'small')}</div>`)}
-    ${fold('who','Who’s coming?',[kidNames()?esc(kidNames()):'',`Ages ${S.age.replace('-','–')}`,S.bonus.count?`${S.bonus.count} game${S.bonus.count>1?'s':''}`:'No games'].filter(Boolean).join(' · '),`
+    ${FREE?fold('who','Who’s coming?',`Ages ${S.age.replace('-','–')}`,`<div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}
+        <p class="note" style="margin-top:6px">${S.age==='4-5'?'The trip screen shows how many cartoons long the drive still is.':S.age==='8+'?'The trip screen shows the time you’ll arrive.':'Ages 4–5 see the drive in cartoons, ages 8+ see the time you’ll arrive.'}</p></div>`):fold('who','Who’s coming?',[kidNames()?esc(kidNames()):'',`Ages ${S.age.replace('-','–')}`,S.bonus.count?`${S.bonus.count} game${S.bonus.count>1?'s':''}`:'No games'].filter(Boolean).join(' · '),`
       <div><label class="lbl" for="s-names">Children’s names</label><input type="text" id="s-names" data-p="profile.names" value="${esc(P.names)}" placeholder="e.g. Mia, Leo" autocomplete="off"></div>
       <div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}</div>
       <div><span class="lbl">How many mini-games on this trip?</span>${chips('bonus.count',[[0,'None'],[1,'1'],[2,'2'],[3,'3'],[4,'4']],S.bonus.count,'small')}
         <p class="note" style="margin-top:6px">${S.bonus.count?`Games for ages ${S.age.replace('-','–')}: ${gamesFor(S.age).filter(g=>!S.bonus.off[g.id]).map(g=>`${g.emoji} ${g.name}`).join(' · ')}`:'No mini-games this time.'}</p></div>
       ${savedCars.length?`<div><span class="lbl">Which car are we in?</span><div class="chips-row small">${savedCars.map((c,i)=>`<button type="button" class="chip-btn ${c.body===S.car.body&&c.color===S.car.color?'on':''}" data-start="car" data-i="${i}">${esc(c.name)}</button>`).join('')}</div></div>`:''}`)}
-    ${fold('story','Make the stories theirs',storySummary(),`
+    ${FREE?'':fold('story','Make the stories theirs',storySummary(),`
       <div><label class="lbl" for="s-animal">Favourite animal</label><div class="chips-row small" style="margin-bottom:8px">${ANIMALS.map(([a,e])=>`<button type="button" class="chip-btn ${String(P.animal).toLowerCase()===a?'on':''}" data-start="animal" data-val="${a}">${e} ${a}</button>`).join('')}</div><input type="text" id="s-animal" data-p="profile.animal" value="${esc(P.animal)}" placeholder="Or type one: hedgehog, shark…"></div>
       <div><label class="lbl" for="s-likes">Things they love</label><div class="chips-row small" style="margin-bottom:8px">${LIKES.map(([l,e])=>`<button type="button" class="chip-btn ${likes.includes(l)?'on':''}" data-start="like" data-val="${l}">${e} ${l}</button>`).join('')}</div><input type="text" id="s-likes" data-p="profile.likes" value="${esc(P.likes)}" placeholder="Or type: tractors, ballet, Minecraft…"></div>
       <div class="grid2">
@@ -3214,7 +3255,7 @@ VSt.addEventListener('click',e=>{
   if(k==='animal'){S.profile.animal=String(S.profile.animal).toLowerCase()===b.dataset.val?'':b.dataset.val}
   if(k==='like'){const l=likesRaw(),i=l.findIndex(x=>x.toLowerCase()===b.dataset.val);if(i>=0)l.splice(i,1);else l.push(b.dataset.val);S.profile.likes=l.join(', ')}
   if(k==='car'){const c=savedCars[+b.dataset.i];if(c&&!(BODIES[c.body].unlock!==undefined&&!unlockedSet().has(c.body))){S.car.body=c.body;S.car.color=c.color}}
-  if(k==='route'){const r=routes.find(x=>x.id===b.dataset.id);if(r){S.route={...JSON.parse(JSON.stringify(r)),id:r.points?'g'+Date.now():r.id,savedFrom:r.id};S.to=r.to;S.from=r.from==='Home'?'':r.from;S.tripMode='connected';startMsg=''}}
+  if(k==='route'){const r=routes.find(x=>x.id===b.dataset.id);if(r){S.route=noLm({...JSON.parse(JSON.stringify(r)),id:r.points?'g'+Date.now():r.id,savedFrom:r.id});S.to=r.to;S.from=r.from==='Home'?'':r.from;S.tripMode='connected';startMsg=''}}
   saveS();applyLive();renderStart();
 });
 $('#d-new').addEventListener('click',()=>guarded(()=>{setPlay(false);Voice.stop();showTab('start')})('to plan a new trip'));
@@ -3235,25 +3276,26 @@ function showTab(tab){
 function consentChoice(k,label,desc,on){return`<div class="choice"><label class="tgl" for="c-${k}"><span>${label}</span><input type="checkbox" id="c-${k}" ${on?'checked':''}><i></i></label><small>${esc(desc)}</small></div>`}
 // Version 2 adds the separate location choice and "Help improve AWTY". Every optional choice starts off (Children's Code
 // standard 7: high privacy by default); a parent seeing it again after an update keeps the earlier choices they made.
-const CONSENT_VERSION=2;
+// Version 3 is AWTY Free's shorter screen (no AI choices), so every parent sees what the Free version sends.
+const CONSENT_VERSION=3;
 function showConsent(){
   const c=S.consent||{ai:false,maps:false,location:false,aiAnswers:false,stats:false};
   $('#consent-box').innerHTML=`<span class="lbl">For grown-ups</span><h3>Welcome to AWTY 👋</h3><p>A quick word about safety and privacy before your first trip.</p>
     <div class="point"><span>🚗</span><p><b>For passengers only.</b> The driver should never use AWTY while driving.</p></div>
     <div class="point"><span>🔒</span><p><b>No ads, no tracking, nothing sold.</b> Your children’s names, settings and stats stay on this phone.</p></div>
-    <div class="point"><span>🎤</span><p><b>The microphone stays off</b> unless you switch on “Listen for answers” in Settings.</p></div>
+    <div class="point"><span>🎤</span><p>${FREE?'<b>No microphone.</b> AWTY Free never uses it.':'<b>The microphone stays off</b> unless you switch on “Listen for answers” in Settings.'}</p></div>
     <p style="margin-top:16px"><b>Choose what AWTY may send online.</b> You can change this any time in Settings → Data &amp; services.</p>
-    ${consentChoice('ai','✍️ AI-written stories','To write the trip story and fun facts, we send the landmarks on your route, your child’s age group and the interests you type in (such as a favourite animal) to our server and our AI provider. Children’s names are never sent: the phone adds them when reading aloud.',c.ai)}
-    ${consentChoice('maps','🗺️ Live routes from Google Maps','The starting point and destination you choose are sent to Google, through our server, to plan the route and find landmarks.',c.maps)}
+    ${FREE?'':consentChoice('ai','✍️ AI-written stories','To write the trip story and fun facts, we send the landmarks on your route, your child’s age group and the interests you type in (such as a favourite animal) to our server and our AI provider. Children’s names are never sent: the phone adds them when reading aloud.',c.ai)}
+    ${consentChoice('maps','🗺️ Live routes from Google Maps',`The starting point and destination you choose are sent to Google, through our server, to plan the route${FREE?'':' and find landmarks'}.`,c.maps)}
     ${consentChoice('location','📍 Use this phone’s location','Lets the car follow the real journey (GPS), and lets you use “Use my current location” and see places near you. The exact position stays on this phone; when it’s used as a starting point it’s rounded to about 1 km before being sent to Google. A 📍 sign shows on the kids’ screen whenever location is in use. With this off, the car moves by the journey time instead.',c.location)}
-    ${consentChoice('aiAnswers','💬 AI replies to spoken answers','When “Listen for answers” is on, the phone turns speech into words. With this on, those words (never the recording) go to our AI provider so it can reply. With it off, the phone checks answers itself.',c.aiAnswers)}
-    ${consentChoice('stats','📊 Help improve AWTY','Sends anonymous usage stats to our own server: trips started and finished (length rounded), which features and mini-games are used, crash reports and the app version. It uses a random ID that isn’t linked to you or this phone. Never names, interests, locations, voice or story text. Kept for 90 days. You can see exactly what’s sent, and delete it, in Settings → Data &amp; services.',c.stats)}
-    <p class="note">AWTY works without any of these: it uses its built-in stories, and trips move by the clock. More detail in our <a href="privacy.html" data-gate="1" target="_blank" rel="noopener">privacy policy</a>.</p>
+    ${FREE?'':consentChoice('aiAnswers','💬 AI replies to spoken answers','When “Listen for answers” is on, the phone turns speech into words. With this on, those words (never the recording) go to our AI provider so it can reply. With it off, the phone checks answers itself.',c.aiAnswers)}
+    ${consentChoice('stats','📊 Help improve AWTY',`Sends anonymous usage stats to our own server: trips started and finished (length rounded), which features${FREE?'':' and mini-games'} are used, crash reports and the app version. It uses a random ID that isn’t linked to you or this phone. Never names, interests, locations, voice or story text. Kept for 90 days. You can see exactly what’s sent, and delete it, in Settings → Data &amp; services.`,c.stats)}
+    <p class="note">AWTY works without any of these: ${FREE?'trips just':'it uses its built-in stories, and trips'} move by the clock. More detail in our <a href="privacy.html" data-gate="1" target="_blank" rel="noopener">privacy policy</a>.</p>
     <div class="btns two"><button class="btn primary" id="c-agree">Save my choices</button><button class="btn primary" id="c-none">Turn everything off</button></div>`;
   $('#consent').hidden=false;
 }
 function saveConsent(all){
-  const pick=k=>all===false?false:$('#c-'+k).checked,choice={v:CONSENT_VERSION,date:new Date().toISOString(),ai:pick('ai'),maps:pick('maps'),location:pick('location'),aiAnswers:pick('aiAnswers'),stats:pick('stats')};
+  const pick=k=>all===false||!$('#c-'+k)?false:$('#c-'+k).checked,choice={v:CONSENT_VERSION,date:new Date().toISOString(),ai:pick('ai'),maps:pick('maps'),location:pick('location'),aiAnswers:pick('aiAnswers'),stats:pick('stats')};
   grownUpGate(()=>{const wasStats=allowed('stats');S.consent=choice;saveS();$('#consent').hidden=true;
     if(!choice.location){Geo.stop();S.here=null;saveS()} // location off: stop using it straight away and forget the last position
     if(wasStats&&!choice.stats)Tel.forget();if(!wasStats&&choice.stats)Tel.log('open');
@@ -3339,7 +3381,7 @@ $('#bn-btns').addEventListener('click',e=>{const b=e.target.closest('[data-nav]'
 const SW=$('#k-swipe');
 function swipePage(){return Math.round(SW.scrollLeft/Math.max(1,SW.clientWidth))}
 function swipeTo(i){SW.scrollTo({left:i*SW.clientWidth,behavior:S.access.reduceMotion?'auto':'smooth'})}
-const swipeLast=()=>SW.children.length-1;
+const swipeLast=()=>FREE?0:SW.children.length-1; // (Free has only the Map page)
 function swipeUi(){const p=swipePage();$$('.swipe-tabs [data-page]').forEach(b=>b.setAttribute('aria-selected',String(+b.dataset.page===p)));if(p===2)StoryLog.render();if(p===3)renderKidCar()}
 SW.addEventListener('scroll',()=>{clearTimeout(SW.t);SW.t=setTimeout(swipeUi,60)},{passive:true});
 $('.swipe-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)swipeTo(+b.dataset.page)});
@@ -3353,7 +3395,7 @@ function swipeWrap(i){const jump=()=>{SW.style.overflowX='hidden';SW.style.scrol
 $('#k-swnext').addEventListener('click',()=>{const p=swipePage();if(p>=swipeLast())swipeWrap(0);else swipeTo(p+1)});
 let swX=null,swP=0;
 SW.addEventListener('touchstart',e=>{swX=e.touches[0].clientX;swP=swipePage()},{passive:true});
-SW.addEventListener('touchend',e=>{if(swX===null)return;const dx=e.changedTouches[0].clientX-swX;swX=null;
+SW.addEventListener('touchend',e=>{if(swX===null||FREE)return;const dx=e.changedTouches[0].clientX-swX;swX=null;
   if(dx<-50&&swP===swipeLast()&&swipePage()===swipeLast())swipeWrap(0);else if(dx>50&&swP===0&&swipePage()===0)swipeWrap(swipeLast())},{passive:true});
 $('#k-games').addEventListener('click',e=>{const g=e.target.closest('[data-kgame]');if(g){Snd.ready();startGame(g.dataset.kgame);return}
   if(e.target.closest('[data-kid="spot"]')&&T&&!Spot.active){Snd.ready();Tel.feature('spot');Spot.start()}});
@@ -3423,6 +3465,9 @@ VS.addEventListener('click',e=>{
   if(a==='sfx'){Snd.ready();playSfx(b.dataset.id);return}
   if(a==='mood'){const id=b.dataset.id;Snd.ready();Music.preview=true;Music.setMood(id);setTimeout(()=>{if(Music.mood!==id)return;Music.preview=false;Music.setMood(null);if(!Music.allowed())Music.stop()},9000);return} // 9-second preview
   if(a==='delplace'){S.places.splice(+b.dataset.i,1)}
+  if(a==='packget'){const p=Pack.load();renderSettings();p.then(()=>{if(!$('#view-settings').hidden&&setPanel==='sound'){const y=scrollY;renderSettings();scrollTo(0,y)}});return} // Free: the music on its own
+  if(a==='packremove'){Pack.remove().then(()=>{Music.stop(true);renderSettings()});return}
+  if(a==='musictest'){Snd.ready();Music.preview=true;Music.stop(true);Music.start();setTimeout(()=>{Music.preview=false;if(!Music.allowed())Music.stop()},9000);return} // 9-second preview
   if(a==='svget'){SV.load();renderSettings();return}
   if(a==='svpick'){S.sound.voice=b.dataset.id;saveS();renderSettings();svPrepare(T&&T.route);return}
   if(a==='svhear'){const n=(SV.VOICES.find(v=>v[0]===S.sound.voice)||[0,'your storyteller'])[1];previewSay(b,[`Hello! I’m ${n}, your AWTY storyteller.`,'Are you ready for an adventure?'],true);return} // waits until it's really that voice
@@ -3498,7 +3543,7 @@ function frame(now){
 scene.cv=$('#scene');scene.ctx=scene.cv.getContext('2d');
 applyStyle();newTrip();applyLive();checkServices();showTab('start');Tel.log('open');setTimeout(()=>Tel.flush(),5000);
 if(SV.installed()&&!store.get('svDefaulted',false)){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // phones that downloaded Alice in 0.2.0 switch to her once
-if(SV.installed())setTimeout(()=>SV.load(),1500); // the storyteller voice, if a parent downloaded it, loads from the phone
+if(SV.installed())setTimeout(()=>SV.load(),1500);if(FREE&&Pack.installed())setTimeout(()=>Pack.load(),1500); // (Free: the recorded music, if downloaded) // the storyteller voice, if a parent downloaded it, loads from the phone
 else setTimeout(svAsk,2000); // or, the first time, offer it
 if(!S.consent||(S.consent.v||1)<CONSENT_VERSION)showConsent(); // first launch, or the choices have changed since a parent last saw them
 if(location.hash==='#games'){showTab('settings');openPanel('bonus',null,'bonus')} // shortcut for testing the mini-games

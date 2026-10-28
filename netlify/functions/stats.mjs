@@ -1,18 +1,18 @@
 // Developer dashboard data. Only answers when the request carries the secret STATS_KEY set in Netlify.
+// On the test site it reads the test stats, so the live dashboard only ever shows real families.
 // Works out the key numbers from the stored usage events, and tidies up old data while it's at it:
 // usage events older than 90 days and issue reports older than 180 days are deleted.
-import { getStore } from "@netlify/blobs";
-import { json } from "../lib/common.mjs";
+import { json, statsStore } from "../lib/common.mjs";
 
 const DAY = 864e5;
 const keyDay = (key, idx) => Date.parse(key.split("/")[idx]) || 0; // the yyyy-mm-dd part of a key
 
-export default async (req) => {
+export default async (req, context) => {
   const secret = process.env.STATS_KEY;
   if (!secret) return json({ error: "STATS_KEY isn't set in Netlify yet." }, 503);
   if (req.headers.get("x-stats-key") !== secret) return json({ error: "Wrong dashboard key." }, 401);
 
-  const store = getStore("awty-stats");
+  const store = statsStore(context);
   const now = Date.now();
 
   // ---- load usage events (and delete expired ones)

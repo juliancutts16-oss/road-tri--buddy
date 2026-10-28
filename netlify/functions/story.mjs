@@ -8,7 +8,7 @@
 // separate AI review against the age rulebook. If it fails, it's rewritten once with the problems pointed out;
 // if it fails again (or there isn't time), the app is told to use its built-in story instead.
 import Anthropic from "@anthropic-ai/sdk";
-import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
+import { json, checkPasscode, notInFree, readBody, clip } from "../lib/common.mjs";
 import { AGE_RULES, ALWAYS_RULES, FACT_RULES, blockedWords, readingIssues, lengthRule, safeDetail } from "../lib/safety.mjs";
 import { pickIdea } from "../lib/ideas.mjs";
 
@@ -119,6 +119,8 @@ const cleanChoice = (c) => {
 };
 
 export default async (req) => {
+  const off = notInFree();
+  if (off) return off;
   const denied = checkPasscode(req);
   if (denied) return denied;
   if (!process.env.ANTHROPIC_API_KEY) return json({ error: "The story writer is not set up on the server." }, 503);

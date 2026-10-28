@@ -37,10 +37,10 @@
   <div class="kids">
     <p>Here is what AWTY does with information, in a few words:</p>
     <ul>
-      <li>Your name stays on this phone. We never send it anywhere.</li>
+      <li>AWTY never asks for your name.</li>
       <li>A grown-up chooses what AWTY is allowed to do. You can ask them about it any time.</li>
       <li>When you see the green <b>Location on</b> sign, AWTY is using the phone to know where the car is, so your car on the screen can move with the real one.</li>
-      <li>AWTY only listens if a grown-up has switched it on, and it never keeps a recording of your voice.</li>
+      <li>AWTY never listens. It doesn't use the microphone at all.</li>
       <li>There are no adverts, and we never sell anything about you.</li>
     </ul>
   </div>
@@ -49,40 +49,36 @@
   <ul>
     <li>AWTY is a road-trip companion for children, set up and controlled by a parent or carer.</li>
     <li>We don't show adverts, we don't track children, and we never sell data.</li>
-    <li>Children's names, settings, stats and saved trips are kept on your phone, not on our servers.</li>
+    <li>AWTY Free doesn't ask for children's names. Settings, stats and saved trips are kept on your phone, not on our servers.</li>
     <li>Some features need to send limited information online. A parent chooses which ones when first opening the app, and can change this at any time in Settings → Data &amp; services.</li>
-    <li>The microphone is off unless a parent switches on "Listen for answers". We never record or store voice audio.</li>
+    <li>AWTY Free doesn't use the microphone, and doesn't use AI.</li>
   </ul>
 
   <h2>Who we are</h2>
   <p>AWTY is provided by [company name], [registered address], company number [number] ("we", "us"). For any privacy question, email <b>[privacy email address]</b>.</p>
 
   <h2>What stays on your phone</h2>
-  <p>Children's names, age group, interests, the travel buddy's name, car and house designs, settings, trip stats, saved routes and backups are stored in the app on your device. We can't see them. Deleting the app, or using Settings → Parent controls → Clear everything on this phone, removes them.</p>
+  <p>The age group, settings, trip stats, saved places and routes and backups are stored in the app on your device. We can't see them. Deleting the app, or using Settings → Parent controls → Clear everything on this phone, removes them.</p>
 
   <h2>What may be sent online, and why</h2>
   <div class="tbl"><table>
     <thead><tr><th>Feature (parent's choice)</th><th>What is sent</th><th>Who receives it</th><th>Why</th></tr></thead>
     <tbody>
-      <tr><td><b>Live routes from Google Maps</b></td><td>The starting point and destination you choose; text typed into the start and destination boxes for suggestions</td><td>Our server (hosted by Netlify), which passes it to Google Maps Platform</td><td>To plan the route, estimate the journey time and find landmarks along the way</td></tr>
+      <tr><td><b>Live routes from Google Maps</b></td><td>The starting point and destination you choose; text typed into the start and destination boxes for suggestions</td><td>Our server (hosted by Netlify), which passes it to Google Maps Platform</td><td>To plan the route and estimate the journey time</td></tr>
       <tr><td><b>Use this phone's location</b> (off unless chosen)</td><td>Only if you use "Use my current location" with live routes: your position <b>rounded to about 1 km</b> as the starting point. For "places near you" suggestions, a position rounded to about 10 km. The exact GPS position used to move the car stays on the phone</td><td>Our server, which passes it to Google Maps Platform</td><td>To plan a route from where you are, and to show nearby places first</td></tr>
-      <tr><td><b>Help improve AWTY</b> (usage stats, off unless chosen)</td><td>A random ID for this installation (not linked to you, your family or the phone), the app version, the device type (Android, iPhone, iPad, computer) and events: app opened; trip started or finished (demo, GPS, timed or offline; length in miles and minutes, rounded; the age group and display style chosen); which features and mini-games were used; with the storyteller voice, how many seconds the story waited for it, how fast the phone makes it and how many processor cores the phone has; error messages when the app crashes (cleaned of any personal details); and, if you answer it, a 0–10 "would you recommend AWTY?" score. <b>Never</b> names, interests, places, locations, voice or story text</td><td>Our own server, stored with Netlify Blobs</td><td>To see whether AWTY works well for families (for example, how many trips are finished and which games are enjoyed) and to find and fix crashes. Kept for <b>90 days</b>, then deleted automatically</td></tr>
+      <tr><td><b>Help improve AWTY</b> (usage stats, off unless chosen)</td><td>A random ID for this installation (not linked to you, your family or the phone), the app version, the device type (Android, iPhone, iPad, computer) and events: app opened; trip started or finished (demo, GPS, timed or offline; length in miles and minutes, rounded; the age group and display style chosen); which features were used; error messages when the app crashes (cleaned of any personal details); and, if you answer it, a 0–10 "would you recommend AWTY?" score. <b>Never</b> names, places or locations</td><td>Our own server, stored with Netlify Blobs</td><td>To see whether AWTY works well for families (for example, how many trips are finished) and to find and fix crashes. Kept for <b>90 days</b>, then deleted automatically</td></tr>
       <tr><td><b>Issue reports</b> (only when a parent sends one)</td><td>The kind of issue, the description you type (email addresses, phone numbers and postcodes are removed automatically), the app version and device type. Sent even if usage stats are off, because you chose to send it</td><td>Our own server, stored with Netlify Blobs</td><td>To fix problems you tell us about. Kept for <b>180 days</b></td></tr>
-      <tr><td><b>AI-written stories</b></td><td>Landmark names and descriptions on the route, the destination name, the child's age group, story settings, and interests typed in (such as a favourite animal or "what the trip is for"). <b>Children's names are never sent</b>: the app replaces them with a placeholder and fills them in on the phone</td><td>Our server, which passes it to our AI provider, Anthropic</td><td>To write the trip story and fun facts</td></tr>
-      <tr><td><b>AI replies to spoken answers</b> (off unless chosen)</td><td>The words recognised from a child's spoken answer and the question asked. Never the audio, and never names</td><td>Our server, which passes it to Anthropic</td><td>So the app can reply to what was said</td></tr>
-      <tr><td><b>Story reports</b> (only when a parent taps "Report a problem")</td><td>The AI-written part that was reported (with placeholders instead of the children's names and the destination; email addresses, phone numbers and postcodes are removed automatically), which part it was, the age group, the reason chosen and the app version. A new version of that part is then written by our AI provider, in the same way as the rest of the story</td><td>Our own server, stored with Netlify Blobs</td><td>So we can review what slipped through and improve the safety checks. Kept for <b>180 days</b>, then deleted automatically</td></tr>
     </tbody></table></div>
-  <p>If a parent turns these off, AWTY still works using built-in stories, demo or timed routes, and on-phone answer checking.</p>
+  <p>If a parent turns these off, AWTY still works: the trip moves by the journey time instead.</p>
 
-  <h2>Speech recognition and location on the phone</h2>
-  <p>When "Listen for answers" is on, speech is turned into words by your phone's own speech service (on Android this is provided by Google; on iPhone by Apple), under their privacy terms. AWTY does not receive or keep any audio.</p>
+  <h2>Location on the phone</h2>
   <p>Location is a separate choice that starts switched off. If a parent switches it on, the phone's GPS position is used on the device to move the car along the route, and a green <b>Location on</b> sign shows on the children's screen whenever it is being used. GPS stops when the trip is paused or finished. We don't store location history. With location off, the car moves by the journey time instead, and you type the starting point.</p>
 
   <h2>What we don't do</h2>
   <ul>
     <li>No advertising, no third-party analytics or tracking tools, no advertising ID or device identifiers, no profiling.</li>
     <li>No selling or sharing of personal information for marketing.</li>
-    <li>No voice recordings, and no children's names or location history on our servers.</li>
+    <li>No microphone, no AI, and no children's names or location history on our servers.</li>
     <li>No accounts for children.</li>
   </ul>
 
@@ -91,12 +87,11 @@
 
   <h2>Our service providers</h2>
   <ul>
-    <li><b>Netlify</b>: hosts the app and our server functions, and stores usage stats, issue reports and story reports (Netlify Blobs). Like most hosts, it keeps short-term technical logs (such as IP addresses) for security. We don't store IP addresses with usage stats.</li>
-    <li><b>Google Maps Platform</b>: routes, place suggestions and landmarks.</li>
-    <li><b>Anthropic</b>: the AI that writes stories and, if chosen, replies to answers. [Confirm and state Anthropic's current data use and retention terms for API customers.]</li>
+    <li><b>Netlify</b>: hosts the app and our server functions, and stores usage stats and issue reports (Netlify Blobs). Like most hosts, it keeps short-term technical logs (such as IP addresses) for security. We don't store IP addresses with usage stats.</li>
+    <li><b>Google Maps Platform</b>: routes and place suggestions.</li>
     <li><b>Google Play / Apple App Store</b>: app downloads and, in future, subscriptions. Payments are handled by them, not by us.</li>
   </ul>
-  <p>Apart from usage stats, issue reports and story reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
+  <p>Apart from usage stats and issue reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
 
   <h2>Children</h2>
   <p>AWTY is designed for children aged about 4 to 12 using it with a parent or carer. We follow the UK Age Appropriate Design Code (the Children's Code): high-privacy settings by default, collecting as little as possible, no nudges to share more, and a grown-up check before settings, purchases and links that leave the app. [If offered in the US, add a COPPA section covering parental consent and parents' rights.]</p>
@@ -109,10 +104,9 @@
 
   <h2>Safety</h2>
   <p>AWTY is for passengers. The driver should never use the app while driving.</p>
-  <p>Every AI-written story part is checked before it is read aloud: it is written to rules for the child's age group, then checked for unsuitable words, for reading level, and by a separate AI review. Anything that doesn't pass is rewritten once or replaced by the app's built-in story. Parents can read the whole story in Settings → Read the story and report any part, which hides it straight away. Interests typed in that aren't suitable are left out, and landmarks such as pubs, cemeteries, prisons and hospitals are never used as story stops.</p>
 
   <h2>Changes</h2>
-  <p>If we change this policy, we'll update the date above and, for important changes, ask parents to review their choices in the app.</p>
+  <p>If we change this policy, we'll update the date above and, for important changes, ask parents to review their choices in the app. This policy covers AWTY Free. If we add paid extras later (such as stories, a storyteller voice or games), we'll add them here first and ask parents to choose again before anything new is sent.</p>
 </main>
 </body>
 </html>

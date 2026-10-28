@@ -50,7 +50,7 @@ From then on, whenever you change a file on GitHub, Netlify updates the app auto
 | `STATS_KEY` | Opens the developer dashboard at `/dashboard.html` (trips, features, mini-games, crashes, issue reports and the 5 key numbers) | Make up a long random password and mark it **secret**. Open `https://<your-site>/dashboard.html` and type it in; the page remembers it on that browser only. Never link the dashboard from the app. |
 
 ### Usage stats and the dashboard
-Usage stats are only sent if a parent switches on **Help improve AWTY** in the privacy choices (off by default). They go to `/api/telemetry` and are stored in **Netlify Blobs** (store `awty-stats`, no setup needed; the `@netlify/blobs` package is in `package.json`). Usage events are deleted after 90 days and issue reports after 180 days; a scheduled function (`netlify/functions/cleanup.mjs`) does this every day, and the dashboard also tidies up when it loads. Trips in demo mode are counted too; the dashboard's "Trip modes" panel shows how many.
+Usage stats are only sent if a parent switches on **Help improve AWTY** in the privacy choices (off by default). They go to `/api/telemetry` and are stored in **Netlify Blobs** (store `awty-stats`, or `awty-stats-test` on the test branch so testing stays off the live dashboard; no setup needed; the `@netlify/blobs` package is in `package.json`). Usage events are deleted after 90 days and issue reports after 180 days; a scheduled function (`netlify/functions/cleanup.mjs`) does this every day, and the dashboard also tidies up when it loads. Trips in demo mode are counted too; the dashboard's "Trip modes" panel shows how many.
 
 ## Using it in the car
 

@@ -1,6 +1,6 @@
 // Number plate lookup via the DVLA Vehicle Enquiry Service.
 // The DVLA record gives make, colour and year, but not the model or body shape.
-import { json, checkPasscode, readBody } from "../lib/common.mjs";
+import { json, checkPasscode, notInFree, readBody } from "../lib/common.mjs";
 
 const COLOURS = {
   WHITE: "white", CREAM: "white", BEIGE: "white", IVORY: "white",
@@ -16,6 +16,8 @@ const COLOURS = {
 const SUV_MAKES = ["LAND ROVER", "RANGE ROVER", "JEEP", "SSANGYONG", "ISUZU"];
 
 export default async (req) => {
+  const off = notInFree();
+  if (off) return off;
   const denied = checkPasscode(req);
   if (denied) return denied;
   const key = process.env.DVLA_API_KEY;

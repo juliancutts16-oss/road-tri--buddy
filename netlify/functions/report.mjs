@@ -1,11 +1,10 @@
 // Receives a parent's "Report a problem" about a story part, so it can be reviewed on the developer dashboard.
 // The report holds only the story text (with {NAMES}/{BUDDY} placeholders, never real names; the phone also swaps the
 // destination for {DEST}), the part, the age band and the reason chosen. Emails, phone numbers, postcodes and links are
-// removed here too. Stored in Netlify Blobs (store "awty-stats"):
+// removed here too. Stored in Netlify Blobs (store "awty-stats", or "awty-stats-test" on the test site):
 //   reports/<yyyy-mm-dd>/<random>   a story report (deleted after 180 days, like issue reports)
 // It's also written to the Netlify function log: Netlify → your site → Logs → Functions → report.
-import { getStore } from "@netlify/blobs";
-import { json, checkPasscode, readBody, clip } from "../lib/common.mjs";
+import { json, checkPasscode, readBody, clip, statsStore } from "../lib/common.mjs";
 
 const REASONS = new Set(["scary", "age", "unsafe", "other"]);
 const day = (t) => new Date(t).toISOString().slice(0, 10);
@@ -17,7 +16,7 @@ const scrub = (s, n) =>
     .replace(/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi, "[postcode]")
     .replace(/https?:\/\/\S+/g, "[link]");
 
-export default async (req) => {
+export default async (req, context) => {
   const denied = checkPasscode(req);
   if (denied) return denied;
 
@@ -42,7 +41,7 @@ export default async (req) => {
   };
   console.log(JSON.stringify({ event: "story-report", ...report }));
   try {
-    await getStore("awty-stats").setJSON(`reports/${day(now)}/${rand()}`, report);
+    await statsStore(context).setJSON(`reports/${day(now)}/${rand()}`, report);
   } catch (e) {
     console.log(JSON.stringify({ event: "story-report-not-saved", error: String(e && e.message) }));
   }

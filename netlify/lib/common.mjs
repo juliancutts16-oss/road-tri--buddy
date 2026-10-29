@@ -14,10 +14,14 @@ export function json(data, status = 200) {
   });
 }
 
-// Which version this branch is. "free" (the live branch, main): no AI stories, no AI replies to spoken answers and no
-// number-plate lookup, so those helpers say no and /api/health reports them as off. The test branch sets "full".
+// Feature packs: the same names and tiers as FEATURES / TIERS in public/index.html (the owner's list is FEATURES.md).
+// The server only needs the ones it helps with: "ai-stories" (story), "listen" (answer) and "cars-houses" (vehicle).
+// Which tier this branch is: "free" on the live branch (main), "full" on the test branch. Keep each branch's own line.
 export const EDITION = "full";
-export const notInFree = () => (EDITION === "free" ? json({ error: "This isn’t part of AWTY Free." }, 404) : null);
+const TIERS = { free: [], full: "*" };
+export const has = (f) => TIERS[EDITION] === "*" || (TIERS[EDITION] || []).includes(f);
+// A helper whose feature is switched off says no (and /api/health reports it as off).
+export const featureOff = (f) => (has(f) ? null : json({ error: "This isn’t part of this version of AWTY." }, 404));
 
 // Optional protection: if APP_PASSCODE is set on the server, every request must send it.
 // This stops strangers who find your site from spending your API credit.

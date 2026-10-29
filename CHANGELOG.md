@@ -5,6 +5,8 @@ See `RELEASING.md` for the step-by-step.
 
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
+- **Feature packs (test version).** Every extra (voice, stories, landmarks, games, points, and so on) is now its own feature with its own switch, so each one can be put into any price tier once the tiers are decided. Free is now simply "the core, no extras". The full list, with what's ready and what needs tidying, is in `FEATURES.md`. The test app has a feature picker in Settings → Safety, for trying out any mix. It never appears in the live app.
+- **Kids profiles (test version, switched off).** A parent adds each child once (name, age, a boy or girl cartoon picture, and their favourite animal, things they love and travel buddy), on a setup page the first time the app opens, or any time from the new Kids tile in Settings. The children's pictures then sit down the left of the Search screen's mountain with their first names underneath: tap one or more to put them into the story by name (with no typing), and the age follows the youngest picked. With nobody tapped, the story talks to "everyone". Names and favourites stay on the phone. Children's names typed in an earlier version become profiles automatically. Only visible when switched on in the feature picker.
 
 ## 0.3.0 — AWTY Free
 - The test version of the app (the `test` branch on Netlify) now keeps its usage stats, issue reports and story reports separate from the live app, so trips taken while testing don't appear on the live developer dashboard. The test site's own dashboard shows only test data. The daily clean-up deletes old test data on the same schedule as live data.

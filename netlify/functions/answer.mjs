@@ -1,7 +1,7 @@
 // Judges what a child said in reply to a question and writes what the app says back.
 // Receives only the words the phone's speech recognition heard, never audio.
 import Anthropic from "@anthropic-ai/sdk";
-import { json, checkPasscode, notInFree, readBody, clip } from "../lib/common.mjs";
+import { json, checkPasscode, featureOff, readBody, clip } from "../lib/common.mjs";
 import { AGE_RULES, ALWAYS_RULES, blockedWords } from "../lib/safety.mjs";
 
 const client = new Anthropic();
@@ -24,7 +24,7 @@ const SCHEMA = {
 };
 
 export default async (req) => {
-  const off = notInFree();
+  const off = featureOff("listen");
   if (off) return off;
   const denied = checkPasscode(req);
   if (denied) return denied;

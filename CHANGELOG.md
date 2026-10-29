@@ -7,6 +7,7 @@ See `RELEASING.md` for the step-by-step.
 _Changes waiting for the next release go here. Deploy only when the owner says so._
 
 ## 0.3.2 (fixes)
+- Fixed: after starting a new trip, the kids' screen could be unlocked without the PIN if it had been typed in the last 5 minutes. Now the trip screen always needs the PIN again when it locks. (Added to 0.3.2 after its first upload, keeping the same number.)
 - Free: everyone gets the red saloon and the default houses again. In 0.3.1 a slip switched this off, so a phone that had picked a different car or house in an older version kept it, with no way to change it in Free.
 - Start screen: the "Start" bar now only appears once a destination is typed in (after 0.3.1 it showed straight away if you'd used a starting place before).
 - Start screen: the two bars now look like Citymapper, with a bold "Start" or "End" label and a hint ("Where from?" / "Where to?") where you type.

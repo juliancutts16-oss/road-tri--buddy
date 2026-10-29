@@ -3286,7 +3286,7 @@ VSt.addEventListener('click',e=>{
 $('#d-new').addEventListener('click',()=>guarded(()=>{setPlay(false);Voice.stop();showTab('start')})('to plan a new trip'));
 
 function showTab(tab){
-  if(tab==='kid'&&$('#view-kid').hidden)kidLocked=!!S.child.lock; // arriving on the trip screen: locked for the kids (if that's switched on)
+  if(tab==='kid'&&$('#view-kid').hidden){kidLocked=!!S.child.lock;if(kidLocked)gateUntil=0} // arriving on the trip screen: locked for the kids (if that's switched on), and the PIN is needed again
   $('#view-start').hidden=tab!=='start';$('#view-kid').hidden=tab!=='kid';$('#view-stats').hidden=tab!=='stats';$('#view-settings').hidden=tab!=='settings';
   if(tab==='start'){ // the main menu always ends whatever is happening on the trip screen
     if(T&&T.running)setPlay(false);Voice.stop();Spot.end();Bonus.hide();if(!$('#game').hidden)Game.close();$('#celebrate').hidden=true;startBusy=false;startMsg='';renderStart()}

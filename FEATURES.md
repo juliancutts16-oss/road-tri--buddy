@@ -11,17 +11,17 @@ The map, miles and time left, the car at the top, background music (with the opt
 
 | # | Name (code name) | What's in it | Needs | Status | In tiers |
 |---|---|---|---|---|---|
-| 1 | Read-aloud voice (`voice`) | The phone reading things out loud | – | ✅ Ready | Full |
-| 2 | Alice storyteller voice (`storyteller`) | The downloadable natural voice that runs on the phone (~124 MB with sounds) | Read-aloud voice | ✅ Ready | Full |
-| 3 | Landmarks & fun facts (`landmarks`) | Landmarks found along the route, their pop-ups, facts and questions | – | ✅ Ready | Full |
+| 1 | Read-aloud voice (`voice`) | The phone reading things out loud | – | 🧹 Needs tidying | Full |
+| 2 | Alice storyteller voice (`storyteller`) | The downloadable natural voice that runs on the phone (~124 MB with sounds) | Read-aloud voice | 🧹 Needs tidying | Full |
+| 3 | Landmarks & fun facts (`landmarks`) | Landmarks found along the route, their pop-ups, facts and questions | – | 🧹 Needs tidying | Full |
 | 4 | Trip story (`stories`) | Hoot's story told across the trip, the Story page, "Make the stories theirs" (children's names, favourite animal, likes, buddy) | Voice, Landmarks | 🧹 Needs tidying | Full |
-| 5 | AI-written stories (`ai-stories`) | Stories and fun facts written by the AI for this route (names never sent) | Trip story | ✅ Ready | Full |
-| 6 | Listen for answers (`listen`) | Microphone answers to questions, and AI replies to them | Voice, Landmarks | ✅ Ready | Full |
-| 7 | Spot-it game (`spotit`) | The spotting game, and starting it from the Games page | – | ✅ Ready | Full |
+| 5 | AI-written stories (`ai-stories`) | Stories and fun facts written by the AI for this route (names never sent) | Trip story | 🧹 Needs tidying | Full |
+| 6 | Listen for answers (`listen`) | Microphone answers to questions, and AI replies to them | Voice, Landmarks | 🧹 Needs tidying | Full |
+| 7 | Spot-it game (`spotit`) | The spotting game, and starting it from the Games page | – | 🧹 Needs tidying | Full |
 | 8 | Mini-games (`games`) | The Games page and the bonus game pop-ups during a trip | – | 🧹 Needs tidying | Full |
 | 9 | Points, coins & unlocks (`points`) | Stars on the trip screen, coins, unlocking cars, the points and "seen most" stats | – | 🧹 Needs tidying | Full |
 | 10 | Car & house choices (`cars-houses`) | Choosing the car and houses, the My car page, number-plate lookup | – | 🧹 Needs tidying | Full |
-| 11 | Sound effects (`sound-fx`) | Distance sounds, arrival fanfare, chimes, timer ticks, story sounds | – | ✅ Ready | Full |
+| 11 | Sound effects (`sound-fx`) | Distance sounds, arrival fanfare, chimes, timer ticks, story sounds | – | 🧹 Needs tidying | Full |
 | 12 | Age-group themes (`themes`) | The paid age-group looks (see `planning/ui-v2/BUILD-NOTES.md`) | – | 🚧 Being built | – |
 | 13 | Kids profiles (`profiles`) | A saved profile per child (name, age, a boy or girl cartoon picture, and with stories on: favourite animal, things they love, travel buddy). Set up once after the privacy choices, changed in Settings → Kids. The kids' pictures sit down the left of the Search screen's mountain with their first names; nobody is in the story until tapped, and each child tapped (blue ring and tick) goes into the story by name with their favourites. The age follows the youngest picked. The picks clear when the app is opened again after half an hour, like the search bar. Choosing their own look is planned for a paid tier. Replaces typing names and favourites on the Search screen, and drops "What's the trip for?" | – | 🚧 Being built (first version done, try it with the picker) | – |
 

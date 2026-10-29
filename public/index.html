@@ -960,17 +960,17 @@ const PREMIUM_THEMES={'4-5':'rainbow','6-7':'popart','8+':'neonglow'};
 // needs: switched off automatically whenever one of these is off. The map, countdown, car at the top, music, Stats,
 // Settings and the PIN are the core: always on, so they aren't listed.
 const FEATURES={
-  voice:{name:'Read-aloud voice',status:'ready'},
-  storyteller:{name:'Alice storyteller voice',needs:['voice'],status:'ready'},
-  landmarks:{name:'Landmarks & fun facts',status:'ready'},
+  voice:{name:'Read-aloud voice',status:'tidy'},
+  storyteller:{name:'Alice storyteller voice',needs:['voice'],status:'tidy'},
+  landmarks:{name:'Landmarks & fun facts',status:'tidy'},
   stories:{name:'Trip story',needs:['voice','landmarks'],status:'tidy'},
-  'ai-stories':{name:'AI-written stories',needs:['stories'],status:'ready'},
-  listen:{name:'Listen for answers (microphone)',needs:['voice','landmarks'],status:'ready'},
-  spotit:{name:'Spot-it game',status:'ready'},
+  'ai-stories':{name:'AI-written stories',needs:['stories'],status:'tidy'},
+  listen:{name:'Listen for answers (microphone)',needs:['voice','landmarks'],status:'tidy'},
+  spotit:{name:'Spot-it game',status:'tidy'},
   games:{name:'Mini-games',status:'tidy'},
   points:{name:'Points, coins & unlocks',status:'tidy'},
   'cars-houses':{name:'Car & house choices',status:'tidy'},
-  'sound-fx':{name:'Sound effects',status:'ready'},
+  'sound-fx':{name:'Sound effects',status:'tidy'},
   themes:{name:'Age-group themes',status:'building'},
   profiles:{name:'Kids profiles',status:'building'}
 };

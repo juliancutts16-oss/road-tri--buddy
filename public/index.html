@@ -620,13 +620,15 @@ body.kid-locked #demo{display:none}
 .start-rows .fold > summary{padding:0 14px;min-height:48px;gap:8px}
 .start-rows .fold-h{font-size:calc(.98rem*var(--ds));line-height:1.15}
 .start-rows .fold .sec-sub{font-size:.74rem;line-height:1.3}
-.search input::placeholder{color:var(--navy);opacity:.72;font-size:min(.94rem,3.7vw)}
-@media (max-width:420px){.hero-bar{gap:6px}.hero-bar .logo{width:40px;height:44px}.search{gap:6px;padding-left:12px}.search .icon-btn{width:38px;height:38px}}
+.search input::placeholder{color:var(--muted);opacity:.8;font-size:min(.94rem,3.7vw)}
+.search .bar-lbl{font:700 .85rem var(--body);color:var(--blue);white-space:nowrap;flex:none} /* Citymapper style: a bold label, then a light hint where you type */
+@media (max-width:420px){.hero-bar{gap:6px}.hero-bar .logo{width:40px;height:44px}.search{gap:6px;padding-left:12px}.search .icon-btn{width:38px;height:38px}.search .bar-lbl{font-size:.78rem}}
 .hero .mtn{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* the whole mountain always fits; the hills and sky carry on past the edges */
 .hero-bar{position:absolute;top:calc(6vh + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:10px;z-index:3}
 .hero-bar .logo{width:50px;height:55px}
 .search{flex:1;display:flex;align-items:center;gap:8px;background:#FFFFFF;border-radius:999px;padding:5px 5px 5px 16px;box-shadow:0 6px 18px rgba(20,32,63,.14);min-width:0}
-.search input{flex:1;border:0!important;background:transparent!important;padding:10px 0!important;font:500 1rem var(--body)!important;min-width:0;outline:0;color:var(--ink)}
+.search input{flex:1;border:0!important;background:transparent!important;padding:10px 0!important;font:500 1rem var(--body)!important;min-width:0;outline:0;color:var(--ink);caret-color:var(--blue)}
+.search:focus-within{box-shadow:0 0 0 3px var(--blue),0 6px 18px rgba(20,32,63,.14)} /* a clear blue ring and a blue blinking cursor show where you're typing */
 .search .icon-btn{box-shadow:none}
 .search .ib-saved{background:#FFF6D6;color:#8A5A00}.search .ib-here{background:#E8F0FF;color:var(--blue)}
 .search .ib-saved[aria-expanded="true"]{background:var(--yellow);color:var(--navy)}
@@ -635,16 +637,12 @@ body.kid-locked #demo{display:none}
 .here-pill .here-msg{margin:0!important;color:var(--navy);font-weight:600}
 .here-pill .here-msg.err{color:var(--red)}
 .here-pill .linkish{font-weight:700}
-/* "Where are you starting from?": one slim line under the search bar until a start is chosen */
-.start-prompt{justify-self:center;max-width:100%;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border-radius:999px;padding:5px 5px 5px 14px;box-shadow:0 4px 14px rgba(20,32,63,.12)}
-.sp-q{font:700 .78rem var(--body);color:var(--muted);margin-right:2px}
-.start-prompt button{min-height:32px;border-radius:999px;font:600 .8rem var(--body);cursor:pointer;padding:0 12px;white-space:nowrap}
-.sp-here{border:0;background:var(--blue);color:#FFFFFF}
-.sp-type{border:1.5px solid var(--line);background:var(--soft);color:var(--navy)}
-.sugg:not([hidden]) ~ .start-prompt{display:none} /* the suggestion list comes first while typing */
-.start-prompt.nudge{animation:sp-nudge .45s ease}
+/* "Starting point" sits above the destination once one is in (like Citymapper), and shakes if Let's go is pressed without it */
+.bars{flex:1;display:grid;gap:8px;min-width:0}
+.search.from.nudge{animation:sp-nudge .45s ease}
 @keyframes sp-nudge{0%,100%{transform:none}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
-.calm .start-prompt.nudge{animation:none}
+.calm .search.from.nudge{animation:none}
+.hero.two .hero-drop{top:calc(6vh + 124px + env(safe-area-inset-top,0px))}
 .hero-drop{position:absolute;top:calc(6vh + 66px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:4;display:grid;gap:8px}
 .hero-drop .place-chips,.saved-panel{background:#FFFFFF;border-radius:20px;padding:12px;box-shadow:0 8px 24px rgba(20,32,63,.16);margin:0}
 .saved-panel .lbl{margin-bottom:8px}
@@ -987,6 +985,7 @@ const ON=new Set(PICKED||tierOn(EDITION));
 const has=k=>ON.has(k)&&(FEATURES[k].needs||[]).every(has);
 Object.keys(FEATURES).forEach(k=>document.documentElement.classList.toggle('no-'+k,!has(k)));
 const hasPremium=()=>has('themes');
+const CORE_ONLY=!Object.keys(FEATURES).some(has); // just the core, no extras: the Free tier (or that mix in the picker)
 const BASIC_ART='playful'; // how the road and map pictures are drawn in the Basic look
 const SPOT_CATS=[
   {id:'animals',label:'Animals',items:[['cow','🐄','Cow','countryside'],['horse','🐎','Horse','countryside'],['sheep','🐑','Sheep','countryside'],['dog','🐕','Dog','town any'],['duck','🦆','Duck','countryside forest'],['bird','🐦','Bird','any'],['deer','🦌','Deer','forest'],['squirrel','🐿️','Squirrel','forest town'],['crab','🦀','Crab','beach'],['camel','🐫','Camel','desert']]},
@@ -1062,7 +1061,10 @@ function featureForce(){if(!has('landmarks')){S.landmark.enabled=false;if(S.rout
   if(!has('spotit')){S.spot.enabled=false;S.child.spotNow=false}if(!has('games'))S.bonus.count=0;
   if(!has('cars-houses')){Object.assign(S.child,{color:false,style:false});S.car={...DEFAULTS.car};S.houseStart={...DEFAULTS.houseStart};S.houseEnd={...DEFAULTS.houseEnd}}
   if(!has('storyteller'))S.sound.voice='phone';if(!has('sound-fx'))Object.assign(S.sound,{mileSound:'off',arrival:'off',chime:false,tick:false,storyFx:false});
-  if(!has('voice')&&!has('sound-fx')&&S.sound.music)S.sound.on=true}
+  if(!has('voice')&&!has('sound-fx')&&S.sound.music)S.sound.on=true;
+  // Core only (Free): always ages 4–5 (the drive in cartoons), the trip screen always locks, and no Connected/Offline
+  // switch (without Google, or with no signal, the trip runs on the drive time by itself)
+  if(CORE_ONLY){if(S.age!=='4-5')applyAge('4-5');S.child.lock=true;S.tripMode='connected'}}
 featureForce();
 if(S.to==="Grandma's House, Oakville"&&!S.toPlace)S.to=''; // the old example destination (0.1.3 and earlier): the search bar now starts empty
 // Opening the app again (e.g. the next day) starts with an empty search bar. Coming back within half an hour keeps it,
@@ -1092,7 +1094,9 @@ function leftOut(){return[...likesRaw(),...['animal','buddy','reason'].map(k=>St
 // An AI-written piece passes if a parent hasn't reported it and none of its words are on the list.
 const aiOk=(p,blocked)=>!!(p&&!blocked&&!unsafeText([...(p.sentences||[]),p.question,p.word,p.quiz&&p.quiz.question,p.helpAsk,p.helpThanks,...(p.choice?[p.choice.question,...p.choice.options.map(o=>o.text)]:[])].join(' ')));
 let savedCars=store.get('cars',[{name:'Mum’s car (example)',body:'suv',color:'white'}]);
-let routes=store.get('routes',[{...DEFAULT_ROUTE,id:'s-example',name:'Grandma’s (example)'}]);
+let routes=store.get('routes',CORE_ONLY?[]:[{...DEFAULT_ROUTE,id:'s-example',name:'Grandma’s (example)'}]);
+if(CORE_ONLY){routes=routes.filter(r=>r.id!=='s-example'); // Free has no made-up example route (its 30 miles aren't real)
+  if(S.route&&(S.route.id==='s-example'||S.route.savedFrom==='s-example')){S.route=null;S.to='';S.from=''}}
 let stats=store.get('stats',{trips:[],sim:{trips:0,miles:0,score:0}});
 // Kids profiles (the 'profiles' feature): one per child, kept on this phone only (not in settings, so a settings reset keeps them).
 // The children ticked on the Search screen fill in S.profile, which the stories use, and the youngest sets the age.
@@ -1134,10 +1138,15 @@ function makeRoute(from,to){
   return{id:'r'+hashStr(from+to),name:'',from,to,miles,mins,zones,landmarks:has('landmarks')?landmarks:[]};
 }
 const noLm=r=>!has('landmarks')&&r&&r.landmarks&&r.landmarks.length?{...r,landmarks:[]}:r; // no landmarks when they're switched off (a route saved by an older version may have some)
+// Without Google routes (switched off, or the server isn't answering) AWTY never makes up a distance: the trip runs on the
+// drive time, like a no-signal trip. Demo driving (for testing at home) still makes its pretend route.
+let demoUnlocked=false; // Free: set by holding the Settings button for 15 seconds (see the bottom bar)
+const noMaps=()=>API.checked&&!S.demoMode&&!(API.maps&&allowed('maps'))&&!(S.route&&S.route.points&&routeFresh()); // a saved route picked from the list still works
 function currentRoute(){
-  if(S.tripMode==='offline'){
+  if(S.tripMode==='offline'||noMaps()){
     const r=routes.find(r=>r.id===S.offlineRouteId);if(r)return noLm({...r,offline:true});
-    const mins=S.offlineMins;return{id:'timer',from:'Start',to:'Destination',miles:+(mins*40/60).toFixed(1),mins,zones:[],landmarks:[],offline:true,timerOnly:true};
+    const mins=S.offlineMins,named=S.tripMode!=='offline'&&S.to.trim(); // Google routes off: still show the place they typed
+    return{id:'timer',from:named?fromLabel():'Start',to:named?toLabel():'Destination',miles:+(mins*40/60).toFixed(1),mins,zones:[],landmarks:[],offline:true,timerOnly:true};
   }
   return noLm(S.route||makeRoute(S.from,S.to));
 }
@@ -1165,7 +1174,7 @@ async function api(path,body,timeout=25000){
 // batches to our own server (/api/telemetry). A random ID ties one install's events together; it isn't linked to the
 // family or the phone and is replaced by "Delete my usage data". Never names, interests, places, voice or story text.
 // The last 30 events are kept so parents can see exactly what was recorded (Settings → Data & services).
-const APP_VERSION='0.3.0';
+const APP_VERSION='0.3.2';
 const Tel={q:store.get('telq',[]),recent:store.get('telrecent',[]),busy:false,crashes:new Set(),
   get id(){let id=store.get('telid','');if(!id){id=crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');store.set('telid',id)}return id},
   platform(){const u=navigator.userAgent;return/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'ipad':/iPhone|iPod/.test(u)?'iphone':/Android/.test(u)?'android':/Windows|Macintosh|Linux|CrOS/.test(u)?'desktop':'other'},
@@ -1395,7 +1404,7 @@ function tellIntro(force){
 // Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
 async function loadRoute(){
   if(!S.to.trim())throw new Error('Enter where you’re going first.');
-  if(!API.maps||!allowed('maps')){S.route={...makeRoute(fromLabel(),S.to.trim()),toLabel:toLabel()};saveS();return S.route}
+  if(!API.maps||!allowed('maps')){if(!S.demoMode)throw new Error(allowed('maps')?'Google Maps isn’t answering. Try again, or set the drive time instead.':'Live routes from Google Maps are switched off in the privacy choices.');S.route={...makeRoute(fromLabel(),S.to.trim()),toLabel:toLabel()};saveS();return S.route}
   let origin;if(!S.from.trim()){if(!allowed('location'))throw new Error('Type where you’re starting from, or switch on location in Privacy choices.');
     const h=S.here&&Date.now()-S.here.at<10*60e3?S.here:null; // reuse a fix from "Use my current location" if it's recent
     const c=h?{latitude:h.lat,longitude:h.lng}:await getPosition();origin={lat:round2(c.latitude),lng:round2(c.longitude)}} // about 1 km: enough for directions, not your front door
@@ -1442,29 +1451,35 @@ async function useHere(rerender){
   try{const c=await getPosition();S.from='';S.fromPlace=null;S.here={lat:c.latitude,lng:c.longitude,acc:Math.round(c.accuracy||0),at:Date.now(),area:''};saveS();Tel.feature('here');startMsg='';routeMsg='';
     if(API.maps&&allowed('maps')){hereMsg='📍 Found you. Checking the town…';rerender();
       try{const j=await api('places',{near:1,lat:round2(c.latitude),lng:round2(c.longitude)},8000);S.here.area=j.area||'';saveS()}catch(e){}}
-    hereMsg=hereLabel(true)}
-  catch(e){hereMsg='!'+e.message}
+    hereMsg=hereLabel(true);locRefused=false}
+  catch(e){hereMsg='!'+e.message;if(/refused/.test(e.message))locRefused=true}
   rerender();
 }
 const hereOn=()=>!S.from.trim()&&S.here&&Date.now()-S.here.at<30*60e3;
+// Location can't be used (off in the privacy choices, or the phone refused): the start prompt asks for an address instead
+let locRefused=false;const noLoc=()=>!allowed('location')||locRefused;
 function hereLabel(full){const h=S.here||{},a=h.acc;return`📍 Starting from where you are now${h.area?`, near ${h.area}`:''}${full&&a?` (accurate to about ${a<1000?a+' m':Math.round(a/1000)+' km'})`:''}.`}
 /* ---- place suggestions and saved places ---- */
 // Where the phone is, for ranking suggestions near you. Only if a parent allowed location; uses a recent fix,
-// or asks quietly only if the phone already allows it. Rounded to about 10 km, which is all "near you" needs.
+// or asks the phone (the first time, Android shows its pop-up). Rounded to about 10 km, which is all "near you" needs.
 const round2=v=>Math.round(v*100)/100;
+let biasAsk=null; // one ask at a time; if refused it stays refused until the app reopens, so the pop-up never repeats
 async function biasCoords(){
   if(!allowed('location'))return null;
   const rough=h=>({lat:Math.round(h.lat*10)/10,lng:Math.round(h.lng*10)/10});
   if(S.here&&Date.now()-S.here.at<30*60e3)return rough(S.here);
-  try{if(navigator.permissions&&(await navigator.permissions.query({name:'geolocation'})).state==='granted'){const c=await getPosition();S.here={lat:c.latitude,lng:c.longitude,acc:Math.round(c.accuracy||0),at:Date.now()};return rough(S.here)}}catch(e){}
-  return null;
+  try{if(navigator.permissions&&(await navigator.permissions.query({name:'geolocation'})).state==='denied'){locRefused=true;return null}}catch(e){}
+  biasAsk=biasAsk||new Promise(res=>{if(!navigator.geolocation)return res(null);
+    navigator.geolocation.getCurrentPosition(p=>{const c=p.coords;S.here={lat:c.latitude,lng:c.longitude,acc:Math.round(c.accuracy||0),at:Date.now()};biasAsk=null;locRefused=false;res(S.here)},e=>{if(e&&e.code===1)locRefused=true;res(null)},{enableHighAccuracy:false,timeout:15000,maximumAge:600000})});
+  const h=await Promise.race([biasAsk,new Promise(r=>setTimeout(()=>r(null),4000))]); // suggestions wait 4 s at most
+  return h?rough(h):null;
 }
 let suggest={field:null,items:[]},sugTimer=0;
 // Each Google lookup is charged, so matches are kept for the session: typing the same text again (or pressing Go) reuses them.
 const sugCache=new Map();
 async function placeMatches(text){const b=await biasCoords(),k=text.trim().toLowerCase()+'|'+(b?b.lat+','+b.lng:'');
   if(sugCache.has(k))return sugCache.get(k);
-  const items=(await api('places',{input:text.trim(),lat:b&&b.lat,lng:b&&b.lng},8000)).suggestions||[];
+  const items=(await api('places',b?{input:text.trim(),lat:b.lat,lng:b.lng}:{input:text.trim()},8000)).suggestions||[];
   if(sugCache.size>=100)sugCache.delete(sugCache.keys().next().value);sugCache.set(k,items);return items}
 // Asks only once 3 letters are typed and the typing has paused for half a second.
 function suggestFor(field,text){
@@ -2513,7 +2528,7 @@ function renderMap(){
   const cv=$('#map');if(!cv)return;sizeCanvas(cv);const W=cv.width,H=cv.height;if(!W||!H)return;
   const g0=cv.getContext('2d'),st=S.displayStyle,u=Math.min(W*.4,H)/100,r=T.route,m=mapPath(r,W,H),mile=T.miles/T.total*r.miles,here=mapAt(m,mile),n=m.pts.length-1;
   const baseKey=`${m.key}|${st}`;
-  if(mapLayers.baseKey!==baseKey){const [c,g]=mapLayer(mapLayers.base,W,H);mapLayers.base=c;mapLayers.baseKey=baseKey;mapLayers.marksKey='';drawMapBase(g,W,H,st,u,m,n)}
+  if(mapLayers.baseKey!==baseKey){const [c,g]=mapLayer(mapLayers.base,W,H);mapLayers.base=c;mapLayers.baseKey=baseKey;mapLayers.marksKey='';drawMapBase(g,W,H,st,u,m,n,!!(r.points&&r.points.length>1))}
   const marksKey=`${baseKey}|${r.landmarks.map(l=>l.id+(mile>l.mile?'+':'')).join(',')}`;
   if(mapLayers.marksKey!==marksKey){const [c,g]=mapLayer(mapLayers.marks,W,H);mapLayers.marks=c;mapLayers.marksKey=marksKey;
     r.landmarks.forEach(lm=>{const q=mapAt(m,lm.mile).p;emoji(g,lmInfo(lm).emoji,q[0],q[1]-u*2.5,u*15,mile>lm.mile?.5:1)})}
@@ -2532,7 +2547,7 @@ function renderMap(){
   drawCar(g,here.p[0],here.p[1]+u*3,u*18,S.car.body,COLORS[S.car.color]||S.car.color,facing,{spin:scene.spin,t:scene.t,number:false});
 }
 // Background for each age style plus the faint outline of the whole route.
-function drawMapBase(g,W,H,st,u,m,n){
+function drawMapBase(g,W,H,st,u,m,n,north){
   if(st==='teen'){g.fillStyle='#0B0820';g.fillRect(0,0,W,H);g.strokeStyle='rgba(34,211,238,.12)';g.lineWidth=1;g.beginPath();const gs=W/24;for(let x=0;x<W;x+=gs){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<H;y+=gs){g.moveTo(0,y);g.lineTo(W,y)}g.stroke()}
   else if(st==='explorer'){const bg=g.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,W*.65);bg.addColorStop(0,'#F7E7BE');bg.addColorStop(1,'#D9B77A');g.fillStyle=bg;g.fillRect(0,0,W,H); // treasure map with a compass
     const cx=W-u*12,cy=u*12,cr=u*7;g.strokeStyle='#5B3A1A';g.lineWidth=u*.7;g.beginPath();g.arc(cx,cy,cr,0,Math.PI*2);g.stroke();
@@ -2540,6 +2555,11 @@ function drawMapBase(g,W,H,st,u,m,n){
   else{g.fillStyle='#BDE8A5';g.fillRect(0,0,W,H);const rng=mulberry(7);for(let i=0;i<16;i++)circle(g,rng()*W,rng()*H,u*(4+rng()*7),i%4===0?'#9ED0E6':'rgba(63,154,74,.3)')} // park map with ponds and trees
   if(st!=='teen'){g.lineJoin='round';g.lineCap='round';g.beginPath();m.pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));
     g.strokeStyle=st==='explorer'?'rgba(91,58,26,.25)':'#1E2A4A';g.lineWidth=u*(st==='explorer'?3:4);g.stroke()}
+  // a real map is drawn north-up, so a little "N" arrow says so (the treasure map has its own compass)
+  if(north&&st!=='explorer'){const cx=W-u*15,cy=u*15,r=u*10,ink=st==='teen'?'#22D3EE':'#14203F';
+    circle(g,cx,cy,r,st==='teen'?'rgba(11,8,32,.85)':'rgba(255,255,255,.9)');
+    g.fillStyle=st==='teen'?'#22D3EE':'#E8453C';g.beginPath();g.moveTo(cx,cy-r*.75);g.lineTo(cx+r*.32,cy-r*.05);g.lineTo(cx-r*.32,cy-r*.05);g.closePath();g.fill();
+    g.fillStyle=ink;g.font=`700 ${Math.round(r*.62)}px system-ui,sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText('N',cx,cy+r*.38)}
 }
 
 /* ================= Trip engine ================= */
@@ -2897,7 +2917,10 @@ const idFor=p=>'f-'+p.replace(/\./g,'-');
 function chips(path,opts,cur,cls='',dis=false){return`<div class="chips-row ${cls}">${opts.map(([v,l])=>`<button type="button" class="chip-btn ${String(cur)===String(v)?'on':''}" data-set="${path}" data-val="${v}" aria-pressed="${String(cur)===String(v)}" ${dis?'disabled':''}>${l}</button>`).join('')}</div>`}
 function toggle(path,label,desc=''){return`<label class="tgl" for="${idFor(path)}"><span>${label}${desc?`<small>${desc}</small>`:''}</span><input type="checkbox" id="${idFor(path)}" data-bind="${path}" ${getP(S,path)?'checked':''}><i></i></label>`}
 function select(path,label,opts){const cur=getP(S,path);return`<div><label class="lbl" for="${idFor(path)}">${label}</label><select id="${idFor(path)}" data-bind="${path}">${opts.map(([v,l])=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${l}</option>`).join('')}</select></div>`}
-function range(path,label,min,max,step){const v=getP(S,path);return`<div class="rng"><label for="${idFor(path)}">${label}<b data-out="${path}">${Math.round(v*100)}%</b></label><input type="range" id="${idFor(path)}" data-bind="${path}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`}
+// The look sliders say what they do in words ("normal" isn't in the same place on each one); volumes stay as a %
+const RANGE_WORDS={'access.decoSize':v=>v<.95?'Smaller':v>1.05?'Bigger':'Normal','access.decoAmount':v=>v>.95?'All':v>=.6?'Fewer':'Very few','access.saturation':v=>v<.95?'Softer':v>1.05?'Brighter':'Normal'};
+const rangeOut=(path,v)=>RANGE_WORDS[path]?RANGE_WORDS[path](+v):Math.round(v*100)+'%';
+function range(path,label,min,max,step){const v=getP(S,path);return`<div class="rng"><label for="${idFor(path)}">${label}<b data-out="${path}">${rangeOut(path,v)}</b></label><input type="range" id="${idFor(path)}" data-bind="${path}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`}
 // Settings is six coloured tiles; each opens its own page (growing out of the tile) with these sections as cards.
 // The test version only: switch features on and off to see what a tier would look like. The app restarts to apply it.
 function featBody(){const st={ready:'✅',tidy:'🧹',building:'🚧'};
@@ -2916,7 +2939,9 @@ const SET_GROUPS=Object.fromEntries(Object.entries({
   bonus:{c:'c5',icon:'🎛️',title:'Options',sub:'Games & Spot-it',secs:['age','bonus','spot']},
   trip:{c:'c6',icon:'📍',title:'Places',sub:'Route & saved places',secs:['trip']}})
   .map(([g,v])=>[g,{...v,secs:v.secs.filter(s=>!SEC_NEEDS[s]||has(SEC_NEEDS[s]))}]).filter(([,v])=>v.secs.some(s=>s!=='age')));
-const groupOf=id=>Object.keys(SET_GROUPS).find(g=>SET_GROUPS[g].secs.includes(id))||'trip';
+const groupOf=id=>id==='report'?'report':Object.keys(SET_GROUPS).find(g=>SET_GROUPS[g].secs.includes(id))||'trip';
+const REPORT_PANEL={c:'c4',icon:'⚑',title:'Report a problem',sub:'Something not working?',secs:['report']}; // not a tile: the button under the tiles opens it
+const panelOf=id=>SET_GROUPS[id]||(id==='report'?REPORT_PANEL:null);
 let setPanel=null,setFrom=null,secCards=false;
 function sec(id,icon,title,body,sub=''){if(secCards)return`<section class="card spc" data-sec="${id}"><h2 class="h"><span class="sec-ico" aria-hidden="true">${icon}</span>${title}</h2><div class="sec-body">${body}</div></section>`;
   return`<details class="sec" data-sec="${id}" ${openSecs.has(id)?'open':''}><summary><span class="sec-ico" aria-hidden="true">${icon}</span>${title}${sub?`<span class="sec-sub">${sub}</span>`:''}<span class="chev"></span></summary><div class="sec-body">${body}</div></details>`}
@@ -2970,12 +2995,13 @@ async function rewritePart(R,id,avoid){
     saveS();saveRoutes();svPrepare(R);return true}catch(e){return false}}
 function renderSettings(){
   const unl=unlockedSet(),R=S.route||makeRoute(S.from,S.to),th=S.thresholds[S.unlockMetric],mv=metricValue(S.unlockMetric);
-  const tripBody=`${toggle('demoMode','Demo driving','Simulates the drive so you can test at home. Turn off in the car to follow the real GPS.')}
-    ${chips('tripMode',[['connected','📍 Connected (Maps)'],['offline','✈️ Offline (no signal)']],S.tripMode)}
+  // Free: no Connected/Offline choice (with no signal it moves by the clock by itself); demo driving is hidden (see demoUnlocked)
+  const tripBody=`${!CORE_ONLY||S.demoMode||demoUnlocked?toggle('demoMode','Demo driving','Simulates the drive so you can test at home. Turn off in the car to follow the real GPS.'):''}
+    ${CORE_ONLY?'':chips('tripMode',[['connected','📍 Connected (Maps)'],['offline','✈️ Offline (no signal)']],S.tripMode)}
     ${S.tripMode==='connected'?`<div class="stack"><div class="ac"><label class="lbl" for="f-from">From</label><input type="text" id="f-from" data-bind="from" value="${esc(S.from)}" autocomplete="off" placeholder="📍 Current location (or type an address)"><div class="sugg" data-for="from" hidden></div>
         <button type="button" class="btn ghost here-btn" data-act="here">📍 Use my current location</button>${hereNote()}${placeChips('from')}</div>
       <div class="ac"><label class="lbl" for="f-to">Destination</label><input type="text" id="f-to" data-bind="to" value="${esc(S.to)}" autocomplete="off" placeholder="A place, shop or postcode, e.g. Tesco or KT1 2AB"><div class="sugg" data-for="to" hidden></div>${placeChips('to')}</div>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="connect">📍 ${API.maps&&allowed('maps')?'Get route from Google Maps':'Make a demo route'}</button><a class="btn ghost" href="${mapsLink()}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="connect">📍 ${API.maps&&allowed('maps')||!S.demoMode?'Get route from Google Maps':'Make a demo route'}</button><a class="btn ghost" href="${mapsLink()}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>
       <div class="status">${routeMsg||`${R.points?'Route from Google Maps':'Demo route'}: <b>${R.miles} miles · ${fmtMins(R.mins)}</b>${!has('landmarks')?'':` · ${R.landmarks.length} landmarks ${R.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`}`}</div>
       ${API.ai&&allowed('ai')&&(R.landmarks.length||S.landmark.type==='story')?`<div class="row" style="align-items:center;flex-wrap:wrap"><button class="btn ghost" data-act="stories">✍️ ${S.landmark.type==='story'?'Write the trip story':'Write fun facts'} for this route</button><span class="note" id="storyStatus">${storyStatus}</span></div>`:''}
       <p class="note">Google Maps doesn’t share its navigation with other apps, so set the destination here. “Open in Google Maps” starts the same trip in Maps for the driver.</p>
@@ -2984,8 +3010,8 @@ function renderSettings(){
       <div class="grid2">${select('offlineMins','Journey time',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}
       ${select('offlineRouteId','Use saved route',[['','None, timer only'],...routes.map(r=>[r.id,esc(r.name)])])}</div></div>`}
     <div><span class="lbl">Saved places</span><div class="list">${S.places.length?S.places.map((p,i)=>`<div class="li"><div class="grow"><b>⭐ ${esc(p.name)}</b><small>${esc(p.address)}</small></div><button class="x" data-act="delplace" data-i="${i}" aria-label="Delete ${esc(p.name)}">✕</button></div>`).join(''):'<p class="note">None yet. Choose a destination, then tap “Save this place” to keep it, for example Home or Grandma’s.</p>'}</div></div>
-    <div><span class="lbl">Saved routes</span><div class="list">${routes.length?routes.map(r=>`<div class="li ${S.tripMode==='offline'&&S.offlineRouteId===r.id?'on':''}"><div class="grow"><b>${esc(r.name)}</b><small>${esc(r.from)} → ${esc(destName(r))} · ${r.miles} mi · ${fmtMins(r.mins)}</small></div><button class="btn ghost" data-act="useroute" data-id="${r.id}">Use offline</button><button class="x" data-act="delroute" data-id="${r.id}" aria-label="Delete ${esc(r.name)}">✕</button></div>`).join(''):'<p class="note">No saved routes yet.</p>'}</div></div>
-    <p class="note">With Demo driving off, the phone’s GPS moves the car along the route and the screen stays awake. Keep the app open on screen during the drive.</p>`;
+    <div><span class="lbl">Saved routes</span><div class="list">${routes.length?routes.map(r=>`<div class="li ${S.tripMode==='offline'&&S.offlineRouteId===r.id?'on':''}"><div class="grow"><b>${esc(r.name)}</b><small>${esc(r.from)} → ${esc(destName(r))} · ${r.miles} mi · ${fmtMins(r.mins)}</small></div><button class="btn ghost" data-act="useroute" data-id="${r.id}">${CORE_ONLY?'Use this route':'Use offline'}</button><button class="x" data-act="delroute" data-id="${r.id}" aria-label="Delete ${esc(r.name)}">✕</button></div>`).join(''):'<p class="note">No saved routes yet.</p>'}</div></div>
+    <p class="note">${CORE_ONLY?'With location on, the phone’s GPS moves the car along the route':'With Demo driving off, the phone’s GPS moves the car along the route'} and the screen stays awake. Keep the app open on screen during the drive.</p>`;
   const carBody=`${API.dvla?`<div><label class="lbl" for="f-plate">Match your real car by number plate</label><div class="row"><input type="text" id="f-plate" data-bind="plate" value="${esc(S.plate)}" placeholder="AB12 CDE" style="text-transform:uppercase;letter-spacing:.08em;font-weight:700"><button class="btn" data-act="lookup">Look up</button></div>${plateMsg?`<div class="status" style="margin-top:8px">${plateMsg}</div>`:''}</div>`:''}
     <div><span class="lbl">Body</span><div class="tiles">${Object.entries(BODIES).map(([id,B])=>{const locked=B.unlock!==undefined&&!unl.has(id);return`<button class="tile ${S.car.body===id?'on':''} ${locked?'locked':''}" data-act="body" data-id="${id}" aria-pressed="${S.car.body===id}">${locked?'<span class="lock">🔒</span>':''}<canvas data-thumb="car" data-body="${id}" data-locked="${locked}" width="200" height="120"></canvas>${B.label}</button>`}).join('')}</div>${lockMsg?`<div class="status" style="margin-top:8px">${lockMsg}</div>`:''}</div>
     <div><span class="lbl">Colour</span><div class="swatches">${Object.entries(COLORS).map(([k,c])=>`<button class="sw ${S.car.color===k?'on':''}" style="background:${c}" data-set="car.color" data-val="${k}" aria-label="${k}" aria-pressed="${S.car.color===k}"></button>`).join('')}</div></div>
@@ -3002,7 +3028,7 @@ function renderSettings(){
     <div><span class="lbl">${S.bgAuto?'Used when there’s no location data':'Background'}</span>${chips('bgManual',Object.entries(ZONES).map(([k,[l,e]])=>[k,`${l} ${e}`]),S.bgManual)}</div>`;
   const pk=Pack.state==='loading'?'Downloading the music…':Pack.ready()?'✅ Downloaded. It plays on every trip, even with no signal.':Pack.state==='error'?'<span class="err">Couldn’t download the music. Check the signal and try again.</span>':Pack.installed()?'Downloaded. It starts on the next trip.':'';
   const soundBody=!has('voice')&&!has('sound-fx')?`${toggle('sound.music','🎵 Background music','A gentle tune while you drive. It only plays on the trip screen while you’re moving.')}${S.sound.music?range('sound.musicVol','Music volume',.05,.6,.05):''}
-    <div><span class="lbl">Recorded music</span><p class="note">Real recorded tunes and quiet road sounds (birdsong, the seaside, a busy town), in place of the tune the phone makes itself. About 8 MB, then it’s kept on the phone.</p>
+    <div><span class="lbl">Better music (optional download)</span><p class="note">Without this, the phone plays a simple built-in tune. Download it once (about 8 MB) for real recorded music, plus soft sounds that match the scenery, like birdsong in the countryside or waves at the seaside. It stays on the phone, so it works with no signal.</p>
       ${pk?`<div class="status" style="margin-top:8px">${pk}</div>`:''}<div class="row" style="margin-top:8px;flex-wrap:wrap">${Pack.installed()||Pack.state==='loading'?'':'<button class="btn primary" data-act="packget">Download the music</button>'}${Pack.installed()&&Pack.state!=='loading'?'<button class="linkish" data-act="packremove">Remove the download from this phone</button>':''}${S.sound.music?'<button class="btn ghost" data-act="musictest">▶ Hear the music</button>':''}</div></div>`
   :`${toggle('sound.on','Sound effects & read-aloud')}${range('sound.volume','Volume',0,1,.05)}
     ${toggle('sound.music','🎵 Background music','A gentle tune while you drive, matched to the display style. It goes quieter whenever the story is being read.')}${S.sound.music?range('sound.musicVol','Music volume',.05,.6,.05):''}
@@ -3031,16 +3057,15 @@ function renderSettings(){
     ${S.landmark.listen?`<p class="note">The phone’s own speech recognition turns the answer into words (on Android that’s Google’s). ${API.ai&&allowed('aiAnswers')?'Those words, not the recording, are sent to your server so the AI can reply to what was said (you allowed this in Privacy choices).':'The app checks the words itself, so nothing is sent anywhere.'} Nothing is saved.</p><div class="status">${micStatusText()}</div><button class="btn ghost" data-act="testmic">🎤 Test the microphone</button>`:''}
     <button class="btn ghost" data-act="previewlm">▶ Preview next landmark</button>
     <p class="note">Story and fact text is pre-written for this demo. In the app these settings would shape a prompt sent to an AI story and fact writer.</p>`;
-  const accBody=`${range('access.decoSize','Decoration size',.6,1.4,.05)}${range('access.decoAmount','Amount of decoration',.2,1,.05)}${range('access.saturation','Colour intensity',.3,1.2,.05)}${toggle('access.reduceMotion','Calm motion','No bouncing, drifting clouds, stars or confetti')}
-    <p class="note">Lower colour intensity and fewer, smaller decorations give a calmer, less visually busy screen.</p>`;
-  const childBody=`<div><span class="lbl">Get unstuck</span><div class="row" style="flex-wrap:wrap"><button class="btn" data-act="menu">🏠 End trip & go to main menu</button></div>
-      <div class="row" style="flex-wrap:wrap;margin-top:8px">${resetAsk==='settings'?`<span class="note">Reset all settings to how they started? Stats, saved cars and routes are kept.</span><button class="btn primary" data-act="reset-settings">Yes, reset settings</button><button class="btn ghost" data-act="reset-cancel">Cancel</button>`
+  const accBody=`${range('access.decoSize','Size of the sun, clouds and trees',.6,1.4,.05)}${range('access.decoAmount','How many clouds and trees',.2,1,.05)}${range('access.saturation','Colour brightness',.3,1.2,.05)}${toggle('access.reduceMotion','Calm motion','No bouncing, drifting clouds, stars or confetti')}
+    <p class="note">Softer colours and fewer, smaller clouds and trees give a calmer, less busy screen. These change the road picture on the trip screen.</p>`;
+  const childBody=`<div><span class="lbl">Reset</span>
+      <div class="row" style="flex-wrap:wrap">${resetAsk==='settings'?`<span class="note">Reset all settings to how they started? Stats, saved cars and routes are kept.</span><button class="btn primary" data-act="reset-settings">Yes, reset settings</button><button class="btn ghost" data-act="reset-cancel">Cancel</button>`
         :resetAsk==='all'?`<span class="note">Delete everything on this phone: settings, stats, saved cars and routes? This can’t be undone. Make a backup first if you want to keep anything.</span><button class="btn primary" data-act="reset-all">Yes, delete everything</button><button class="btn ghost" data-act="reset-cancel">Cancel</button>`
-        :`<button class="btn ghost" data-act="ask-settings">Reset settings</button><button class="btn ghost" data-act="ask-all">Clear everything on this phone</button>`}</div>
-      <p class="note" style="margin-top:6px">The <b>Search</b> button in the bottom bar also opens the trip planner.</p></div>
-    <div><span class="lbl">Parent PIN</span><p class="note">Your 4-digit PIN unlocks the children’s screen. It’s also asked before links that leave the app and before privacy changes.</p>
+        :`<button class="btn ghost" data-act="ask-settings">Reset settings</button><button class="btn ghost" data-act="ask-all">Clear everything on this phone</button>`}</div></div>
+    <div><span class="lbl">Parent PIN</span><p class="note">${CORE_ONLY?'When a trip starts, the trip screen locks: the bottom bar shows only “Parents only” and the lock. Your 4-digit PIN unlocks it and opens Search, Stats and Settings.':'Your 4-digit PIN unlocks the children’s screen.'} It’s also asked before links that leave the app and before privacy changes.</p>
       <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn ghost" data-act="changepin">${S.pin?'Change PIN':'Set up a PIN'}</button></div>${pinMsg?`<div class="status" style="margin-top:8px">${esc(pinMsg)}</div>`:''}</div>
-    ${toggle('child.lock','Lock the trip screen for the kids','When a trip starts, the bottom bar shows only “Parents only” and the lock. Your PIN opens Search, Stats and Settings.')}
+    ${CORE_ONLY?'':toggle('child.lock','Lock the trip screen for the kids','When a trip starts, the bottom bar shows only “Parents only” and the lock. Your PIN opens Search, Stats and Settings.')}
     ${has('spotit')?toggle('child.spotNow','Spot-it on the Games page','Lets children start a Spot-it round themselves.'):''}`;
   const svName=(SV.VOICES.find(v=>v[0]===S.sound.voice)||['','the phone voice'])[1];
   const svBody=`<p class="note">Alice, a natural British storyteller voice that runs on this phone, so it needs no internet once it’s downloaded, and the children’s names never leave the phone.</p>
@@ -3055,18 +3080,18 @@ function renderSettings(){
     bg:()=>sec('bg','🌍','Background',bgBody),sound:()=>!has('voice')?sec('sound','🎵','Music',soundBody):sec('sound','🔊','Sound',soundBody),sounds:()=>sec('sounds','🎧','Story sounds & music',storySoundsBody()),
     spot:()=>sec('spot','🔍','Spot-it game',spotBody),bonus:()=>sec('bonus','🎮','Mini-games',bonusBody),lm:()=>sec('lm','📖','Landmarks',lmBody),
     feat:()=>PICKER?sec('feat','🧪','Feature packs (test version only)',featBody()):'',
-    acc:()=>sec('acc','🧩','Calm & accessibility',accBody),child:()=>sec('child','🔐','Parent controls',childBody),data:()=>sec('data','💾','Data & services',dataBody()),
+    acc:()=>sec('acc','🧩','Calm & accessibility',accBody),child:()=>sec('child','🔐','Parent controls',childBody),data:()=>sec('data','💾','Data & services',dataBody()),report:()=>sec('report','⚑','Report an issue',issueBody()),
     kids:()=>sec('kids','🧒','Kids',`${kids.length?`<div class="kids-list">${kids.map(k=>`<button type="button" class="kid-card" data-act="kidedit" data-id="${k.id}">${kidPic(k)}<span><b>${esc(k.name)}</b><small>Age ${k.age.replace('-','–')}</small></span><span class="kc-ed">Edit</span></button>`).join('')}</div>`:'<p class="note">No kids added yet. Add each child once, and every trip is ready for them.</p>'}
       ${kids.length<6?`<button type="button" class="btn ${kids.length?'ghost':'primary'}" data-act="kidedit">＋ Add ${kids.length?'another child':'a child'}</button>`:''}<p class="note" style="margin-top:8px">Names and favourites stay on this phone. Choose who’s coming on each trip on the Search screen.</p>`),
     age:()=>`<section class="card spc" data-sec="age"><h2 class="h"><span class="sec-ico" aria-hidden="true">🎂</span>Child's age</h2>${has('profiles')&&kids.length?`<p class="note">Set by the youngest child coming on the trip (${S.age.replace('-','–')}). Change it in Settings → Kids.</p>`:chips('age',[['4-5','4–5 yrs'],['6-7','6–7 yrs'],['8+','8+ yrs']],S.age,'big')}<p class="note" style="margin-top:10px">Sets defaults for stories or fun facts, Spot-it timing and the mini-games. Everything can still be changed.</p></section>`};
-  const ver=`<p class="note app-version">AWTY version ${APP_VERSION}</p>`,g=setPanel&&SET_GROUPS[setPanel];
+  const ver=`<p class="note app-version">AWTY version ${APP_VERSION}</p>`,g=setPanel&&panelOf(setPanel);
   if(g){secCards=true;const body=g.secs.map(id=>SECS[id]()).join('');secCards=false;
     $('#view-settings').innerHTML=`<div class="spanel"><div class="sp-head ${g.c}"><button type="button" class="sp-back" data-act="setback" aria-label="Back to Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
       <span class="si" aria-hidden="true">${g.icon}</span><span class="sp-t"><b>${g.title}</b><small>${g.sub}</small></span></div><div class="sp-body">${body}</div></div>${ver}`}
   else{const tile=id=>{const t=SET_GROUPS[id];return`<button class="stile ${t.c}" data-act="opensec" data-id="${id}"><span class="si" aria-hidden="true">${t.icon}</span><b>${t.title}</b><small>${t.sub}</small></button>`};
     $('#view-settings').innerHTML=`<div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Settings</h1><p>Grown-ups only</p></div>
       <div class="stiles">${Object.keys(SET_GROUPS).map(tile).join('')}</div>
-      <button class="report-btn" data-act="opensec" ${storyParts(R).some(p=>p.ai)?'data-id="read"':'data-id="data" data-focus="issue-text"'}><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg><span><b>Report a problem</b><small>${!has('stories')?'Something not working as it should?':'Something in a story didn’t feel right?'}</small></span></button>
+      <button class="report-btn" data-act="opensec" ${storyParts(R).some(p=>p.ai)?'data-id="read"':'data-id="report" data-focus="issue-text"'}><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg><span><b>Report a problem</b><small>${!has('stories')?'Something not working as it should?':'Something in a story didn’t feel right?'}</small></span></button>
       <button class="btn primary wide" data-act="start">Save & start trip</button>${ver}`}
   drawThumbs();renderSugg();
 }
@@ -3081,7 +3106,7 @@ function openPanel(id,fromEl,focusSec,focusId){
     p.querySelector('.sp-body').animate([{opacity:0,transform:'translateY(14px)'},{opacity:1,transform:'none'}],{duration:320,delay:160,easing:'ease-out',fill:'backwards'})}
   const f=focusId&&$('#'+focusId),s=focusSec&&VS.querySelector(`[data-sec="${focusSec}"]`);
   if(f)setTimeout(()=>{f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true})},440);
-  else if(s&&SET_GROUPS[id].secs[0]!==focusSec)setTimeout(()=>s.scrollIntoView({behavior:'smooth',block:'start'}),440);
+  else if(s&&panelOf(id).secs[0]!==focusSec)setTimeout(()=>s.scrollIntoView({behavior:'smooth',block:'start'}),440);
 }
 function closePanel(){
   const p=$('.spanel'),from=setFrom,done=()=>{setPanel=null;renderSettings();scrollTo(0,from?from.y:0)};
@@ -3103,16 +3128,18 @@ function dataBody(){
       <p class="note">${allowed('stats')?'Usage stats are <b>on</b>. This is exactly what AWTY has recorded lately, newest first. It goes to our own server every couple of minutes, with a random ID and the app version. Kept for 90 days.':'Usage stats are <b>off</b>, so nothing about how AWTY is used leaves this phone. You can switch on “Help improve AWTY” in Change privacy choices.'}</p>
       ${recent.length?`<ul class="tel-list">${recent.map(e=>`<li><span>${esc(telWords(e))}</span><small>${new Date(e.at).toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small></li>`).join('')}</ul>`:''}
       <div class="row" style="margin-top:8px;flex-wrap:wrap">${allowed('stats')&&Tel.q.length?`<button class="btn ghost" data-act="telsend">Send now (${Tel.q.length} waiting)</button>`:''}<button class="btn ghost" data-act="teldelete">Delete my usage data</button></div>${telMsg?`<div class="status" style="margin-top:8px">${esc(telMsg)}</div>`:''}</div>
-    <div><span class="lbl">Report an issue</span>
-      <p class="note">Tell us what went wrong. Please don’t include names, addresses or other personal details. We keep reports for 180 days.</p>
-      <label class="lbl" for="issue-cat" style="margin-top:8px">What kind of issue?</label><select id="issue-cat"><option value="broke">Something broke or froze</option>${!has('stories')?'':'<option value="story">A story wasn’t right</option>'}<option value="maps">Maps or location</option><option value="other">Something else</option></select>
-      <label class="lbl" for="issue-text" style="margin-top:8px">What happened?</label><textarea id="issue-text" rows="3" maxlength="500" placeholder="For example: ${!has('games')?'the car stopped moving halfway':'the car stopped moving after a mini-game'}"></textarea>
-      <div class="row" style="margin-top:8px"><button class="btn" data-act="issue">Send report</button></div>${issueMsg?`<div class="status" style="margin-top:8px">${esc(issueMsg)}</div>`:''}</div>
     <div><span class="lbl">Online services</span><div class="svc"><div><span>Google Maps routes${has('landmarks')?' & landmarks':''}</span>${ok(API.maps)}</div>${has('cars-houses')?`<div><span>DVLA number plate lookup</span>${API.dvla?ok(true):'<span style="color:var(--muted)">Not set up · plate box hidden</span>'}</div>`:''}${has('ai-stories')?`<div><span>AI stories & fun facts</span>${ok(API.ai)}</div>`:''}</div>
     <p class="note" style="margin-top:8px">${API.checked?'These run on your own server, so the secret keys never sit on the phone. The README explains how to switch each one on.':'Checking…'}</p></div>
     <div><label class="lbl" for="f-passcode">Server passcode</label><input type="text" id="f-passcode" data-bind="passcode" value="${esc(S.passcode)}" placeholder="Only if you set APP_PASSCODE on the server" autocomplete="off"></div>
     <div><span class="lbl">Saved on this phone</span><p class="note">Stats, saved cars and routes are stored in the app on this device${persisted?' and protected from automatic clean-up':''}. Make a backup file to move them to another phone or keep them safe.</p>
     <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn" data-act="export">Save backup file</button><label class="btn ghost" for="importFile" style="display:inline-flex;align-items:center">Restore from backup</label><input type="file" id="importFile" accept="application/json,.json" hidden></div>${backupMsg?`<div class="status" style="margin-top:8px">${backupMsg}</div>`:''}</div>`;
+}
+// "Report a problem" has its own page, opened from the button under the Settings tiles
+function issueBody(){
+  return`<div><p class="note">Tell us what went wrong. Please don’t include names, addresses or other personal details. We keep reports for 180 days.</p>
+      <label class="lbl" for="issue-cat" style="margin-top:8px">What kind of issue?</label><select id="issue-cat"><option value="broke">Something broke or froze</option>${!has('stories')?'':'<option value="story">A story wasn’t right</option>'}<option value="maps">Maps or location</option><option value="other">Something else</option></select>
+      <label class="lbl" for="issue-text" style="margin-top:8px">What happened?</label><textarea id="issue-text" rows="3" maxlength="500" placeholder="For example: ${!has('games')?'the car stopped moving halfway':'the car stopped moving after a mini-game'}"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn" data-act="issue">Send report</button></div>${issueMsg?`<div class="status" style="margin-top:8px">${esc(issueMsg)}</div>`:''}</div>`;
 }
 let backupMsg='',telMsg='',issueMsg='';
 // One usage event in plain English, for "What we collect".
@@ -3220,34 +3247,34 @@ function likesRaw(){return String(S.profile.likes||'').split(',').map(s=>s.trim(
 function likesList(){return likesRaw().filter(s=>!unsafeText(s))} // only the suitable ones go into stories
 function renderStart(){
   const P=S.profile,teen=S.age==='8+',likes=likesList().map(s=>s.toLowerCase());
-  const fresh=routeFresh(),conn=S.tripMode==='connected';
-  // the top of the screen is just the logo and the search bar over the mountain; saved places sit behind the bookmark button
+  const fresh=routeFresh(),off=noMaps()&&S.tripMode==='connected',conn=S.tripMode==='connected'&&!off,two=conn&&!!S.to.trim(); // (a remembered start stays saved, but its bar waits for a destination)
+  if(off)startOpen.add('trip'); // no Google routes: the drive time is the one thing to set, so show it
+  // the top of the screen is just the logo and the search bar over the mountain; saved places sit behind the bookmark button.
+  // Once a destination is in, a "Starting point" bar appears above it (like Citymapper), with the 📍 button for "where I am now".
   $('#view-start').innerHTML=`
-    <div class="hero">${MOUNTAIN}
+    <div class="hero ${two?'two':''}">${MOUNTAIN}
       <div class="hero-bar"><svg class="logo" viewBox="0 0 400 440" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg>
-        ${conn?`<div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <label class="sr" for="s-to">Search destination</label><input type="text" id="s-to" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Search destination">
-          <button type="button" class="icon-btn ib-saved" data-start="saved" aria-label="Saved places" aria-expanded="${savedOpen}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
-          <button type="button" class="icon-btn ib-here ${hereOn()?'on':''}" data-start="here" aria-label="Start from my current location" aria-pressed="${!!hereOn()}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div>`
-        :`<div class="search" style="padding:14px 18px;font-weight:600">✈️ No-signal trip: set the time below</div>`}
+        ${conn?`<div class="bars">${two?`<div class="search from ${startNudge?'nudge':''}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.8" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="6"/></svg>
+          <label class="bar-lbl" for="s-from">Start</label><input type="text" id="s-from" aria-label="Starting point" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()?`📍 Where you are now${S.here.area?` (near ${esc(S.here.area)})`:''}`:noLoc()?'Type an address':'Where from?'}">
+          <button type="button" class="icon-btn ib-here ${hereOn()?'on':''}" data-start="here" aria-label="Start from my current location" aria-pressed="${!!hereOn()}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div>`:''}
+          <div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <label class="bar-lbl" for="s-to">End</label><input type="text" id="s-to" aria-label="Destination" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Where to?">
+          <button type="button" class="icon-btn ib-saved" data-start="saved" aria-label="Saved places" aria-expanded="${savedOpen}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button></div></div>`
+        :`<div class="search" style="padding:14px 18px;font-weight:600">${off?'🕒 Set the drive time below':'✈️ No-signal trip: set the time below'}</div>`}
       </div>
       ${has('profiles')?`<div class="hero-kids ${kids.length>3?'many':''}" role="group" aria-label="Who’s in the story? Tap the children to put them in">${kids.map(k=>{const on=S.kidsIn.includes(k.id);return`<button type="button" class="hk ${on?'in':''}" data-start="kid" data-id="${k.id}" aria-pressed="${on}" aria-label="${esc(k.name)}${on?' is in the story':''}">${kidPic(k)}<span class="hk-n">${esc(k.name.split(' ')[0])}</span></button>`}).join('')}
         ${kids.length?'':'<button type="button" class="hk" data-start="kids"><span class="hk-plus" aria-hidden="true">+</span><span class="hk-n">Add kids</span></button>'}</div>`:''}
-      <div class="hero-drop">${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="to" hidden></div>
-        ${needStart()&&!hereMsg?`<div class="start-prompt ${startNudge?'nudge':''}" role="group" aria-label="Where are you starting from?"><span class="sp-q">From</span>
-          <button type="button" class="sp-here" data-start="here">📍 My location</button><button type="button" class="sp-type" data-start="typefrom">Type address</button></div>`:''}
+      <div class="hero-drop">${off?`<div class="here-pill"><p class="note here-msg" role="status">${allowed('maps')?'Google Maps isn’t answering right now, so the car moves by the clock.':'Live routes from Google Maps are off, so the car moves by the clock. <button type="button" class="linkish" data-start="privacy">Turn them on</button>'}</p></div>`:''}${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="from" hidden></div><div class="sugg" data-for="to" hidden></div>
+        ${needStart()&&S.places.length&&!savedOpen?placeChips('from'):''}
         ${savedOpen&&conn?`<div class="saved-panel"><span class="lbl">Saved places</span>${placeChips('to')||'<p class="note">None yet. Type where you’re going, then save it.</p>'}
           ${routes.length?`<span class="lbl" style="margin-top:10px">Saved trips</span><div class="chips-row small">${routes.map(r=>`<button type="button" class="chip-btn ${S.route&&S.route.savedFrom===r.id&&S.tripMode==='connected'?'on':''}" data-start="route" data-id="${r.id}">${esc(r.name)}</button>`).join('')}</div>`:''}</div>`:''}
       </div>
       ${fresh&&S.route&&conn?`<div class="hero-msg"><span>Route ready: <b>${S.route.miles} miles · ${fmtMins(S.route.mins)}</b>${S.route.landmarks.length?` · ${S.route.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`:''}</span></div>`:''}
     </div>
     <div class="start-rows">
-    ${fold('trip','Trip details',conn?(S.from.trim()?`From ${esc(S.from.trim())}`:`From where you are now${hereOn()&&S.here.area?`, near ${esc(S.here.area)}`:''}`):`No signal · ${fmtMins(S.offlineMins)}`,`
-      ${conn?`<div class="ac"><label class="lbl" for="s-from">Starting from</label><input type="text" id="s-from" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()&&S.here.area?`📍 Where you are now (near ${esc(S.here.area)})`:'📍 Current location (or type an address)'}"><div class="sugg" data-for="from" hidden></div>
-        ${placeChips('from')}</div>`
-      :`<div class="grid2">${select('offlineMins','How long is the drive?',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}</div>
-      <p class="note">No signal needed: the car moves along the road by the clock.</p>`}
-      <div class="sub">${chips('tripMode',[['connected','📍 Use maps'],['offline','✈️ No signal: set the time']],S.tripMode,'small')}</div>`)}
+    ${conn?'':fold('trip','Trip details',`${off?'Drive time':'No signal'} · ${fmtMins(S.offlineMins)}`,`
+      <div class="grid2">${select('offlineMins','How long is the drive?',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}</div>
+      <p class="note">${off?'The car moves along the road by the clock.':'No signal needed: the car moves along the road by the clock.'}</p>`)}
     ${has('profiles')?fold('who','Who’s coming?',[kidsOn().map(k=>esc(k.name)).join(', ')||(kids.length?'Tap the kids to put them in the story':''),`Ages ${S.age.replace('-','–')}`,!has('games')?'':S.bonus.count?`${S.bonus.count} game${S.bonus.count>1?'s':''}`:'No games'].filter(Boolean).join(' · '),`
       ${kids.length?`<p class="note">${kidsOn().length?`In the story: ${kidsOn().map(k=>esc(k.name)).join(', ')}. Set up for ages ${S.age.replace('-','–')}, the youngest picked.`:'Nobody is in the story yet.'} Tap the kids’ pictures at the top to put them in the story.</p>`
       :`<div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}</div>`}
@@ -3255,7 +3282,7 @@ function renderStart(){
       ${!has('games')?'':`<div><span class="lbl">How many mini-games on this trip?</span>${chips('bonus.count',[[0,'None'],[1,'1'],[2,'2'],[3,'3'],[4,'4']],S.bonus.count,'small')}</div>`}
       ${savedCars.length&&has('cars-houses')?`<div><span class="lbl">Which car are we in?</span><div class="chips-row small">${savedCars.map((c,i)=>`<button type="button" class="chip-btn ${c.body===S.car.body&&c.color===S.car.color?'on':''}" data-start="car" data-i="${i}">${esc(c.name)}</button>`).join('')}</div></div>`:''}
       ${has('stories')&&(window.SpeechRecognition||window.webkitSpeechRecognition)?toggle('landmark.listen','🎤 Listen for their answers','After each question the app listens and says if they got it right. The phone will ask to use the microphone.')+(S.landmark.listen&&micState==='denied'?`<div class="status">${micStatusText()}</div>`:''):''}`)
-    :!(has('stories')||has('games')||has('cars-houses'))?fold('who','Who’s coming?',`Ages ${S.age.replace('-','–')}`,`<div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}
+    :CORE_ONLY?'':!(has('stories')||has('games')||has('cars-houses'))?fold('who','Who’s coming?',`Ages ${S.age.replace('-','–')}`,`<div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}
         <p class="note" style="margin-top:6px">${S.age==='4-5'?'The trip screen shows how many cartoons long the drive still is.':S.age==='8+'?'The trip screen shows the time you’ll arrive.':'Ages 4–5 see the drive in cartoons, ages 8+ see the time you’ll arrive.'}</p></div>`):fold('who','Who’s coming?',[kidNames()?esc(kidNames()):'',`Ages ${S.age.replace('-','–')}`,!has('games')?'':S.bonus.count?`${S.bonus.count} game${S.bonus.count>1?'s':''}`:'No games'].filter(Boolean).join(' · '),`
       ${has('stories')?`<div><label class="lbl" for="s-names">Children’s names</label><input type="text" id="s-names" data-p="profile.names" value="${esc(P.names)}" placeholder="e.g. Mia, Leo" autocomplete="off"></div>`:''}
       <div><span class="lbl">Age <span class="opt">(if they’re different ages, pick the youngest)</span></span>${chips('age',[['4-5','4–5'],['6-7','6–7'],['8+','8+']],S.age,'big')}</div>
@@ -3274,7 +3301,7 @@ function renderStart(){
       ${(window.SpeechRecognition||window.webkitSpeechRecognition)?toggle('landmark.listen','🎤 Listen for their answers','After each question the app listens and says if they got it right. The phone will ask to use the microphone.')+(S.landmark.listen&&micState==='denied'?`<div class="status">${micStatusText()}</div>`:''):''}`)}
     </div>
     <button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':teen?'Start trip':'Let’s go! 🚗'}</button>
-    ${S.demoMode?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
+    ${S.demoMode&&!CORE_ONLY?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
     <button class="linkish" id="s-more">More settings</button>`;
   renderSugg();downArrow();planEarly();
 }
@@ -3309,10 +3336,10 @@ function greet(){Voice.say(greetLines(),false,true)}
 async function startTrip(){
   if(startBusy)return;Snd.ready();
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
-  if(S.tripMode==='connected'){
+  if(S.tripMode==='connected'&&!noMaps()){
     if(!S.to.trim()){startMsg='!Type where you’re going first.';renderStart();$('#s-to').focus();return}
     if(S.route&&S.route.saga&&S.route.saga.heard){S.route.saga=null;saveS()} // this route's story has been heard already: write a new one
-    if(needStart()){startMsg='';startNudge=true;hereMsg=hereMsg.startsWith('!')?'':hereMsg;renderStart();scrollTo({top:0,behavior:calmMotion()?'auto':'smooth'});startNudge=false;return} // the "Where are you starting from?" card asks
+    if(needStart()){startMsg='';startNudge=true;hereMsg=hereMsg.startsWith('!')?'':hereMsg;renderStart();scrollTo({top:0,behavior:calmMotion()?'auto':'smooth'});startNudge=false;const f=$('#s-from');if(f&&noLoc())f.focus({preventScroll:true});return} // the "Starting point" bar shakes to ask
     if(earlyRoute){startBusy=true;startMsg='Finding the route…';renderStart();await earlyRoute;startBusy=false;startMsg=''} // the route planned early is nearly there
     if(!routeFresh()&&await needsPick()){startMsg='!Which one did you mean? Pick the right place from the list.';renderStart();const d=$('#s-to');if(d)d.scrollIntoView({block:'center'});return}
     if(!routeFresh()){startBusy=true;startMsg=API.maps?'Finding the route…':'';renderStart();
@@ -3345,7 +3372,7 @@ VSt.addEventListener('click',e=>{
   const b=e.target.closest('[data-start]');if(!b)return;const k=b.dataset.start;
   if(k==='here'){useHere(renderStart);return}
   if(k==='privacy'){showConsent();return}
-  if(k==='typefrom'){startOpen.add('trip');renderStart();const f=$('#s-from');if(f){f.scrollIntoView({behavior:calmMotion()?'auto':'smooth',block:'center'});f.focus({preventScroll:true})}return}
+  if(k==='typefrom'){const f=$('#s-from');if(f)f.focus();return}
   if(k==='saved'){savedOpen=!savedOpen;renderStart();return}
   if(k==='kids'){showKids();return}
   if(k==='kid'){const id=b.dataset.id,o=S.kidsIn;S.kidsIn=o.includes(id)?o.filter(x=>x!==id):[...o,id];syncKids(true)}
@@ -3358,7 +3385,7 @@ VSt.addEventListener('click',e=>{
 $('#d-new').addEventListener('click',()=>guarded(()=>{setPlay(false);Voice.stop();showTab('start')})('to plan a new trip'));
 
 function showTab(tab){
-  if(tab==='kid'&&$('#view-kid').hidden)kidLocked=!!S.child.lock; // arriving on the trip screen: locked for the kids (if that's switched on)
+  if(tab==='kid'&&$('#view-kid').hidden){kidLocked=!!S.child.lock;if(kidLocked)gateUntil=0} // arriving on the trip screen: locked for the kids (if that's switched on), and the PIN is needed again
   $('#view-start').hidden=tab!=='start';$('#view-kid').hidden=tab!=='kid';$('#view-stats').hidden=tab!=='stats';$('#view-settings').hidden=tab!=='settings';
   if(tab==='start'){ // the main menu always ends whatever is happening on the trip screen
     if(T&&T.running)setPlay(false);Voice.stop();Spot.end();Bonus.hide();if(!$('#game').hidden)Game.close();$('#celebrate').hidden=true;startBusy=false;startMsg='';renderStart()}
@@ -3379,15 +3406,15 @@ function showConsent(){
   const c=S.consent||{ai:false,maps:false,location:false,aiAnswers:false,stats:false};
   $('#consent-box').innerHTML=`<span class="lbl">For grown-ups</span><h3>Welcome to AWTY 👋</h3><p>A quick word about safety and privacy before your first trip.</p>
     <div class="point"><span>🚗</span><p><b>For passengers only.</b> The driver should never use AWTY while driving.</p></div>
-    <div class="point"><span>🔒</span><p><b>No ads, no tracking, nothing sold.</b> Your children’s names, settings and stats stay on this phone.</p></div>
+    <div class="point"><span>🔒</span><p><b>No ads, no tracking, and we never sell your data.</b> Your children’s names, settings and stats stay on this phone.</p></div>
     <div class="point"><span>🎤</span><p>${!has('listen')?'<b>No microphone.</b> AWTY Free never uses it.':'<b>The microphone stays off</b> unless you switch on “Listen for answers” in Settings.'}</p></div>
     <p style="margin-top:16px"><b>Choose what AWTY may send online.</b> You can change this any time in Settings → Data &amp; services.</p>
     ${!has('ai-stories')?'':consentChoice('ai','✍️ AI-written stories','To write the trip story and fun facts, we send the landmarks on your route, your child’s age group and the interests you type in (such as a favourite animal) to our server and our AI provider. Children’s names are never sent: the phone adds them when reading aloud.',c.ai)}
     ${consentChoice('maps','🗺️ Live routes from Google Maps',`The starting point and destination you choose are sent to Google, through our server, to plan the route${!has('landmarks')?'':' and find landmarks'}.`,c.maps)}
     ${consentChoice('location','📍 Use this phone’s location','Lets the car follow the real journey (GPS), and lets you use “Use my current location” and see places near you. The exact position stays on this phone; when it’s used as a starting point it’s rounded to about 1 km before being sent to Google. A 📍 sign shows on the kids’ screen whenever location is in use. With this off, the car moves by the journey time instead.',c.location)}
     ${!has('listen')?'':consentChoice('aiAnswers','💬 AI replies to spoken answers','When “Listen for answers” is on, the phone turns speech into words. With this on, those words (never the recording) go to our AI provider so it can reply. With it off, the phone checks answers itself.',c.aiAnswers)}
-    ${consentChoice('stats','📊 Help improve AWTY',`Sends anonymous usage stats to our own server: trips started and finished (length rounded), which features${!has('games')?'':' and mini-games'} are used, crash reports and the app version. It uses a random ID that isn’t linked to you or this phone. Never names, interests, locations, voice or story text. Kept for 90 days. You can see exactly what’s sent, and delete it, in Settings → Data &amp; services.`,c.stats)}
-    <p class="note">AWTY works without any of these: ${!has('stories')?'trips just':'it uses its built-in stories, and trips'} move by the clock. More detail in our <a href="privacy.html" data-gate="1" target="_blank" rel="noopener">privacy policy</a>.</p>
+    ${consentChoice('stats','📊 Help improve AWTY',`Sends anonymous usage stats to our own server: trips started and finished (length rounded), which features${!has('games')?'':' and mini-games'} are used, crash reports and the app version. It uses a random ID that isn’t linked to you or this phone, and never includes names${!has('stories')?' or locations':', interests, locations, voice or story text'}. Stats are kept for 90 days. You can see exactly what’s sent, and delete it, in Settings → Data & services.`,c.stats)}
+    <p class="note">AWTY still works with all of these off: ${!has('stories')?'':'it uses its built-in stories, and '}the car simply moves by the clock. More detail in our <a href="privacy.html" data-gate="1" target="_blank" rel="noopener">privacy policy</a>.</p>
     <div class="btns two"><button class="btn primary" id="c-agree">Save my choices</button><button class="btn primary" id="c-none">Turn everything off</button></div>`;
   $('#consent').hidden=false;
 }
@@ -3521,7 +3548,14 @@ const slideEnd=()=>{if(!Slide.on)return;Slide.on=false;LK.style.transition='';LK
   if(Slide.dx>=Slide.max*.8)askUnlock();else if(Slide.dx<8){void LK.offsetWidth;LK.classList.add('nudge')}};
 LK.addEventListener('pointerup',slideEnd);LK.addEventListener('pointercancel',slideEnd);
 LK.addEventListener('click',e=>{Snd.ready();if(kidLockOn()){if(e.detail===0)askUnlock();return}lockKids()});
-$('#bn-btns').addEventListener('click',e=>{const b=e.target.closest('[data-nav]');if(!b||($('#view-kid').hidden?false:kidLocked))return;showTab(b.dataset.nav)});
+$('#bn-btns').addEventListener('click',e=>{const b=e.target.closest('[data-nav]');if(!b||($('#view-kid').hidden?false:kidLocked))return;if(demoHeld){demoHeld=false;return}showTab(b.dataset.nav)});
+// Free's hidden tester switch: holding Settings for 15 seconds opens Places with "Demo driving" showing. Nothing on screen hints at it.
+let demoHeld=false,demoTimer=0;
+{const sb=$('#bn-btns [data-nav="settings"]'),stop=()=>clearTimeout(demoTimer);
+  sb.addEventListener('pointerdown',()=>{stop();if(!CORE_ONLY||(!$('#view-kid').hidden&&kidLocked))return;
+    demoTimer=setTimeout(()=>{demoUnlocked=true;demoHeld=true;showTab('settings');openPanel('trip')},15000)});
+  ['pointerup','pointerleave','pointercancel'].forEach(t=>sb.addEventListener(t,stop));
+  sb.addEventListener('contextmenu',e=>{if(CORE_ONLY)e.preventDefault()})}
 
 /* ================= Trip screen: swipe box, story and music ================= */
 const SW=$('#k-swipe');
@@ -3606,7 +3640,7 @@ VS.addEventListener('click',e=>{
   const s=e.target.closest('[data-set]');if(s){setAndApply(s.dataset.set,parseVal(s.dataset.val));renderSettings();return}
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;Snd.ready();
   if(a==='consent'){showConsent();return}
-  if(a==='opensec'){const id=b.dataset.id,g=SET_GROUPS[id]?id:groupOf(id);openPanel(g,b,id,b.dataset.focus);return}
+  if(a==='opensec'){const id=b.dataset.id,g=panelOf(id)?id:groupOf(id);openPanel(g,b,id,b.dataset.focus);return}
   if(a==='kidedit'){showKids('edit',b.dataset.id);return}
   if(a==='setback'){closePanel();return}
   if(a==='changepin'){pinMsg='';changePin();return}
@@ -3641,7 +3675,8 @@ VS.addEventListener('click',e=>{
   if(a==='stories'){const R=S.route;if(R)prepareStories(R);return}
   if(a==='export')exportData();
   if(a==='saveroute'){const name=$('#routeName').value.trim()||shortName(S.to);const R=S.route||makeRoute(S.from,S.to);routes.push({...R,id:'s'+Date.now(),name});saveRoutes();routeMsg=`Saved “${esc(name)}” for offline use.`}
-  if(a==='useroute'){S.tripMode='offline';S.offlineRouteId=b.dataset.id;routeMsg='';saveS();newTrip()}
+  if(a==='useroute'){if(CORE_ONLY){const r=routes.find(x=>x.id===b.dataset.id);if(r){S.route=noLm({...JSON.parse(JSON.stringify(r)),id:r.points?'g'+Date.now():r.id,savedFrom:r.id});S.to=r.to;S.from=r.from==='Home'?'':r.from;S.toPlace=null;S.fromPlace=null}}
+    else{S.tripMode='offline';S.offlineRouteId=b.dataset.id}routeMsg='';saveS();newTrip()}
   if(a==='delroute'){routes=routes.filter(r=>r.id!==b.dataset.id);if(S.offlineRouteId===b.dataset.id)S.offlineRouteId='';saveRoutes();saveS()}
   if(a==='lookup'){lookupPlate();return}
   if(a==='body'){const B=BODIES[b.dataset.id];if(B.unlock!==undefined&&!unlockedSet().has(b.dataset.id)){lockMsg=`${B.label} unlocks at ${S.thresholds[S.unlockMetric][B.unlock].toLocaleString()} ${metricWord[S.unlockMetric]} (now ${metricValue(S.unlockMetric).toLocaleString()}).`}else{S.car.body=b.dataset.id;lockMsg=''}}
@@ -3659,7 +3694,7 @@ VS.addEventListener('click',e=>{
   if(a==='start'){saveS();newTrip();showTab('kid');setPlay(true);greet();beginStory();return}
   saveS();applyLive();renderSettings();
 });
-VS.addEventListener('input',e=>{const el=e.target;if(el.type==='range'&&el.dataset.bind){setP(S,el.dataset.bind,+el.value);const o=VS.querySelector(`[data-out="${el.dataset.bind}"]`);if(o)o.textContent=Math.round(el.value*100)+'%';saveS();applyLive()}});
+VS.addEventListener('input',e=>{const el=e.target;if(el.type==='range'&&el.dataset.bind){setP(S,el.dataset.bind,+el.value);const o=VS.querySelector(`[data-out="${el.dataset.bind}"]`);if(o)o.textContent=rangeOut(el.dataset.bind,el.value);saveS();applyLive()}});
 VS.addEventListener('change',e=>{const el=e.target;
   if(el.id==='importFile'){if(el.files&&el.files[0])importData(el.files[0]);return}
   if(el.dataset.th!==undefined){const i=+el.dataset.th,v=Math.max(1,Math.round(+el.value||1));S.thresholds[S.unlockMetric][i]=v;saveS();return}

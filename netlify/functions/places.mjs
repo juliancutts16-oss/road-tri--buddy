@@ -38,8 +38,10 @@ export default async (req) => {
   if (input.length < 2) return json({ suggestions: [] });
 
   const request = { input, includedRegionCodes: ["gb"], languageCode: "en-GB" };
+  // no position sent: no distances (Number(null) is 0, which would measure from the sea off West Africa)
+  const has = (v) => v !== null && v !== undefined && v !== "";
   const lat = Number(body.lat), lng = Number(body.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+  if (has(body.lat) && has(body.lng) && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
     const center = { latitude: lat, longitude: lng };
     request.locationBias = { circle: { center, radius: 30000 } }; // prefer places within about 20 miles
     request.origin = center; // makes Google include each place's distance from you

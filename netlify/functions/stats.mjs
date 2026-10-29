@@ -57,7 +57,7 @@ export default async (req, context) => {
   let started = 0, finished = 0, withStart = 0, withFinish = 0, secondTrip = 0, eligibleSecond = 0;
   let active30 = 0, finishes30 = 0, active7 = 0;
   const ratings = [];
-  const voiceEv = [], voiceRtf = [], voiceTrips = []; // the storyteller voice: every wait, each install's latest speed, trips read by Alice
+  const voiceEv = [], voiceRtf = [], voiceTrips = []; // the storyteller voice: every wait, each install's latest speed, trips read by Emma
   for (const [, rec] of installs) {
     const ev = rec.events.sort((a, b) => a.at - b.at);
     versions[rec.v || "?"] = (versions[rec.v || "?"] || 0) + 1;

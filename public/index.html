@@ -877,12 +877,12 @@ html.no-spotit [data-demo="spot"],html.no-landmarks [data-demo="landmark"],html.
   </div>
 </div>
 
-<!-- First launch: offer to download Hoot's storytelling voice (Alice). Asked once; Settings → Voice has it any time. -->
+<!-- First launch: offer to download Hoot's storytelling voice (Emma). Asked once; Settings → Voice has it any time. -->
 <div class="overlay" id="sv-ask" hidden style="z-index:85">
   <div class="modal sv-ask" role="dialog" aria-modal="true" aria-labelledby="sv-ask-h">
     <div class="sv-ask-av"><svg viewBox="0 0 320 345" width="52" aria-hidden="true"><use href="#hoot-book"/></svg></div>
     <h3 id="sv-ask-h">A storytelling voice for Hoot?</h3>
-    <p>Download Alice, a natural British storyteller voice, with real storybook music and sound effects. It’s about 124 MB, so it’s best on Wi-Fi. After that it works with no signal.</p>
+    <p>Download Emma, a natural British storyteller voice, with real storybook music and sound effects. It’s about 124 MB, so it’s best on Wi-Fi. After that it works with no signal.</p>
     <p class="sv-ask-data" id="sv-ask-data" hidden>📶 You seem to be on mobile data.</p>
     <div class="sv-status sv-ask-prog" id="sv-ask-prog" role="status" hidden></div>
     <div class="sv-ask-btns"><button type="button" class="btn primary" id="sv-ask-go">Download now</button><button type="button" class="btn ghost" id="sv-ask-later">Later</button></div>
@@ -961,7 +961,7 @@ const PREMIUM_THEMES={'4-5':'rainbow','6-7':'popart','8+':'neonglow'};
 // Settings and the PIN are the core: always on, so they aren't listed.
 const FEATURES={
   voice:{name:'Read-aloud voice',status:'tidy'},
-  storyteller:{name:'Alice storyteller voice',needs:['voice'],status:'tidy'},
+  storyteller:{name:'Emma storyteller voice',needs:['voice'],status:'tidy'},
   landmarks:{name:'Landmarks & fun facts',status:'tidy'},
   stories:{name:'Trip story',needs:['voice','landmarks'],status:'tidy'},
   'ai-stories':{name:'AI-written stories',needs:['stories'],status:'tidy'},
@@ -1044,7 +1044,7 @@ const DEFAULTS={
   unlockMetric:'trips',thresholds:{trips:[10,50,250],miles:[300,1500,7500],score:[20000,100000,500000]},
   houseStart:{type:'cottage',color:'#F4C95D'},houseEnd:{type:'farm',color:'#F2A49B'},
   displayStyle:'explorer',bgAuto:true,bgManual:'countryside',
-  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true,music:true,musicVol:.25,storyFx:true,voice:'bf_alice'},
+  sound:{on:true,volume:.7,mileSound:'vroom',mileEvery:5,arrival:'hooray',chime:true,tick:true,music:true,musicVol:.25,storyFx:true,voice:'bf_emma'},
   spot:{enabled:true,every:2,time:60,count:4,cats:{animals:true,vehicles:true,nature:true,places:true,shapes:false},off:{}},
   bonus:{count:2,length:40,off:{}},
   landmark:{enabled:true,type:'story',sentences:5,voice:'',rate:1,lang:'simple',interactive:'question',listen:false,choices:true,helpSpot:true},
@@ -1304,7 +1304,7 @@ async function prepareSaga(route){
       sg={key,intro:g.intro,ending:g.ending,bible:g.bible,choice:g.choice||null,chapters:{}};route.saga=sg;saveS();saveRoutes();svPrepare(route);if(T&&T.route===route&&T.running)tellIntro()}
     const todo=stopList.map((lm,i)=>({lm,i})).filter(x=>!sg.chapters[x.lm.id]);let done=0,failed=0;
     const work=async({lm,i})=>{const body=chapterBody(route,sg,i);
-      try{sg.chapters[lm.id]={...await api('story',body,60000),helpItem:body.help?helpItem(route,lm):null};svPrepare(route)}catch(e){failed++} // (Alice starts on each chapter as it arrives)
+      try{sg.chapters[lm.id]={...await api('story',body,60000),helpItem:body.help?helpItem(route,lm):null};svPrepare(route)}catch(e){failed++} // (Emma starts on each chapter as it arrives)
       done++;upd(`Writing the middle of the story… ${done} of ${todo.length}`)};
     const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await work(q.shift())}));
     sg.done=!failed;upd(failed?`Trip story ready. ${failed} chapter${failed>1?'s':''} will use the built-in story.`:`Trip story ready: a beginning, ${stopList.length} middle chapter${stopList.length===1?'':'s'} and an end.`)}
@@ -1369,7 +1369,7 @@ function storyChose(nextId,text){if(!T||!nextId)return;T.chose[nextId]=text;
   if(i<0||!API.ai||!allowed('ai')||!s||s.key!==sagaKey(route)||!s.bible)return;
   const t=T,body={...chapterBody(route,s,i),chose:text};
   api('story',body,60000).then(c=>{if(T!==t)return;T.rewrites[nextId]={...c,helpItem:body.help?helpItem(route,stops[i]):null};
-    svSoon([...(c.sentences||[]),c.helpAsk,c.helpThanks,c.choice&&c.choice.question,...(c.choice&&c.choice.options||[]).flatMap(o=>[choiceSay.great(o.text),choiceSay.did(o.text)])],nextId)}).catch(()=>{})} // the storyteller voice makes it once the chapter she already planned is ready
+    svSoon([...svUnits(c.sentences,S.landmark.helpSpot!==false?helpLines(route,stops[i],T.rewrites[nextId]).at:0),c.helpAsk,c.helpThanks,c.choice&&c.choice.question,...(c.choice&&c.choice.options||[]).flatMap(o=>[choiceSay.great(o.text),choiceSay.did(o.text)])],nextId)}).catch(()=>{})} // the storyteller voice makes it once the chapter she already planned is ready
 // The "help me spot…" moment in a chapter: the AI's own words if it wrote them, otherwise the built-in ones.
 function helpLines(route,lm,c){
   if(c&&c.helpAsk&&c.helpThanks&&c.helpItem)return{item:c.helpItem,ask:c.helpAsk,thanks:c.helpThanks,at:c.helpAt||Math.ceil((c.sentences||[]).length/2)};
@@ -1399,7 +1399,7 @@ function tellIntro(force){
   const ready=T.route.saga&&T.route.saga.key===sagaKey(T.route)&&T.route.saga.intro;if(!force&&API.ai&&storyPending&&!ready)return;
   const sg=sagaFor(T.route),first=storyStops(T.route)[0];
   T.introTold=true;if(T.route.saga){T.route.saga.heard=true;saveS()} /* a story is told once: the next trip on this route gets a new one */
-  StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...sg.intro,...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]),false,true);
+  StoryLog.chapter(`Chapter 1 of ${storyStops(T.route).length+2}`,'The adventure begins');Voice.say(withStoryMusic(['Here’s our story for this trip.',...svUnits(sg.intro),...(S.landmark.choices!==false?choiceItems(sg.choice,first&&first.id):[])]),false,true);
 }
 // Gets a route for S.from → S.to (Google Maps when set up, otherwise a demo route). Throws with a readable message.
 async function loadRoute(){
@@ -1411,10 +1411,10 @@ async function loadRoute(){
   else origin=S.fromPlace&&S.fromPlace.placeId&&S.fromPlace.address===S.from?{placeId:S.fromPlace.placeId}:{address:S.from.trim()};
   const toId=S.toPlace&&S.toPlace.placeId&&S.toPlace.address===S.to?S.toPlace.placeId:undefined;
   const r=await api('route',{origin,destination:S.to.trim(),destinationPlaceId:toId,...(has('landmarks')?{}:{landmarks:false})});
-  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();prepareStories(S.route);svPrepare(S.route);return S.route; // (the story starts being written first, so Alice doesn't start on the built-in one)
+  S.route={...r,id:'g'+Date.now(),name:'',from:fromLabel(),to:S.to.trim(),toLabel:toLabel()};saveS();prepareStories(S.route);svPrepare(S.route);return S.route; // (the story starts being written first, so Emma doesn't start on the built-in one)
 }
 // Plans the route quietly as soon as the destination and start are both chosen on the Search screen (before Go),
-// so the story is being written and Alice is getting the greeting ready while everyone buckles in.
+// so the story is being written and Emma is getting the greeting ready while everyone buckles in.
 // Only for places that were picked, saved or typed in full, so it never guesses (a vague name waits for Go).
 let earlyRoute=null,earlyKey='';
 function planEarly(){if(S.tripMode==='connected'&&routeFresh()&&S.route.saga&&S.route.saga.heard&&!(T&&T.introTold&&!T.arrived)){S.route.saga=null;saveS();prepareStories(S.route);return} // same route again: start its new story now
@@ -1761,15 +1761,15 @@ const ClipDB={db:null,
     st.transaction.onerror=()=>res()})).catch(()=>{})},
   put(key,c){this.open().then(db=>db.transaction('c','readwrite').objectStore('c').put({pcm:c.pcm,rate:c.rate,at:Date.now()},key)).catch(()=>{})},
   clear(){const d=this.db;this.db=null;return Promise.resolve(d).then(x=>x&&x.close()).catch(()=>{}).then(()=>{try{indexedDB.deleteDatabase('awty-clips')}catch(e){}})}};
-const SV={VOICES:[['bf_alice','Alice']],
+const SV={VOICES:[['bf_emma','Emma']],
   w:null,state:'off',pct:0,err:'',clips:new Map(),wait:new Map(),queue:[],working:false,seq:0,
   // how fast this phone makes her voice (seconds of work per second of speech) and how fast she speaks (letters a second),
   // measured on every line and remembered, so a chapter can start as soon as she's far enough ahead
   rtf:store.get('svRtf',1),cps:store.get('svCps',14),
   installed(){return store.get('sv',false)},
   on(){return S.sound.voice!=='phone'&&this.installed()&&this.state!=='error'},
-  voice(){return this.VOICES.some(v=>v[0]===S.sound.voice)?S.sound.voice:'bf_alice'},
-  speed(){return Math.round(S.landmark.rate*(S.age==='4-5'?.92:1)*100)/100},
+  voice(){return this.VOICES.some(v=>v[0]===S.sound.voice)?S.sound.voice:'bf_emma'},
+  speed(){return Math.round(S.landmark.rate*(S.age==='4-5'?.92:1)*.9*100)/100}, // (Emma reads a little slower than her normal pace: it suits stories)
   key(t,v){return`${v||this.voice()}|${this.speed()}|${t}`},
   clip(t){return this.clips.get(this.key(t))},
   // starts the voice: downloads it the first time, or loads it from the phone after that
@@ -1778,9 +1778,9 @@ const SV={VOICES:[['bf_alice','Alice']],
     try{this.w=new Worker('voice-worker.js',{type:'module'})}catch(e){this.fail('This phone can’t run the storyteller voice.');return}
     this.w.onmessage=e=>{const m=e.data;
       if(m.type==='progress'){if(this.state==='loading'){this.pct=Math.round(m.pct);svUi()}} // (a late update must not hide "Ready")
-      else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // a fresh download makes Alice the storyteller
+      else if(m.type==='ready'){if(!this.installed()){S.sound.voice='bf_emma';saveS();store.set('svDefaulted',true)} // a fresh download makes Emma the storyteller
         const fresh=!this.installed();Promise.resolve(this.restored).then(()=>{if(!this.w)return;this.state='ready';store.set('sv',true);svUi();if(!fresh)svLog('load',performance.now()-this.t0);svPrepare(T?T.route:routeFresh()?S.route:null)})}
-      else if(m.type==='error')this.fail(navigator.onLine===false&&!this.installed()?'You’re offline. Connect to Wi-Fi to download the voice.':'Couldn’t load the storyteller voice. '+m.msg);
+      else if(m.type==='error')this.fail(navigator.onLine===false?(this.installed()?'Emma needs the internet once to finish updating (a small download). Until then the phone’s own voice reads the story.':'You’re offline. Connect to Wi-Fi to download the voice.'):'Couldn’t load the storyteller voice. '+m.msg); // (phones that had Alice fetch Emma's voice file once)
       else if(m.type==='audio'||m.type==='fail'){if(!this.wait.has(m.id))return;clearTimeout(this.dog); // (an answer from before a restart is ignored)
         const job=this.wait.get(m.id);this.wait.delete(m.id);this.working=false;
         if(job){const c=m.type==='audio'?{pcm:toI16(m.pcm),rate:m.rate}:null;if(c){const d=c.pcm.length/c.rate;
@@ -1815,13 +1815,23 @@ const SV={VOICES:[['bf_alice','Alice']],
 // a tag at the start plays just before the sentence, one after a word plays as that word is said.
 // {music:mood} chooses the story music for what follows.
 function speakable(raw){const marks=[],music=[],norm=x=>x.replace(/\s{2,}/g,' ').replace(/\s+([!?.,;:])/g,'$1').trim();
-  const pieces=fillNames(raw).replace(/…|\s[—–]\s/g,', ')
+  const pieces=fillNames(raw) // ("…" and " — " stay: they give Emma her dramatic pauses. The phone's voice gets commas instead, in speakPhone)
     .replace(/\{\s*sfx\s*:\s*([a-z]+)\s*\}/gi,(_,c)=>{marks.push(c.toLowerCase());return'\u0001'}).replace(/\{\s*music\s*:\s*([a-z]+)\s*\}/gi,(_,m)=>{music.push(m.toLowerCase());return' '})
     .replace(/\{[^}]*\}/g,' ').split('\u0001');
   const t=norm(pieces.join(' '));
   // where each sound goes: after how many words (and roughly which letter, for the phone's word signal)
   const cues=marks.map((c,i)=>{const before=norm(pieces.slice(0,i+1).join(' ')),words=before?before.split(/\s+/).length:0;return{c,words,at:before.length,start:words===0}});
   return{t,cues,music}}
+// With Emma, a story part is read in short passages rather than one sentence at a time, so it flows like real storytelling.
+// The first passage is one sentence (so a part starts as fast as before), the next up to two, then up to three (about 240
+// letters at most), each made while the one before plays. A new run starts at `cut` (where "help me spot…" goes).
+// The phone's voice still reads sentence by sentence. Preparing and reading use this same grouping, so what Emma made
+// ahead is exactly what's read.
+function svUnits(s,cut){s=(s||[]).filter(x=>typeof x==='string');if(!SV.on())return s;
+  const run=a=>{const out=[];let i=0;while(i<a.length){const max=Math.min(3,out.length+1);let u=a[i++],n=1;while(n<max&&i<a.length&&(u+' '+a[i]).length<=240){u+=' '+a[i++];n++}out.push(u)}return out};
+  return cut>0&&cut<s.length?[...run(s.slice(0,cut)),...run(s.slice(cut))]:run(s)}
+// where sentence number `cut` falls in svUnits (the passage it starts)
+function svUnitAt(s,cut){s=s||[];return cut<=0?0:cut>=s.length?svUnits(s).length:svUnits(s.slice(0,cut)).length}
 // Lines that are said on every trip, made once so they're always ready.
 const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can you spot these?','Keep watching out of the window!','That’s okay! Keep looking out of the window. Our hero spotted one too.',
   'Great thinking!','Well done!','Brilliant!',...SV.VOICES.map(v=>`Hello! I’m ${v[1]}, your AWTY storyteller.`),'Are you ready for an adventure?']; // (the last two are the Settings ▶ preview)
@@ -1834,6 +1844,13 @@ const SV_STOCK=['Here’s our story for this trip.','Hooray! We made it!','Can y
 //  - the built-in parts while the AI is still writing the story (each AI chapter is added as it arrives),
 //  - the "just like you chose" lines for the options the children didn't pick.
 // Her list is kept in reading order; a chapter rewritten after a choice comes straight after that chapter's own lines.
+// The quiz and "say it with me" lines that buildSpeech adds around a story chapter (the very same words), so Emma
+// prepares them too. (Without this, the question at the end of a chapter with no choice waited for her.)
+function svQuizLines(R,lm,src){const st=S.landmark,L=lmInfo(lm),acad=st.lang==='academic',word=src&&src.word||L.word,ear=Ear.active(),
+    stops=storyStops(R),i=stops.findIndex(s=>s.id===lm.id),choice=st.choices!==false&&stops[i+1]&&src&&src.choice,out=[];
+  if(st.interactive==='repeat')out.push(`Can you say ${word}? Say it with me. ${word}!`,...(ear?[]:['Brilliant!']),`Say it after me: ${word}!`,...(ear?[]:['Well done!']));
+  if(st.interactive==='question'&&!choice){const q=src&&src.quiz;out.push(...(ear?[q&&q.question&&q.answers&&q.answers.length?q.question:'Which animal is the hero of our story?']:[src&&src.question||L.q[acad?1:0],'Great thinking!']))}
+  return out}
 function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[],ends={},trip=!!R&&!!T&&T.route===R,told=trip?T.announced:new Set();
   if(R&&!(trip&&T.introTold))try{lines.push(...greetLines(R),SV_STOCK[0])}catch(e){}
   if(R)try{const sg=S.landmark.type==='story'?sagaFor(R):null,stops=sg?storyStops(R):R.landmarks,parts=storyParts(R),writing=!!sg&&prepareSaga.busy===R,
@@ -1841,7 +1858,7 @@ function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[],ends
     parts.forEach((p,i)=>{const lm=stops.find(l=>l.id===p.id),rw=trip&&T.rwUsed[p.id]&&T.rewrites[p.id],
         ch=rw?{...rw,choice:rw.choice||(sg.chapters[p.id]||{}).choice}:null,h=ch&&hp?helpLines(R,lm,ch):null,
         c=ch?ch.choice:!sg?null:p.id==='intro'?sg.choice:sg.chapters[p.id]&&sg.chapters[p.id].choice,chose=trip&&T.chose[p.id],
-        own=[...(lm?[chapterLead(lm)]:[]),...(rw?[]:chose?[choiceSay.did(chose)]:carry),...(ch?[...(ch.sentences||[]),...(h?[h.ask,h.thanks]:[]),...(chs&&c?[c.question]:[])]:p.lines)];
+        own=[...(lm?[chapterLead(lm)]:[]),...(rw?[]:chose?[choiceSay.did(chose)]:carry),...(ch?[...svUnits(ch.sentences,h&&h.at),...(h?[h.ask,h.thanks]:[]),...(chs&&c?[c.question]:[])]:p.say||p.lines),...(lm&&sg?svQuizLines(R,lm,ch||sg.chapters[p.id]):[])];
       carry=[];if(c&&c.options){own.push(...c.options.map(o=>choiceSay.great(o.text)),choiceSay.next(stops[p.id==='intro'?0:stops.findIndex(l=>l.id===p.id)+1]));carry=c.options.map(o=>choiceSay.did(o.text))}
       if(i<cur||writing&&!p.ai)return;lines.push(...own);ends[p.id]=lines.length-1;
       if(p.id==='intro')lines.push(...SV_STOCK.slice(1))})}catch(e){} // (the everyday lines come next, so they're ready for the first chapter)
@@ -1855,16 +1872,16 @@ function svPrepare(R){if(!SV.on()||SV.state!=='ready')return;const lines=[],ends
 // so the rewrite never holds up the chapter itself. It's only read if all of it is ready in time.
 function svSoon(lines,after){if(!SV.on()||SV.state!=='ready')return;lines.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean).forEach(t=>SV.render(t,false,after));svPrepare(T&&T.route)}
 // Seconds still to wait before these lines can start, so that each one is ready before the ones ahead of it have
-// finished playing (0 = start now). Alice makes them in order; times not yet known are estimated, with a safety margin.
+// finished playing (0 = start now). Emma makes them in order; times not yet known are estimated, with a safety margin.
 function svAhead(lines){const est=t=>t.length/SV.cps+.3,f=SV.rtf*1.2+.05;let play=0,make=0,wait=0;
   for(const t of lines){const c=SV.clip(t);if(!c){make+=est(t)*f;wait=Math.max(wait,make-play)}play+=(c?c.pcm.length/c.rate:est(t))+.4}
   return wait}
 // How much of these lines is ready (0–1, by length of speech): the globe's percentage. The story starts as soon as
-// svAhead allows, usually well before 100%, and the rest is made while Alice reads.
+// svAhead allows, usually well before 100%, and the rest is made while Emma reads.
 // The line she's making right now counts in part (by how long it usually takes), so the globe keeps moving between lines.
 // True while the storyteller voice is starting, still has story lines to make, or a chapter is waiting for her.
 function svBehind(){return SV.on()&&(SV.state==='loading'||SV.queue.length>0||Voice.gating)}
-// Usage stats (only with "Help improve AWTY" on): how long the story waited for Alice and what for ("load" = her start-up
+// Usage stats (only with "Help improve AWTY" on): how long the story waited for Emma and what for ("load" = her start-up
 // from the phone, "start" = waiting for that, "opening"/"chapter" = a story part, "line" = one sentence), with how fast
 // this phone makes her voice, whether it can use several cores, and how many sentences she still had to make. No text.
 function svLog(w,ms){if(Voice.preview||w!=='load'&&ms<1000)return;const s=Math.round(ms/100)/10;
@@ -1874,7 +1891,7 @@ function svShare(lines){const cur=SV.working?[...SV.wait.values()][0]:null;let a
   for(const t of lines){const c=SV.clip(t),d=c?c.pcm.length/c.rate:t.length/SV.cps+.3;all+=d;if(c)ok+=d;
     else if(cur&&cur.key===SV.key(t))ok+=d*Math.min(.9,(performance.now()-cur.t0)/1000/(d*Math.max(.2,SV.rtf)))}
   return all?ok/all:1}
-// The globe beside the trip's road: shown only while a chapter waits for Alice. It fills with colour as she gets ready,
+// The globe beside the trip's road: shown only while a chapter waits for Emma. It fills with colour as she gets ready,
 // bounces, shrinks away, and the Map / Games / Story box grows into its space.
 const Loader={on:false,pct:0,t:0,
   // (a wait shorter than the delay, 0.6 seconds unless given, never shows it, so it doesn't flash)
@@ -1887,7 +1904,7 @@ const Loader={on:false,pct:0,t:0,
     at(550,()=>{el.classList.add('ready');at(550,()=>{el.classList.add('out');at(330,()=>{el.classList.add('gone');$('.kid-main').classList.remove('loading');at(380,()=>{el.hidden=true})})})})},
   hide(){clearTimeout(this.t);this.on=false;$('#k-load').hidden=true;$('.kid-main').classList.remove('loading')}};
 // The ▶ voice previews in Settings: they play even if the sound is switched off, and the button says what's happening
-// ("Getting Alice ready…" while she makes the lines, "Playing…", then back to normal).
+// ("Getting Emma ready…" while she makes the lines, "Playing…", then back to normal).
 function previewSay(b,items,gate){Snd.init();if(Snd.ac&&Snd.ac.state==='suspended')Snd.ac.resume();
   const label=b.textContent,back=()=>{clearTimeout(cap);b.disabled=false;b.textContent=label},cap=setTimeout(back,60000);
   Voice.stop();const wait=gate&&SV.on()&&SV.state==='ready'&&items.some(t=>typeof t==='string'&&!SV.clip(speakable(t).t));
@@ -1907,6 +1924,29 @@ function svStatus(){const s=SV.state;
   if(s==='ready')return'✅ Ready, and works with no signal.';
   if(s==='error')return`<span class="err">${esc(SV.err)}</span>`;
   return SV.installed()?'Downloaded. It starts when you next plan a trip.':'Not downloaded yet.'}
+// Speed test (test version only, Settings → Storyteller voice; take it out before the storyteller is released): times
+// Emma on the main processor (today) and on the graphics chip (needs the 326 MB full-size model, removed again afterwards),
+// so we can see on a real phone whether the bigger download is worth it. With "Help improve AWTY" on, the numbers
+// (no text) go to the developer dashboard's stats too.
+const SvTest={busy:false,out:'',text:'Once upon a time, a little owl called Hoot peeked out of the car window… and gasped! “Is that a castle?” she whispered. The towers were tall — taller than the trees — and a red flag was flapping in the wind.'};
+function svGpuTest(){if(SvTest.busy)return;SvTest.busy=true;const r={prog:'Starting…'},show=()=>{SvTest.out=svGpuText(r);const el=$('#sv-gpu');if(el)el.innerHTML=SvTest.out};
+  let w;try{w=new Worker('voice-worker.js',{type:'module'})}catch(e){SvTest.busy=false;r.prog='';r.fail='This phone couldn’t start the test.';show();return}
+  w.onmessage=e=>{const m=e.data;if(m.type!=='gpu')return;
+    if(m.k==='progress')r.prog=`Downloading ${m.what==='gpu'?'the full-size model (326 MB)':'today’s model'}… ${m.pct}%`;
+    else if(m.k==='done'){r.prog='';SvTest.busy=false;w.terminate();svGpuClean().then(()=>{r.cleaned=true;show()});
+      Tel.log('voicetest',{cpu:r.cpu&&r.cpu.rtf,gpu:r.gpu&&r.gpu.rtf,gl:r.gpu&&r.gpu.load,bad:r.gpu&&r.gpu.bad?1:0,chip:r.gpu&&r.gpu.chip||'',iso:self.crossOriginIsolated?1:0,cores:navigator.hardwareConcurrency||0})}
+    else{r[m.k]=m;r.prog=m.k==='cpu'?'Now trying the graphics chip…':''}show()};
+  w.onerror=()=>{SvTest.busy=false;r.prog='';r.fail='The test stopped unexpectedly.';show()};
+  show();w.postMessage({type:'gputest',voice:SV.voice(),speed:SV.speed(),text:SvTest.text})}
+async function svGpuClean(){try{const c=await caches.open('transformers-cache');for(const q of await c.keys())if(/\/onnx\/model\.onnx$/.test(q.url))await c.delete(q)}catch(e){}} // (only the full-size model: today's model is kept)
+function svGpuText(r){const c=r.cpu,g=r.gpu,s=x=>`<b>${x} seconds</b> of work for each second of speech`,out=[];
+  if(r.prog)out.push(r.prog);if(r.fail)out.push(`<span class="err">${esc(r.fail)}</span>`);
+  if(c)out.push(c.err?`Main processor: couldn’t run (${esc(c.err)})`:`Main processor (today): ${s(c.rtf)}.`);
+  if(g)out.push(g.err?`Graphics chip: ${esc(g.err)}`:g.bad?'Graphics chip: it ran, but the sound came out broken, so it can’t be used on this phone.'
+    :`Graphics chip${g.chip?` (${esc(g.chip)})`:''}: ${s(g.rtf)}${c&&!c.err?`, about ${Math.round(c.rtf/g.rtf*10)/10} times faster`:''}. It took ${g.load} seconds to get ready. `
+      +(g.rtf<1?'Fast enough: Emma would make the story quicker than she reads it, so there’d be almost no wait.':'Faster, but still slower than she reads, so there would still be some waiting.'));
+  if(r.cleaned)out.push('The full-size test model has been removed from this phone again.');
+  return out.map(x=>`<div>${x}</div>`).join('')}
 const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:false,src:null,
   ok(){return has('voice')&&'speechSynthesis' in window&&(S.sound.on||!!this.preview)}, // a parent's ▶ preview in Settings plays even with the sound off
   pick(){const chosen=S.landmark.voice&&speechSynthesis.getVoices().find(v=>v.name===S.landmark.voice);
@@ -1917,7 +1957,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     if(end==='?'){pitch=1.12;rate=.97;gap=520}else if(end==='!'){pitch=1.1;rate=1.03;gap=380}
     if(words>20)rate*=.96;if(this.calm){pitch-=.06;rate*=.92;gap+=220}
     pitch+=((hashStr(t)%5)-2)*.01;if(S.age==='4-5')gap+=120;return{pitch,rate,gap}},
-  // gate=true for a story chapter: with the storyteller voice, the chapter waits until Alice is far enough ahead to
+  // gate=true for a story chapter: with the storyteller voice, the chapter waits until Emma is far enough ahead to
   // read it in one go with no gaps (judged by how fast this phone makes her voice), while the globe fills with colour.
   // Only the opening usually waits; later chapters are ready miles ahead.
   tried:new Set(),
@@ -1926,7 +1966,8 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     const iv=setInterval(()=>{if(tok!==this.token){clearInterval(iv);return}if(SV.state==='loading'&&Date.now()-t0<60000)return;if(SV.state==='loading')this.svGaveUp=true; // (after a minute, carry on without her)
       clearInterval(iv);this.gating=false;Loader.done();svLog('start',Date.now()-t0);this.queue.unshift(item);this.next()},300);return true},
   say(items,priority,gate){if(!this.ok())return false;if(priority)this.stop();
-    if(gate&&SV.on()&&SV.state!=='error')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean)},...items];
+    // (gate='solo': waits only for its own lines, not for a chapter queued after it. The greeting uses it, so Hoot says hello straight away)
+    if(gate&&SV.on()&&SV.state!=='error')items=[{gate:items.filter(x=>typeof x==='string').map(x=>speakable(x).t).filter(Boolean),solo:gate==='solo'},...items];
     this.queue.push(...items);if(!this.busy)this.next();return true},
   next(){let it=this.queue.shift();const tok=++this.token;this.cur=it;
     if(it===undefined){this.busy=false;return}this.busy=true;
@@ -1935,10 +1976,10 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
       if(it.gate){if(this.svLoading(it,tok))return;const need=it.gate.filter(t=>!SV.clip(t));if(!need.length||!SV.on()||SV.state!=='ready'){this.next();return}
         if(it.covered){this.next();return} // already allowed for by the chapter before it
         const bad=new Set(),asked=new Set(need),t0=Date.now();let went=false,tick=0;
-        const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog(T&&T.announced.size?'chapter':'opening',Date.now()-t0);this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
+        const go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog(T&&T.announced.size?'chapter':'opening',Date.now()-t0);if(!it.solo)this.queue.forEach(x=>{if(x&&x.gate)x.covered=true});this.next()},cap=setTimeout(go,150000);
         // a chapter queued straight after this one (the opening after the greeting) counts too, so the globe only shows once
-        const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
-          // its lines jump the queue too (just behind this chapter's own), or Alice would make the rest of the story first
+        const check=()=>{if(!SV.on()||SV.state!=='ready')return go();const later=it.solo?[]:this.queue.filter(x=>x&&typeof x==='object'&&x.gate).flatMap(x=>x.gate);
+          // its lines jump the queue too (just behind this chapter's own), or Emma would make the rest of the story first
           const fresh=later.filter(t=>!asked.has(t));fresh.forEach(t=>asked.add(t));
           if(fresh.length){[...fresh].reverse().forEach(t=>SV.render(t,true));[...need].reverse().forEach(t=>SV.render(t,true));fresh.forEach(t=>SV.render(t).then(c=>{if(!c)bad.add(t);check()}))}
           const all=[...it.gate,...later].filter(t=>!bad.has(t));if(svAhead(all)<=0)go();else Loader.set(svShare(all)*100)};
@@ -1951,21 +1992,22 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
     // sound tags like {sfx:magic} are never read out: one at the start plays just before the sentence, one after a
     // word plays as that word is said ("mids"); {music:…} switches the story music
     const raw=it,sp=speakable(it);it=sp.t;const fx=S.sound.storyFx!==false,ok=c=>SFX[c]||Pack.has('s-'+c);
-    // With the storyteller voice, the phone's voice is never mixed in: a line Alice hasn't made yet waits for her (she
+    // With the storyteller voice, the phone's voice is never mixed in: a line Emma hasn't made yet waits for her (she
     // makes it next, usually in a second or two; the globe shows only if it takes longer). While she's still starting
-    // up, everything waits for her. Only if she can't make it (or it takes over 20 seconds) does the phone's voice read it.
+    // up, everything waits for her. Only if she can't make it at all (or it takes over 2½ minutes, like a chapter's
+    // longest wait) does the phone's voice read it. (The owner chose "Emma only": it used to be after 20 seconds.)
     if(it&&this.svLoading(raw,tok))return;
     if(it&&SV.on()&&SV.state==='ready'&&!SV.clip(it)&&!this.tried.has(it)){this.tried.add(it);if(this.tried.size>60)this.tried=new Set([it]);
-      let went=false;const t0=Date.now(),go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog('line',Date.now()-t0);this.queue.unshift(raw);this.next()},cap=setTimeout(go,20000),
+      let went=false;const t0=Date.now(),go=()=>{if(went||tok!==this.token)return;went=true;clearTimeout(cap);clearInterval(tick);this.gating=false;Loader.done();svLog('line',Date.now()-t0);this.queue.unshift(raw);this.next();this.tried.delete(it)},cap=setTimeout(go,150000), // (forgotten once read, so the same line later in the trip waits for her again too)
         tick=setInterval(()=>{if(tok!==this.token)return clearInterval(tick);Loader.set(svShare([it])*100)},400); // (the globe moves while she makes it)
       this.gating=true;Loader.show(2500);SV.render(it,true).then(go);return}
     if(fx)sp.music.filter(m=>MOODS[m]||m==='calm').slice(0,1).forEach(m=>Music.setMood(m));
-    const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,3):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
+    const usable=fx?sp.cues.filter(q=>ok(q.c)).slice(0,6):[],known=usable.filter(q=>q.start).slice(0,2).map(q=>q.c),mids=usable.filter(q=>!q.start);
     known.forEach((c,i)=>setTimeout(()=>{if(tok===this.token)playSfx(c)},i*550));this.mids=mids;
     if(it){StoryLog.begin(it);StoryLog.add(it)} // shown on the Story page so the children can read along
     if(!it){setTimeout(()=>{if(tok===this.token)this.next()},known.length?900:0);return}
-    // the storyteller voice: use the audio made ahead of time. A one-off line that isn't ready yet is read by the
-    // phone's voice straight away (so nothing waits), and made in the background for next time.
+    // the storyteller voice: use the audio made ahead of time. (A line still not ready here is one Emma couldn't make,
+    // or that waited 2½ minutes: the phone's voice reads it, and she makes it in the background for next time.)
     if(SV.on()&&SV.state==='ready'){const c=SV.clip(it);if(c){this.playClip(c,it,tok,known);return}SV.render(it)}
     this.speakPhone(it,raw,tok,known)},
   // plays a sentence made by the storyteller voice; the read-along highlighter follows its real length
@@ -1979,7 +2021,7 @@ const Voice={queue:[],busy:false,token:0,cur:null,held:null,netSlow:false,calm:f
       (this.mids||[]).forEach(q=>{const ms=StoryLog.words.slice(0,q.words).reduce((a,w)=>a+(w.ms||0),0);setTimeout(()=>{if(tok===this.token)playSfx(q.c,true)},Math.max(0,ms-60))})},wait)},
   // the phone's own text-to-speech voice
   speakPhone(it,raw,tok,known){
-    const u=new SpeechSynthesisUtterance(it);const v=this.pick();if(v){u.voice=v;u.lang=v.lang}
+    const u=new SpeechSynthesisUtterance(it.replace(/…/g,',').replace(/ [—–] /g,',  '));const v=this.pick(); // (same length, so the read-along still lines up)if(v){u.voice=v;u.lang=v.lang}
     const p=this.prosody(it);u.rate=S.landmark.rate*(S.age==='4-5'?.92:1)*p.rate;u.pitch=p.pitch;u.volume=S.sound.volume;
     const gap=p.gap+(this.queue[0]&&this.queue[0].ask?300:0); // a breath before the next sentence
     let done=false,started=false;const fin=()=>{if(done||tok!==this.token)return;done=true;StoryLog.end(it);setTimeout(()=>{if(tok===this.token)this.next()},gap)};
@@ -2580,9 +2622,9 @@ function setPlay(on){if(!T)return;const was=T.running;T.running=on&&!T.arrived;
 function step(dt){
   if(!T.running||T.arrived)return;
   if(liveGps())return; // the GPS watcher moves the car
-  // real offline trips run on the clock; a demo trip drops to real speed while Alice is behind, so chapters don't wait for her
+  // real offline trips run on the clock; a demo trip drops to real speed while Emma is behind, so chapters don't wait for her
   const slow=S.demoMode&&svBehind(),speed=S.demoMode?(slow?1:demo.speed):1;
-  if(slow!==step.slow){step.slow=slow;$('#d-speedv').textContent=slow?'×1 · Alice catching up':'×'+demo.speed}
+  if(slow!==step.slow){step.slow=slow;$('#d-speedv').textContent=slow?'×1 · Emma catching up':'×'+demo.speed}
   const mps=T.total/(T.mins*60)*speed;T.miles=Math.min(T.total,T.miles+mps*dt);events();
 }
 function renderTripPanel(){
@@ -2671,7 +2713,7 @@ function buildSpeech(lm){
   // story mode: this landmark's chapter of the trip story (rewritten to follow the children's last choice, if that's ready)
   // (with the storyteller voice, the rewrite is only used once she has it ready; otherwise the chapter she prepared
   // earlier is read, starting "So, just like you chose…", so there's never a long wait)
-  const svReady=t=>!(SV.on()&&SV.state==='ready')||(t.sentences||[]).every(x=>SV.clip(speakable(x).t));
+  const svReady=t=>!(SV.on()&&SV.state==='ready')||svUnits(t.sentences,st.helpSpot!==false?helpLines(T.route,lm,t).at:0).every(x=>SV.clip(speakable(x).t));
   const sg=st.type==='story'&&T?sagaFor(T.route):null,rw=sg&&T.rewrites[lm.id]&&aiOk(T.rewrites[lm.id])&&svReady(T.rewrites[lm.id])?T.rewrites[lm.id]:null;
   const ch=sg&&(rw?{...rw,choice:rw.choice||sg.chapters[lm.id].choice}:sg.chapters[lm.id]);let storyChoice=null,nextId=null;if(rw)T.rwUsed[lm.id]=true;
   const g=!ch&&lm.gen&&lm.gen.key===genKey()&&aiOk(lm.gen,lm.gen.blocked)?lm.gen:null,src=ch||g,word=src&&src.word||L.word;
@@ -2680,8 +2722,8 @@ function buildSpeech(lm){
   const ear=Ear.active();let quiz=null;
   if(st.interactive==='repeat')out.push(`Can you say ${word}? Say it with me. ${word}!`,...(ear?[{listen:{kind:'repeat',question:'',answers:[word]}}]:[{pause:2600},'Brilliant!']));
   if(ch){const stops=storyStops(T.route),i=stops.findIndex(s=>s.id===lm.id),chose=T.chose[lm.id],pre=chose&&!rw?[choiceSay.did(chose)]:[];
-    const body=[...pre,...(ch.sentences||[])],h=st.helpSpot!==false?helpLines(T.route,lm,ch):null;
-    if(h)body.splice(Math.min(body.length,pre.length+h.at),0,h.ask,{ask:{kind:'spot',item:h.item,thanks:h.thanks}}); // "help me spot…" partway through
+    const h=st.helpSpot!==false?helpLines(T.route,lm,ch):null,body=[...pre,...svUnits(ch.sentences,h&&h.at)]; // (Emma reads it in passages)
+    if(h)body.splice(Math.min(body.length,pre.length+svUnitAt(ch.sentences,h.at)),0,h.ask,{ask:{kind:'spot',item:h.item,thanks:h.thanks}}); // "help me spot…" partway through
     out.push(...body);nextId=stops[i+1]?stops[i+1].id:null;storyChoice=st.choices!==false&&nextId&&ch.choice?ch.choice:null;
     quiz=ch.quiz&&ch.quiz.question&&ch.quiz.answers&&ch.quiz.answers.length?ch.quiz:{question:'Which animal is the hero of our story?',answers:[sagaHero()]}}
   else if(g){out.push(...g.sentences);if(g.quiz&&g.quiz.question&&g.quiz.answers&&g.quiz.answers.length)quiz=g.quiz}
@@ -2706,7 +2748,7 @@ function announce(lm){
   StoryLog.chapter(sst?`Chapter ${ci+2} of ${sst.length+2}`:'Fun facts',lm.road?'On the open road':L.name.replace(/^the /,'The '));
   const parts=[...buildSpeech(lm),{fn:()=>{clearTimeout(badgeTimer);badgeTimer=setTimeout(()=>b.hidden=true,2500)}}];
   const spoke=Voice.say(S.landmark.type==='story'?withStoryMusic(parts):parts,false,true);
-  svPrepare(T.route); // Alice drops what's no longer needed (earlier parts, a rewrite that wasn't used) and carries on with what's next
+  svPrepare(T.route); // Emma drops what's no longer needed (earlier parts, a rewrite that wasn't used) and carries on with what's next
   b.classList.toggle('quiet',!spoke);clearTimeout(badgeTimer);if(!spoke)badgeTimer=setTimeout(()=>b.hidden=true,8000);
 }
 
@@ -2872,7 +2914,7 @@ function showNextCel(){if(!$('#celebrate').hidden||!celQueue.length)return;const
   $('#celebrate').hidden=false;Snd.unlock();confetti(90)}
 function arrive(){
   T.arrived=true;T.running=false;setPlay(false);Spot.end();Snd.arrive();confetti();
-  if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)StoryLog.chapter('The end','We made it!');if(T===t)Voice.say(withStoryMusic([{fn:()=>Music.setMood('calm')},{calm:true},...end,{calm:false}]),false,true)},3000)} // the END of the trip story
+  if(S.landmark.type==='story'&&S.landmark.enabled&&T.introTold){const end=sagaFor(T.route).ending,t=T;setTimeout(()=>{if(T===t)StoryLog.chapter('The end','We made it!');if(T===t)Voice.say(withStoryMusic([{fn:()=>Music.setMood('calm')},{calm:true},...svUnits(end),{calm:false}]),false,true)},3000)} // the END of the trip story
   const n=Object.values(T.spotted).reduce((a,b)=>a+b,0);
   $('#arrive').innerHTML=`<p class="big">We made it to ${esc(destName(T.route))}!</p><div class="arrive-stats">${has('points')?`<span class="chip">⭐ ${T.score.toLocaleString()} points</span><span class="chip">👀 ${n} things spotted</span><span class="chip">🪙 ${T.coins} coins</span>`:`<span class="chip">🛣️ ${Math.round(T.route.miles)} miles</span><span class="chip">⏱️ ${fmtMins(Math.max(1,Math.round((Date.now()-(T.startedAt||Date.now()))/60000)))}</span>`}</div><p class="note" style="margin:0 auto 12px">Trip saved to Stats.</p><button class="btn primary" data-act="newtrip">Start a new trip</button>${askRating()?`<div id="rate-box"><button class="linkish" data-act="rate">For grown-ups: one quick question</button></div>`:''}`;
   $('#arrive').hidden=false;
@@ -2952,10 +2994,11 @@ let plateMsg='',routeMsg='',lockMsg='',resetAsk='',reportAsk='',reportMsg='';
 // Everything that will be read aloud on this route, in order, so a parent can check it before the trip.
 function storyParts(R){
   if(S.landmark.type==='story'){const sg=sagaFor(R),stops=storyStops(R),ch=S.landmark.choices!==false,hp=S.landmark.helpSpot!==false;
-    const parts=[{id:'intro',label:'Beginning',lines:[...sg.intro,...(ch&&stops.length&&sg.choice?[sg.choice.question]:[])],ai:!!sg.ai.intro}];
-    stops.forEach((l,i)=>{const c=sg.chapters[l.id],h=hp?helpLines(R,l,c):null;
-      parts.push({id:l.id,label:`Middle ${i+1} · ${l.road?'on the open road':lmInfo(l).name}`,lines:[...(c.sentences||[]),...(h?[h.ask,h.thanks]:[]),...(ch&&c.choice?[c.choice.question]:[])],ai:!!sg.ai[l.id]})});
-    parts.push({id:'ending',label:'End',lines:sg.ending,ai:!!sg.ai.ending});return parts}
+    // ("say" is what's read aloud: the same lines, in Emma's passages when she's the storyteller)
+    const q=ch&&stops.length&&sg.choice?[sg.choice.question]:[],parts=[{id:'intro',label:'Beginning',lines:[...sg.intro,...q],say:[...svUnits(sg.intro),...q],ai:!!sg.ai.intro}];
+    stops.forEach((l,i)=>{const c=sg.chapters[l.id],h=hp?helpLines(R,l,c):null,tail=[...(h?[h.ask,h.thanks]:[]),...(ch&&c.choice?[c.choice.question]:[])];
+      parts.push({id:l.id,label:`Middle ${i+1} · ${l.road?'on the open road':lmInfo(l).name}`,lines:[...(c.sentences||[]),...tail],say:[...svUnits(c.sentences,h&&h.at),...tail],ai:!!sg.ai[l.id]})});
+    parts.push({id:'ending',label:'End',lines:sg.ending,say:svUnits(sg.ending),ai:!!sg.ai.ending});return parts}
   // fun facts: only the AI-written ones can be shown here; the rest use the built-in facts
   return R.landmarks.filter(l=>l.gen&&l.gen.key===genKey()&&aiOk(l.gen,l.gen.blocked)).map(l=>({id:l.id,label:lmInfo(l).name,lines:l.gen.sentences,ai:true}))}
 const readable=lines=>fillNames(lines.join(' ').replace(/\{sfx:[a-z]+\}\s*/g,''));
@@ -3068,13 +3111,14 @@ function renderSettings(){
     ${CORE_ONLY?'':toggle('child.lock','Lock the trip screen for the kids','When a trip starts, the bottom bar shows only “Parents only” and the lock. Your PIN opens Search, Stats and Settings.')}
     ${has('spotit')?toggle('child.spotNow','Spot-it on the Games page','Lets children start a Spot-it round themselves.'):''}`;
   const svName=(SV.VOICES.find(v=>v[0]===S.sound.voice)||['','the phone voice'])[1];
-  const svBody=`<p class="note">Alice, a natural British storyteller voice that runs on this phone, so it needs no internet once it’s downloaded, and the children’s names never leave the phone.</p>
+  const svBody=`<p class="note">Emma, a natural British storyteller voice that runs on this phone, so it needs no internet once it’s downloaded, and the children’s names never leave the phone.</p>
     <div class="sv-status" id="sv-status">${svStatus()}</div>
     ${SV.installed()||SV.state==='loading'?'':`<div><button class="btn primary" data-act="svget">Download the storyteller voice</button><p class="note" style="margin-top:6px">About 124 MB with the music and sound effects, so best on Wi-Fi. It takes a few minutes, then it’s kept on the phone.</p></div>`}
     <div><span class="lbl">Who reads the story?</span><div class="chips-row">${[...SV.VOICES,['phone','Phone voice']].map(([id,n])=>`<button type="button" class="chip-btn ${(SV.installed()?S.sound.voice===id:id==='phone')?'on':''}" data-act="svpick" data-id="${id}" ${id!=='phone'&&!SV.installed()?'disabled':''}>${n}</button>`).join('')}</div>
-      <p class="note" style="margin-top:6px">${SV.installed()?'Alice is the storyteller voice. The phone voice is your phone’s own.':'Alice can be chosen once the download has finished.'}</p></div>
+      <p class="note" style="margin-top:6px">${SV.installed()?'Emma is the storyteller voice. The phone voice is your phone’s own.':'Emma can be chosen once the download has finished.'}</p></div>
     ${SV.state==='ready'&&S.sound.voice!=='phone'?`<button class="btn ghost" data-act="svhear">▶ Hear ${esc(svName)}</button>`:''}
-    ${SV.installed()?`<button class="linkish" data-act="svremove" style="justify-self:start">Remove the download from this phone</button>`:''}`;
+    ${SV.installed()?`<button class="linkish" data-act="svremove" style="justify-self:start">Remove the download from this phone</button>`:''}
+    ${SV.installed()?`<div class="note"><button class="linkish" data-act="svgputest" ${SvTest.busy?'disabled':''}>Speed test: try the graphics chip</button> Test version only. It downloads 326 MB (use Wi-Fi), takes a few minutes, then removes it again. Best when no trip is running.<div id="sv-gpu" style="margin-top:6px">${SvTest.out}</div></div>`:''}`;
   const SECS={storyvoice:()=>sec('storyvoice','🦉','Storyteller voice',svBody),trip:()=>sec('trip','🗺️','Trip & route',tripBody),read:()=>sec('read','📖','Read the story',storyReadBody(R)),car:()=>sec('car','🚗','Car & garage',carBody),
     house:()=>sec('house','🏠','Houses',houseRow('houseStart','Starting house')+houseRow('houseEnd',`Destination (${esc(destName(R))})`)),style:()=>hasPremium()?sec('style','🎨','Display style',styleBody):'',
     bg:()=>sec('bg','🌍','Background',bgBody),sound:()=>!has('voice')?sec('sound','🎵','Music',soundBody):sec('sound','🔊','Sound',soundBody),sounds:()=>sec('sounds','🎧','Story sounds & music',storySoundsBody()),
@@ -3148,8 +3192,9 @@ const MODE_WORDS={demo:'demo driving',gps:'live GPS',timer:'journey-time clock',
 function telWords(e){
   if(e.t==='open')return'Opened AWTY';
   if(e.t==='trip_start')return`Started a trip (${MODE_WORDS[e.mode]||e.mode}, about ${e.miles} miles, age group ${e.age})`;
-  if(e.t==='trip_end')return`Finished a trip (about ${e.miles} miles, ${e.mins} min)${e.sv?`, the story waited for Alice ${e.waits} time${e.waits===1?'':'s'}`:''}`;
-  if(e.t==='voice')return e.w==='load'?`Alice’s voice took ${e.s} s to start up`:`The story waited ${e.s} s for Alice (${{start:'starting up',opening:'the opening',chapter:'a chapter',line:'one sentence'}[e.w]||e.w})`;
+  if(e.t==='trip_end')return`Finished a trip (about ${e.miles} miles, ${e.mins} min)${e.sv?`, the story waited for Emma ${e.waits} time${e.waits===1?'':'s'}`:''}`;
+  if(e.t==='voicetest')return`Storyteller speed test: main processor ${e.cpu??'–'} s, graphics chip ${e.gpu??'–'} s of work per second of speech`;
+  if(e.t==='voice')return e.w==='load'?`Emma’s voice took ${e.s} s to start up`:`The story waited ${e.s} s for Emma (${{start:'starting up',opening:'the opening',chapter:'a chapter',line:'one sentence'}[e.w]||e.w})`;
   if(e.t==='feature')return e.f.startsWith('game:')?`Played a mini-game: ${(GAMES[e.f.slice(5)]||{name:e.f.slice(5)}).name}`:FEATURE_WORDS[e.f]||e.f;
   if(e.t==='crash')return`Error report: ${e.msg}`;
   if(e.t==='rating')return`Recommend score: ${e.score} out of 10`;
@@ -3332,7 +3377,7 @@ function greetLines(r=T.route){
   const who=kidNames(),reason=prof('reason');
   const where=r.timerOnly?`Our drive takes about ${fmtMins(r.mins)}.`:`We’re going to ${destName(r)}, which is ${Math.round(r.miles)} miles away.`;
   return[`Hello ${who||'everyone'}!`,...(reason?[`Today’s adventure is ${reason}!`]:[]),where,'Watch the car on the road to see how far we’ve got.','Let’s go!']}
-function greet(){Voice.say(greetLines(),false,true)}
+function greet(){Voice.say(greetLines(),false,'solo')} // (with Emma: says hello as soon as the greeting is ready; the opening may then wait a little, with the globe)
 async function startTrip(){
   if(startBusy)return;Snd.ready();
   if(S.landmark.listen&&micState!=='granted'&&micState!=='denied')askMic(); // the "Let's go" tap is the moment Android will show the microphone pop-up
@@ -3657,10 +3702,11 @@ VS.addEventListener('click',e=>{
   if(a==='packremove'){Pack.remove().then(()=>{Music.stop(true);renderSettings()});return}
   if(a==='musictest'){Snd.ready();Music.preview=true;Music.stop(true);Music.start();setTimeout(()=>{Music.preview=false;if(!Music.allowed())Music.stop()},9000);return} // 9-second preview
   if(a==='svget'){SV.load();renderSettings();return}
+  if(a==='svgputest'){svGpuTest();b.disabled=true;return}
   if(a==='svpick'){S.sound.voice=b.dataset.id;saveS();renderSettings();svPrepare(T&&T.route);return}
   if(a==='svhear'){const n=(SV.VOICES.find(v=>v[0]===S.sound.voice)||[0,'your storyteller'])[1];previewSay(b,[`Hello! I’m ${n}, your AWTY storyteller.`,'Are you ready for an adventure?'],true);return} // waits until it's really that voice
-  if(a==='svremove'){SV.remove().then(()=>{S.sound.voice='bf_alice';saveS();renderSettings()});return}
-  if(a==='hearvoice'){previewSay(b,['Hello! I’m your AWTY storyteller.','Are you ready for an adventure?','Then let’s go… the road is waiting!'].map(t=>({phone:t})));return} // the phone voice picked here, even when Alice tells the stories
+  if(a==='svremove'){SV.remove().then(()=>{S.sound.voice='bf_emma';saveS();renderSettings()});return}
+  if(a==='hearvoice'){previewSay(b,['Hello! I’m your AWTY storyteller.','Are you ready for an adventure?','Then let’s go… the road is waiting!'].map(t=>({phone:t})));return} // the phone voice picked here, even when Emma tells the stories
   if(a==='report'){reportAsk=b.dataset.id;reportMsg='';renderSettings();return}
   if(a==='reportcancel'){reportAsk='';renderSettings();return}
   if(a==='reportwhy'){reportPart(S.route||makeRoute(S.from,S.to),b.dataset.id,b.dataset.why);renderSettings();return}
@@ -3670,7 +3716,7 @@ VS.addEventListener('click',e=>{
   if(a==='reset-cancel'){resetAsk='';renderSettings();return}
   if(a==='reset-settings'){const pc=S.passcode,cs=S.consent,pin=S.pin;S=deepMerge(DEFAULTS,{});S.passcode=pc;S.consent=cs;S.pin=pin;resetAsk='';saveS();applyStyle();newTrip();applyLive();showTab('start');return}
   if(a==='reset-all'){const pc=S.passcode;try{Object.keys(localStorage).filter(k=>k.startsWith('rtb.')).forEach(k=>localStorage.removeItem(k))}catch(e){}
-    store.set('settings',{passcode:pc});ClipDB.clear().then(()=>location.reload());return} // (Alice's saved sentences go too: they can hold the children's names)
+    store.set('settings',{passcode:pc});ClipDB.clear().then(()=>location.reload());return} // (Emma's saved sentences go too: they can hold the children's names)
   if(a==='connect'){fetchRoute();return}
   if(a==='stories'){const R=S.route;if(R)prepareStories(R);return}
   if(a==='export')exportData();
@@ -3731,7 +3777,8 @@ function frame(now){
 }
 scene.cv=$('#scene');scene.ctx=scene.cv.getContext('2d');
 applyStyle();newTrip();applyLive();checkServices();showTab('start');Tel.log('open');setTimeout(()=>Tel.flush(),5000);
-if(SV.installed()&&!store.get('svDefaulted',false)){S.sound.voice='bf_alice';saveS();store.set('svDefaulted',true)} // phones that downloaded Alice in 0.2.0 switch to her once
+if(SV.installed()&&!store.get('svDefaulted',false)){S.sound.voice='bf_emma';saveS();store.set('svDefaulted',true)} // phones that downloaded the storyteller in 0.2.0 switch to her once
+if(S.sound.voice==='bf_alice'){S.sound.voice='bf_emma';saveS()} // Emma replaced Alice: phones that had Alice switch to Emma
 if(SV.installed())setTimeout(()=>SV.load(),1500);if(!has('storyteller')&&Pack.installed())setTimeout(()=>Pack.load(),1500); // (no storyteller: the recorded music, if downloaded) // the storyteller voice, if a parent downloaded it, loads from the phone
 else setTimeout(svAsk,2000); // or, the first time, offer it
 if(!S.consent||(S.consent.v||1)<CONSENT_VERSION)showConsent(); // first launch, or the choices have changed since a parent last saw them

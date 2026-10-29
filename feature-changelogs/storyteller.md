@@ -3,6 +3,24 @@
 The natural storyteller voice that runs on the phone itself (Kokoro, model `onnx-community/Kokoro-82M-v1.0-ONNX`, q8). Nothing it reads ever leaves the phone, so the children's names stay private.
 Version numbers belong to this feature only (see `FEATURES.md`). Newest first.
 
+## 1.5 — Emma reads the mini-games too, and softer nature sounds (29 October 2026, test version, not released yet)
+
+**Why:** on the Pixel 10 phone test, the story was read by Emma, but the mini-games (Traffic Lights instructions, Car Sums questions) used the phone's own robot voice. The birdsong behind her was also jarring.
+
+**What changed:**
+- **The games talk in Emma's voice.** Everything a game says comes from short fixed lists (the instructions, the colours in Colour Cars, the 12 Missing Letter words, every Car Sums question up to 5 + 5), so Emma makes them ahead of time, after the story's own lines, and they play straight away, with no "getting ready" globe. A line she hasn't made yet is read by the phone's voice that once, because a game can't wait. Only the games for the child's age are prepared (39 lines for ages 6–7).
+- **The background nature sounds are gentler behind her** (see the app's CHANGELOG): half as loud, down to a fifth while anyone is speaking, softened so birds sound far away, slower to fade in, and with an on/off switch.
+
+**Checked in the test app:** the game lines are listed for Emma, and the games open without errors. **Not yet heard on a phone.**
+
+**Still open from the phone test:** Emma kept the story waiting 6 times (about 3 minutes in all) because she couldn't keep up. Parts now come more often (Trip story 1.1), which gives her more to prepare. Hoot's in-between moments never wait for her.
+
+**Where the code is** (`public/index.html`): `GAME_SAY`, `gameLines()` and `gameSay()` (just above `MG`). The game lines join Emma's list at the end of `svPrepare()`. The nature sounds are `Amb` (setting `S.sound.nature`).
+
+**Next (to pick up later):**
+- On the phone, check the games use Emma's voice, and that the nature sounds no longer jar.
+- The biggest open problem is still that Emma is slower than real time on phones. Ideas from the phone test: start her on the story as soon as the route is ready on the Search screen (before "Let's go!"), make the next part first rather than everything in story order, and have Hoot fill a wait with a short built-in line. Also the graphics-chip speed test (1.2) still needs running on the phone.
+
 ## 1.4 — Emma only, even when she's late (29 October 2026, test version, not released yet)
 
 **Why:** in the emulator tests, Emma once took more than 20 seconds over a line, so the phone's own voice read it instead. The owner chose "Emma only".

@@ -275,24 +275,27 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
     return { payload, heard: [...sentences, ...helpText, ...choiceText], extra: [payload.question, payload.word, payload.quiz ? payload.quiz.question : ""] };
   }
 
-  // Time budget: Netlify lets a function run for 60 seconds and the phone waits 60. A write takes about 12 seconds
-  // and a review about 6, so a rewrite starts only if both it and its review can finish by about 45 seconds.
-  const RETRY_BY = 22000, REVIEW_BY = 38000;
+  // Time budget: Netlify cuts the connection after 30 seconds, so each request makes ONE attempt (a write takes about
+  // 12 seconds and its review about 6). If it's rejected, the phone asks again with the reasons ("fix"), and that second
+  // request writes it again with the problems pointed out. A write that leaves no time for its review is never sent back
+  // unreviewed: it's rejected too, and the phone can ask again.
+  const REVIEW_BY = 20000;
+  const fix = Array.isArray(body.fix) ? body.fix.slice(0, 5).map((p) => clip(String(p).replace(/[{}]/g, ""), 200)).filter(Boolean) : [];
+  const feedback = fix.length ? `\n\nYour previous attempt was rejected for these reasons. Write it again and fix every one:\n- ${fix.join("\n- ")}` : "";
   try {
     const started = Date.now();
-    let feedback = "", problems = ["the writer returned nothing"];
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      if (attempt === 2 && Date.now() - started > RETRY_BY) break; // not enough time left for a rewrite and a second review
-      const out = await write(feedback);
-      if (!out) { problems = ["the writer declined"]; continue; }
+    let problems;
+    const out = await write(feedback);
+    if (!out) problems = ["the writer declined"];
+    else {
       // 1) quick checks on the server: banned words and reading level for the age
       problems = [...blockedWords([...out.heard, ...out.extra].join(" ")), ...readingIssues(out.heard, ageKey, rich)];
       // 2) a separate AI review against the age rulebook (only if the quick checks passed and there's time)
       if (!problems.length) problems = Date.now() - started < REVIEW_BY ? await aiReview([...out.heard, ...out.extra].filter(Boolean).join("\n"), ageKey, type) : ["no time left to review it"];
       if (!problems.length) return json(out.payload);
-      feedback = `\n\nYour previous attempt was rejected for these reasons. Write it again and fix every one:\n- ${problems.join("\n- ")}`;
     }
-    console.log(JSON.stringify({ event: "story-rejected", mode, ageKey, type, problems })); // shows in Netlify's function logs
+    // only the reasons, the age group and whether this was the rewrite: never the story text, names or places
+    console.log(JSON.stringify({ event: "story-rejected", mode, ageKey, type, rewrite: fix.length > 0, problems })); // shows in Netlify's function logs
     return json({ error: "The story didn't pass the safety checks, so the built-in story will be used.", problems }, 422);
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) return json({ error: "The server’s Anthropic API key was rejected." }, 502);

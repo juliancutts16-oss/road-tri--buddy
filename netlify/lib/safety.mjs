@@ -26,12 +26,19 @@ const UNSAFE_ACTS = /\b(unbuckl\w*|seat ?belts? (off|undone)|took (off )?(his|he
 // Asking the children to copy a physical action ("can you kick like Pip?", "stamp your feet!", "let's jump!").
 // Deliberately strict: a story that trips it is rewritten, and if it trips again the built-in story is used.
 const MOVES = "kick\\w*|stamp\\w*|stomp\\w*|jump\\w*|bounc\\w*|wriggl\\w*|wiggl\\w*|clap\\w*|bang\\w*|drum\\w*|tap\\w*|knock\\w*|reach\\w*|grab\\w*|touch\\w*|press\\w*|push\\w*|pull\\w*|open\\w*|unbuckl\\w*|undo\\w*|climb\\w*|stand up|throw\\w*|hit|punch\\w*|shake\\w*|wave|waving|shout\\w*|scream\\w*|yell\\w*|roar\\w*";
-const COPY_ME = new RegExp(`\\b(can you|could you|will you|would you|you can|you could|you should|now you|everyone|let's|let us|try to|join in|copy|do it too|with me)\\b[^.!?]{0,30}\\b(${MOVES})\\b`, "i");
+// Story sounds the hero may make (a dinosaur roars, stomps or shakes): these only count when the children themselves are
+// asked ("can you roar?", "let's all stomp!", "Everyone roar!"), not when the story just says it happens ("everyone heard
+// the dinosaur roar", "let's see the dinosaur stomp"). Everything else in MOVES stays strict.
+const SOFT_MOVES = "stomp\\w*|roar\\w*|shake\\w*";
+const STRICT_MOVES = MOVES.split("|").filter((m) => !SOFT_MOVES.split("|").includes(m)).join("|");
+const COPY_SOFT = new RegExp(`\\b(can you|could you|will you|would you|you can|you could|you should|now you|let's|let us|try to|join in|copy|do it too|with me)\\b(?!\\s+(all\\s+)?(see|watch|hear|listen|look|find out)\\b)[^.!?]{0,30}\\b(${SOFT_MOVES})\\b`, "i");
+const EVERYONE_SOFT = /\b(everyone|everybody|all of you),?\s+(now\s+|please\s+)?(stomp|roar|shake)\b/i;
+const COPY_ME = new RegExp(`\\b(can you|could you|will you|would you|you can|you could|you should|now you|everyone|let's|let us|try to|join in|copy|do it too|with me)\\b[^.!?]{0,30}\\b(${STRICT_MOVES})\\b`, "i");
 const BODY_ORDER = new RegExp(`(^|[.!?]\\s*)(now\\s+|quick(ly)?,?\\s+|go on,?\\s+)?(${MOVES})\\b[^.!?]{0,25}\\b(your|the seat|the window|the door|the car|feet|legs|hands|arms)\\b`, "i");
 export function blockedWords(text) {
   const found = [];
   const s = String(text || "").replace(/\{[^}]*\}/g, " ").replace(/’/g, "'");
-  const a = s.match(BLOCKED), b = s.match(UNSAFE_ACTS), c = s.match(COPY_ME) || s.match(BODY_ORDER);
+  const a = s.match(BLOCKED), b = s.match(UNSAFE_ACTS), c = s.match(COPY_ME) || s.match(COPY_SOFT) || s.match(EVERYONE_SOFT) || s.match(BODY_ORDER);
   if (a) found.push(`uses the word "${a[0]}"`);
   if (b) found.push(`shows unsafe behaviour in a car ("${b[0]}")`);
   if (c) found.push(`asks the children to do a physical action or make a loud noise in the car ("${c[0].trim()}"); they may only look, listen, say, count, sing quietly or imagine`);

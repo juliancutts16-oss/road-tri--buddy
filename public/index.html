@@ -715,6 +715,174 @@ body.kid-locked #demo{display:none}
 /* Feature packs: a feature that's switched off hides its bits of the trip screen (pages that are off are taken out of the swipe box) */
 html.no-points #k-score-box,html.no-landmarks #lm-badge,html.no-listen #mic-badge,html.one-page #k-swnext,html.one-page .swipe-tabs,
 html.no-spotit [data-demo="spot"],html.no-landmarks [data-demo="landmark"],html.no-games [data-demo="bonus"]{display:none!important}
+/* ===== New look (UI v4, test version): navy pages, a yellow card, orange buttons, rolling hills and a smiling car.
+   It only restyles: every id, button and data-* the code uses is kept. Switched by the "ui4" class (Settings → Screen). */
+.u4-only{display:none}
+:root.ui4 .u4-only{display:block}
+:root.ui4 .u4-old{display:none!important}
+:root.ui4{--u4-navy:#183F88;--u4-deep:#0F2558;--u4-ink:#10204A;--u4-orange:#F07A3A;--u4-yellow:#F7C548;--u4-sky:#62A9E3;--u4-skybg:#7FBCEB;--u4-head:'Baloo 2','Lexend',system-ui,sans-serif}
+:root.ui4 body{background:var(--u4-navy)}
+:root.ui4 body:has(#view-kid:not([hidden])){background:var(--u4-skybg)}
+:root.ui4 .app{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
+.u4-bleed{margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)))}
+.u4-hills{display:block;width:calc(100% + 2*max(16px,env(safe-area-inset-left,0px)));height:110px}
+:root.ui4 .u4-hills{margin-top:-58px;position:relative;z-index:0;pointer-events:none}
+.u4-card{background:var(--u4-yellow);border-radius:30px;padding:18px 16px 24px;color:var(--u4-ink);position:relative;z-index:1}
+.u4-title{text-align:center;margin:6px 0 16px}
+.u4-title h1{margin:0;font:800 2.1rem/1.05 var(--u4-head);color:var(--u4-yellow)}
+.u4-title p{margin:4px 0 0;color:#FFFFFF;font-size:1.05rem}
+.u4-h{margin:0 0 12px;text-align:center;font:800 1.55rem/1.1 var(--u4-head);color:var(--u4-ink)}
+/* the road strip at the top of Stats and Settings, with the car bobbing along it */
+.u4-roadhead{position:relative;height:84px;margin-top:-6px;background:linear-gradient(transparent 48%,#14306F 48%,#14306F 88%,transparent 88%)}
+.u4-roadhead::after{content:"";position:absolute;left:0;right:0;top:68%;height:4px;background:repeating-linear-gradient(90deg,#F7C548 0 22px,transparent 22px 38px)}
+.u4-roadhead .u4-car{position:absolute;left:50%;top:10px;width:110px;margin-left:-55px;z-index:1}
+.u4-car{display:block;animation:u4bob 1.6s ease-in-out infinite}
+@keyframes u4bob{50%{transform:translateY(-2px)}}
+body.calm .u4-car{animation:none}
+@media (prefers-reduced-motion:reduce){.u4-car{animation:none}}
+/* Bottom bar: a white pill; the screen you're on is a raised navy circle */
+:root.ui4 .bnav{background:#FFFFFF;padding:6px 8px;box-shadow:0 10px 26px rgba(8,20,50,.35)}
+:root.ui4 .bnav:not(.locked) .bn-btns{max-width:300px;overflow:visible;gap:6px}
+:root.ui4 .bn-btns button{width:auto;min-width:76px;height:56px;border-radius:999px;color:var(--u4-ink);font:700 .82rem var(--body);gap:2px;padding:0 8px}
+:root.ui4 .bn-btns button[aria-current="page"]{background:var(--u4-deep);color:#FFFFFF;width:78px;min-width:78px;height:78px;border-radius:50%;margin:-14px 0;box-shadow:0 0 0 5px #FFFFFF,0 6px 16px rgba(8,20,50,.35)}
+:root.ui4 .bn-lock{background:var(--u4-orange);color:#FFFFFF;width:54px;height:54px}
+:root.ui4 body:has(#view-start:not([hidden])) .bn-lock{display:none} /* on Search, "Start Journey" does it */
+:root.ui4 body:has(#view-start:not([hidden])) .bn-btns button:last-child{margin-right:0}
+:root.ui4 .bnav.locked{background:#20306C;padding:8px}
+:root.ui4 .bnav.locked .bn-lock{width:64px;height:64px}
+:root.ui4 .bnav.locked .bn-lbl span{font:800 1.05rem/1.15 var(--u4-head)}
+:root.ui4 .bnav.locked .bn-lbl{max-width:200px}
+/* ---- Search screen ---- */
+.u4-start{position:relative;padding-top:6px}
+.u4-top{position:relative;z-index:6}
+:root.ui4 .u4-top .bars{display:grid;gap:8px}
+:root.ui4 .u4-top .search{background:var(--u4-orange);box-shadow:0 6px 16px rgba(8,20,50,.3);padding:6px 6px 6px 16px}
+:root.ui4 .u4-top .search > svg{stroke:var(--u4-ink)!important;width:26px;height:26px}
+:root.ui4 .u4-top .search input{color:var(--u4-ink);font:600 1.15rem var(--u4-head)!important;background:rgba(255,255,255,.18)!important;border-radius:12px;padding:8px 10px!important}
+:root.ui4 .u4-top .search input::placeholder{color:var(--u4-ink);opacity:.85}
+:root.ui4 .u4-top .search .bar-lbl{color:var(--u4-ink)}
+:root.ui4 .u4-top .search .icon-btn{background:rgba(255,255,255,.9);color:var(--u4-ink)}
+:root.ui4 .u4-top .search .ib-here.on,:root.ui4 .u4-top .search .ib-saved[aria-expanded="true"]{background:var(--u4-deep);color:#FFFFFF}
+:root.ui4 .u4-top .hero-drop{position:absolute;top:calc(100% + 8px);left:0;right:0}
+:root.ui4 .u4-top .here-pill .note,:root.ui4 .u4-top .here-pill .s-msg{margin:0}
+.u4-offbar{background:var(--u4-orange);color:var(--u4-ink);border-radius:999px;padding:14px 18px;font:700 1.05rem var(--u4-head);text-align:center}
+.u4-start .u4-card{margin-top:14px;padding-bottom:70px}
+.u4-who{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+:root.ui4 .u4-who .hk{display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;background:none;border:0;padding:0;cursor:pointer;color:var(--u4-ink);font:inherit}
+:root.ui4 .u4-who .kid-pic,:root.ui4 .u4-who .hk-plus{width:84px;height:84px;border-radius:50%;border:5px solid var(--u4-ink);background:#FFFFFF;overflow:hidden;display:grid;place-items:center;font-size:2.4rem;box-sizing:border-box}
+:root.ui4 .u4-who .hk.in .kid-pic{border-color:var(--u4-orange);box-shadow:0 0 0 4px #FFFFFF}
+:root.ui4 .u4-who .hk-n,:root.ui4 .u4-who .hk.in .hk-n{font:600 1.15rem var(--u4-head);background:none;box-shadow:none;padding:0;color:var(--u4-ink);max-width:92px}
+:root.ui4 .u4-who .hk.in::after{top:0;right:2px;width:28px;height:28px;font-size:.95rem}
+.u4-places{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.u4-place{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:#FFFFFF}
+.u4-place .pi{width:100%;aspect-ratio:1/.9;border-radius:22px;background:var(--u4-sky);display:grid;place-items:center;transition:transform .15s}
+.u4-place .pi svg{width:62%;height:62%}
+.u4-place b{font:600 1.1rem/1.1 var(--u4-head);color:#FFFFFF;text-shadow:0 1px 2px rgba(16,32,74,.35);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u4-place.on .pi{background:var(--u4-deep);box-shadow:0 0 0 4px #FFFFFF}
+.u4-place:active .pi{transform:scale(.96)}
+.u4-empty{text-align:center;margin:0;font-weight:500}
+.u4-card .save-link,.u4-card .save-place{margin-top:10px}
+.u4-card .save-link{display:block;margin-inline:auto;color:var(--u4-ink)}
+.u4-scenery{position:relative;margin-top:-58px;z-index:2;height:150px;pointer-events:none}
+.u4-scenery svg.bg{position:absolute;inset:0;width:100%;height:100%}
+.u4-scenery .u4-car{position:absolute;left:18%;bottom:18px;width:130px}
+:root.ui4 .u4-start ~ .go,:root.ui4 #s-go{position:relative;bottom:auto;z-index:3;margin-top:-34px;background:var(--u4-orange);color:#FFFFFF;border:0;border-radius:999px;min-height:62px;font:800 1.2rem var(--u4-head);box-shadow:0 8px 20px rgba(8,20,50,.35)}
+:root.ui4 #s-go + .u4-hills{margin-top:-66px}
+:root.ui4 .u4-top .bars > .search:only-child .bar-lbl{display:none} /* one bar: just "Search destination…" */
+:root.ui4 .hero-msg{position:static;margin:10px 0 0}
+:root.ui4 #view-start .start-rows{margin-top:6px}
+:root.ui4 #s-more,:root.ui4 .app-version{color:#D6E4FF}
+:root.ui4 #view-start > .card{margin-top:10px}
+/* ---- Stats ---- */
+:root.ui4 #view-stats .tiles4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+:root.ui4 #view-stats .kpi{background:var(--u4-sky)!important;color:var(--u4-ink)!important;border:0;border-radius:22px;padding:14px 16px}
+:root.ui4 #view-stats .kpi small{color:var(--u4-ink);font-size:.82rem}
+:root.ui4 #view-stats .kpi b{color:#FFFFFF;font:800 2rem/1.1 var(--u4-head)}
+:root.ui4 #view-stats .u4-card .card{background:var(--u4-deep);color:#FFFFFF;border:0;border-radius:26px;margin-top:14px;box-shadow:none}
+:root.ui4 #view-stats .u4-card .card .h{color:var(--u4-yellow);font:800 1.35rem var(--u4-head)}
+:root.ui4 #view-stats .u4-card .note{color:#FFFFFF}
+:root.ui4 #view-stats .vcol .b{background:#2D5DB8}
+:root.ui4 #view-stats .vcol.best .b{background:var(--u4-yellow)}
+:root.ui4 #view-stats .vcol .v{color:#FFFFFF;font-size:.85rem}
+:root.ui4 #view-stats .vcol .d{color:#FFFFFF;font-size:.75rem}
+:root.ui4 #view-stats .confirm{justify-content:center;margin:16px 0 -46px;position:relative;z-index:2;color:var(--u4-ink);font-weight:600}
+:root.ui4 #view-stats .confirm .btn{background:var(--u4-orange);color:#FFFFFF;border:0;border-radius:999px;min-height:52px;padding:0 26px;font:800 1.1rem var(--u4-head)}
+:root.ui4 #view-stats .confirm .btn.ghost[data-act="reset-no"]{background:#FFFFFF;color:var(--u4-ink)}
+:root.ui4 #view-stats .stats > .note{color:#D6E4FF;text-align:center}
+:root.ui4 #view-stats .kpi-list{color:var(--u4-ink)}
+/* ---- Settings ---- */
+.u4-big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.u4-tile{min-height:150px;border:0;border-radius:24px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:58px 14px 14px;text-align:left;font:inherit;cursor:pointer;color:#FFFFFF;position:relative}
+.u4-tile svg{position:absolute;top:14px;left:16px;width:34px;height:34px}
+.u4-tile b{font:800 1.2rem/1.05 var(--u4-head);text-transform:uppercase;letter-spacing:.01em}
+.u4-tile small{font-size:.92rem;line-height:1.25;margin-top:4px}
+.u4-tile.safe{background:#22844A}.u4-tile.safe svg{fill:var(--u4-ink)}
+.u4-tile.rep{background:#D02A28}
+.u4-tile:active,.u4-round:active .ri{transform:scale(.97)}
+.u4-rounds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 6px;background:var(--u4-deep);border-radius:24px;padding:18px 8px 16px;margin-top:14px}
+.u4-round{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;cursor:pointer;color:var(--u4-yellow);font:700 1rem/1.05 var(--u4-head);text-align:center}
+.u4-round .ri{position:relative;width:64px;height:64px;border-radius:50%;background:var(--u4-sky);display:grid;place-items:center;color:#FFFFFF;transition:transform .15s}
+.u4-round .ri::after{content:"";position:absolute;bottom:-5px;left:50%;margin-left:-6px;border:6px solid transparent;border-top-color:var(--u4-sky);border-bottom:0}
+.u4-round .ri svg{width:32px;height:32px}
+:root.ui4 #view-settings .u4-card + .u4-hills + .btn{background:var(--u4-orange);border:0;border-radius:999px;min-height:58px;font:800 1.15rem var(--u4-head);margin-top:-20px;position:relative;z-index:2}
+/* ---- Trip screen ---- */
+:root.ui4 #view-kid .v3-head{background:var(--u4-yellow);margin:-14px calc(-1*max(16px,env(safe-area-inset-left,0px))) 0;padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-left,0px)) 12px}
+:root.ui4 #view-kid .v3-head .logo{display:none}
+:root.ui4 #view-kid .v3-head h1{font:800 1.85rem/1.05 var(--u4-head);color:var(--u4-ink)}
+:root.ui4 #view-kid .score{background:none;color:var(--u4-ink);padding:0}
+:root.ui4 #view-kid .score svg{width:24px;height:24px}
+:root.ui4 #view-kid .score b{font:800 1.5rem var(--u4-head)}
+:root.ui4 #k-music{background:var(--u4-deep);color:#FFFFFF;box-shadow:none;width:40px;height:40px}
+:root.ui4 #view-kid .trip-card{background:none;border:0;box-shadow:none;padding:10px 0 0;gap:10px}
+:root.ui4 #view-kid .trip-line{justify-content:center;flex-direction:column;gap:4px}
+:root.ui4 #view-kid .route-line{font:800 1.2rem/1.15 var(--u4-head);color:var(--u4-ink);text-align:center}
+:root.ui4 #view-kid .trip-line .chip{background:rgba(255,255,255,.55);color:var(--u4-ink);border:0}
+:root.ui4 #view-kid .scene-wrap{background:none;height:82px;overflow:visible}
+:root.ui4 #view-kid #scene{display:none}
+.u4-track{position:absolute;left:0;right:0;bottom:4px;height:22px;border-radius:999px;background:var(--u4-deep) radial-gradient(circle,#2D5DB8 3px,transparent 3.5px) 6px 50%/18px 100% repeat-x}
+.u4-track .u4-car{position:absolute;bottom:4px;left:calc((100% - 96px)*var(--p,0));width:96px;transition:left .6s linear}
+:root.ui4 #view-kid .trip-nums{gap:12px}
+:root.ui4 #view-kid .trip-nums > div{background:var(--u4-deep);color:#FFFFFF;border-radius:20px;padding:12px 8px;display:flex;flex-direction:row-reverse;justify-content:center;align-items:baseline;gap:6px;flex-wrap:wrap}
+:root.ui4 #view-kid .trip-nums b{font:800 2.3rem/1 var(--u4-head)}
+:root.ui4 #view-kid .trip-nums small{font:700 1rem var(--u4-head);text-transform:capitalize}
+:root.ui4 #view-kid .n2 small{display:none}
+:root.ui4 #view-kid .hoot{justify-content:center}
+:root.ui4 #view-kid .hoot .globe,:root.ui4 #view-kid .hoot-say span,:root.ui4 #view-kid .hoot-say::before{display:none}
+:root.ui4 #view-kid .hoot-say{flex:0 1 auto;background:var(--u4-orange);border-radius:999px;padding:10px 22px;box-shadow:0 0 0 3px rgba(247,197,72,.7),0 0 22px rgba(240,122,58,.75)}
+:root.ui4 #view-kid .hoot-say small{font:800 1.05rem var(--u4-head);letter-spacing:.02em;color:var(--u4-yellow)}
+:root.ui4 #view-kid .hoot-say small::before,:root.ui4 #view-kid .hoot-say small::after{content:" ★ "}
+:root.ui4 #view-kid .swipe-wrap{margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)))}
+:root.ui4 #view-kid .swipe{border-radius:0;box-shadow:none;height:max(280px,calc(100svh - 528px - env(safe-area-inset-bottom,0px) + var(--u4g,56px)))} /* fills the space down to the buttons */
+:root.ui4 #view-kid .kid-main.loading .swipe{--u4g:0px} /* (smaller while the "story is ready" pill shows) */
+:root.ui4 #pg-map{background:var(--u4-skybg)}
+:root.ui4 #pg-map .progress{display:none}
+.u4-map{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.u4-pct{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(255,255,255,.92);color:var(--u4-ink);border-radius:999px;padding:5px 14px;font:700 .9rem var(--body);white-space:nowrap}
+:root.ui4 #pg-car{background:linear-gradient(var(--u4-skybg) 0 55%,var(--u4-yellow) 55% 75%,#4D86C6 75%);overflow-y:auto;padding:14px}
+:root.ui4 #pg-car > h2{display:none}
+.u4-kc{display:grid;gap:12px}
+.u4-stage{display:grid;grid-template-columns:44px 1fr 44px;align-items:center}
+.u4-stage .arw{width:44px;height:64px;border:0;background:none;color:var(--u4-yellow);cursor:pointer;padding:0;filter:drop-shadow(0 2px 0 var(--u4-ink))}
+.u4-stage .arw svg{width:40px;height:56px}
+.u4-plat{position:relative;display:grid;justify-items:center}
+.u4-plat::before{content:"";position:absolute;left:4%;right:4%;bottom:0;height:34%;background:#FFFFFF;border:3px solid var(--u4-ink);border-radius:50%;box-shadow:0 8px 0 -2px #FFFFFF,0 8px 0 1px var(--u4-ink)}
+.u4-plat canvas{position:relative;width:100%;max-width:300px;height:auto;margin-bottom:6%}
+.u4-plat .lk{position:absolute;top:8px;right:8px;background:var(--u4-deep);color:#FFFFFF;border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700}
+.u4-kc .kc-next{background:rgba(255,255,255,.88);border-radius:16px;padding:8px 12px;color:var(--u4-ink)}
+.u4-kc .kc-sw{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;justify-items:center;background:var(--u4-deep);border-radius:22px;padding:16px;margin:0}
+.u4-kc .kc-sw .sw{width:52px;height:52px;border:0}
+.u4-kc .kc-sw .sw.on{box-shadow:0 0 0 4px var(--u4-deep),0 0 0 7px rgba(255,255,255,.7)}
+.u4-done{background:var(--u4-orange);color:#FFFFFF;border:0;border-radius:999px;min-height:56px;font:800 1.3rem var(--u4-head);cursor:pointer;box-shadow:0 6px 14px rgba(8,20,50,.3)}
+/* the Map / Games / Story / Car buttons sit at the bottom on a navy band, above the lock */
+:root.ui4 #view-kid .swipe-tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;margin:0;background:var(--u4-navy);padding:14px max(16px,env(safe-area-inset-left,0px)) calc(104px + env(safe-area-inset-bottom,0px))}
+:root.ui4 #view-kid .swipe-tabs > div{width:100%;max-width:520px;justify-content:space-around;background:#FFFFFF;border:0;padding:4px 6px;min-height:58px;align-items:center}
+:root.ui4 #view-kid .swipe-tabs button{font-size:0;gap:0;width:58px;height:50px;justify-content:center;color:var(--u4-ink);padding:0}
+:root.ui4 #view-kid .swipe-tabs button svg{width:30px;height:30px}
+:root.ui4 #view-kid .swipe-tabs button[aria-selected="true"]{background:var(--u4-deep);color:#FFFFFF;width:84px;height:84px;margin:-16px 0;border-radius:50%;box-shadow:0 0 0 5px #FFFFFF}
+:root.ui4 #view-kid .swipe-tabs button[aria-selected="true"] svg{width:38px;height:38px}
+:root.ui4 body:has(#view-kid:not([hidden])) .app{padding-bottom:calc(220px + env(safe-area-inset-bottom,0px))}
+:root.ui4 body:has(#view-kid:not([hidden])) .bnav.locked{background:#20306C}
+@media (min-width:1000px) and (orientation:landscape){:root.ui4 #view-kid .swipe-wrap{margin-inline:0}:root.ui4 #view-kid .swipe{border-radius:24px}}
 </style>
 
 <div class="app" id="app">
@@ -734,6 +902,7 @@ html.no-spotit [data-demo="spot"],html.no-landmarks [data-demo="landmark"],html.
         <div class="trip-line"><span class="route-line" id="k-route">Home → Grandma's</span><span class="chips"><span class="chip" id="k-zone">Countryside</span><span class="chip" id="k-extra" hidden></span><span class="chip loc-chip" id="k-loc" hidden title="This phone’s location is being used to move the car">Location on</span></span></div>
         <div class="scene-wrap">
           <canvas id="scene" aria-label="Road picture showing the car travelling from home to the destination"></canvas>
+          <div class="u4-track u4-only" id="u4-track" aria-hidden="true"><svg class="u4-car" viewBox="0 0 120 64"><use href="#u4-car"/></svg></div>
           <button class="lm-badge" id="lm-badge" hidden aria-label="Landmark coming up. Tap to hear it again"><span class="em" id="lm-em">🏰</span><span class="waves"><i></i><i></i><i></i><i></i></span></button>
           <div class="mic-badge" id="mic-badge" hidden role="status"><span class="mic-dot"></span>🎤 Listening…</div>
         </div>
@@ -748,6 +917,25 @@ html.no-spotit [data-demo="spot"],html.no-landmarks [data-demo="landmark"],html.
         <button class="swipe-next" id="k-swnext" aria-label="Next page"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <div class="swipe" id="k-swipe">
           <section class="page" id="pg-map" aria-label="Map">
+            <svg class="u4-map u4-only" id="u4-map" viewBox="0 0 360 460" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              <g fill="#FFF1C2"><ellipse cx="40" cy="40" rx="46" ry="18"/><ellipse cx="70" cy="28" rx="26" ry="18"/><ellipse cx="320" cy="210" rx="44" ry="16"/><ellipse cx="300" cy="200" rx="22" ry="14"/></g>
+              <g fill="#F7D774"><ellipse cx="330" cy="40" rx="46" ry="18"/><ellipse cx="305" cy="28" rx="24" ry="16"/></g>
+              <g fill="#BFE0F7"><ellipse cx="300" cy="300" rx="50" ry="18"/><ellipse cx="160" cy="150" rx="40" ry="13"/></g>
+              <path d="M-500 150 Q-250 100 0 150 Q70 110 150 150 T300 140 T360 130 Q610 95 860 140 V460 H-500Z" fill="#F7C548"/>
+              <path d="M-500 260 Q-250 215 0 260 Q90 200 200 250 T360 240 Q610 200 860 250 V460 H-500Z" fill="#4D86C6"/>
+              <path d="M-500 340 Q-250 300 0 330 Q60 290 130 320 Q195 345 240 400 Q258 432 250 460 H-500Z" fill="#F7C548"/>
+              <path d="M200 460 Q230 372 300 362 Q340 354 360 360 Q610 325 860 360 V460Z" fill="#3A6DB0"/>
+              <g fill="#F07A3A"><ellipse cx="40" cy="190" rx="14" ry="24"/><ellipse cx="66" cy="200" rx="12" ry="20"/><ellipse cx="330" cy="400" rx="13" ry="24"/><path d="M300 450 l-8 -26 l14 18 l4 -28 l8 28 l12 -18 l-6 28z"/><path d="M90 225 l-6 -16 l10 10 l3 -18 l6 18 l8 -12 l-4 18z"/></g>
+              <g stroke="#F07A3A" stroke-width="3"><path d="M40 214 V236M66 220 V238M330 424 V446"/></g>
+              <g fill="#3A6DB0"><ellipse cx="300" cy="180" rx="13" ry="22"/><ellipse cx="322" cy="190" rx="10" ry="17"/></g>
+              <g fill="#F7C548"><path d="M160 268 l5 11 12 1 -9 8 3 12 -11 -6 -11 6 3 -12 -9 -8 12 -1z"/><path d="M40 300 l4 9 10 1 -7 6 2 10 -9 -5 -9 5 2 -10 -7 -6 10 -1z"/><path d="M262 296 l4 9 10 1 -7 6 2 10 -9 -5 -9 5 2 -10 -7 -6 10 -1z"/><path d="M230 152 l4 9 10 1 -7 6 2 10 -9 -5 -9 5 2 -10 -7 -6 10 -1z"/></g>
+              <path id="u4-road" d="M196 20 C196 80 236 110 206 150 C170 196 74 196 80 252 C86 310 290 290 290 350 C290 404 170 400 120 444" fill="none" stroke="#14244F" stroke-width="28" stroke-linecap="round"/>
+              <path d="M196 20 C196 80 236 110 206 150 C170 196 74 196 80 252 C86 310 290 290 290 350 C290 404 170 400 120 444" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="9 9"/>
+              <g transform="translate(104 446)"><path d="M-30 0 V-34 L0 -58 L30 -34 V0Z" fill="#F07A3A" stroke="#14244F" stroke-width="3" stroke-linejoin="round"/><path d="M-36 -30 L0 -62 L36 -30" fill="none" stroke="#14244F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M-8 0 V-20 Q0 -28 8 -20 V0Z" fill="#B6461C"/></g>
+              <g id="u4-lms" font-size="22" text-anchor="middle"></g>
+              <g id="u4-mapcar"><svg x="-24" y="-22" width="48" height="26" viewBox="0 0 120 64"><use href="#u4-car"/></svg></g>
+            </svg>
+            <span class="u4-pct u4-only" id="u4-pct"></span>
             <div class="progress">
               <canvas id="map" aria-label="Map of the journey showing how far the car has come"></canvas>
               <div class="ends"><span id="k-from">Home</span><span id="k-pct">0%</span><span id="k-to">Grandma's</span></div>
@@ -822,6 +1010,13 @@ html.no-spotit [data-demo="spot"],html.no-landmarks [data-demo="landmark"],html.
 <!-- Drawings used in several places: the AWTY planet logo and Hoot the storyteller with his book. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="awty-logo" viewBox="0 0 400 440"><path d="M128 276 Q186 350 200 436 Q214 350 272 276 Z" fill="#FFD23F" stroke="#14203F" stroke-width="14" stroke-linejoin="round"/><g transform="rotate(-12 200 215)"><path d="M20 215 A180 50 0 0 1 380 215" stroke="#3A3F4D" stroke-width="30" fill="none"/></g><circle cx="200" cy="195" r="112" fill="#2563EB" stroke="#14203F" stroke-width="14"/><path d="M96 140 Q120 92 170 102 Q196 128 168 156 Q132 176 96 140 Z" fill="#2FB36B"/><path d="M214 90 Q262 80 276 116 Q246 132 214 90 Z" fill="#2FB36B"/><g transform="rotate(-12 200 215)"><path d="M20 215 A180 50 0 0 0 380 215" stroke="#3A3F4D" stroke-width="30" fill="none"/><rect x="176" y="250" width="58" height="26" rx="12" fill="#E8453C" stroke="#14203F" stroke-width="8"/></g></symbol>
+  <!-- New look (UI v4): the smiling orange car, facing right -->
+  <symbol id="u4-car" viewBox="0 0 120 64"><g fill="#10204A" opacity=".55"><circle cx="5" cy="40" r="2.6"/><circle cx="11" cy="45" r="3.4"/><circle cx="4" cy="49" r="1.8"/></g><path d="M3 26h10M1 32h8" stroke="#10204A" stroke-width="2.4" stroke-linecap="round" opacity=".6"/>
+    <path d="M16 46 Q16 32 30 30 L39 29 L49 13 Q52 9 58 9 L80 9 Q87 9 91 14 L101 29 Q115 31 116 44 L116 49 Q116 53 112 53 L20 53 Q16 53 16 49 Z" fill="#F07A3A" stroke="#10204A" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M45 29 L53 16 Q55 13 59 13 L66 13 L66 29 Z M71 13 L81 13 Q85 13 87 16 L95 29 L71 29 Z" fill="#9FD3F5" stroke="#10204A" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M75 20 q2.5 -2.5 5 0 M84 20 q2.5 -2.5 5 0 M77 24 q5 4 10 0" fill="none" stroke="#10204A" stroke-width="2" stroke-linecap="round"/>
+    <rect x="72" y="34" width="8" height="3" rx="1.5" fill="#10204A" opacity=".6"/><circle cx="111" cy="39" r="4" fill="#FFD23F" stroke="#10204A" stroke-width="2"/>
+    <circle cx="36" cy="53" r="10" fill="#5A4640" stroke="#10204A" stroke-width="3"/><circle cx="36" cy="53" r="4.5" fill="#C9CED6"/><circle cx="94" cy="53" r="10" fill="#5A4640" stroke="#10204A" stroke-width="3"/><circle cx="94" cy="53" r="4.5" fill="#C9CED6"/></symbol>
   <!-- Kids profiles: the default pictures (a boy and a girl). Choosing their own look is planned for a paid tier. -->
   <symbol id="kid-boy" viewBox="0 0 64 64"><rect width="64" height="64" fill="#DDF1FF"/><path d="M10 66 Q12 47 32 47 Q52 47 54 66 Z" fill="#2563EB" stroke="#14203F" stroke-width="2"/><rect x="28" y="39" width="8" height="9" fill="#F6C9A0"/>
     <circle cx="19" cy="30" r="3.4" fill="#F6C9A0" stroke="#14203F" stroke-width="1.6"/><circle cx="45" cy="30" r="3.4" fill="#F6C9A0" stroke="#14203F" stroke-width="1.6"/><circle cx="32" cy="29" r="13.5" fill="#F6C9A0" stroke="#14203F" stroke-width="2"/>
@@ -920,6 +1115,8 @@ function hashStr(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0
 function rnd(i,salt=0){let x=Math.imul((i|0)^0x9E3779B9,0x85EBCA6B)^Math.imul(salt+1,0xC2B2AE35);x^=x>>>13;x=Math.imul(x,0x27D4EB2F);x^=x>>>16;return (x>>>0)/4294967296}
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const store={get(k,d){try{const v=localStorage.getItem('rtb.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('rtb.'+k,JSON.stringify(v))}catch(e){}}};
+let UI4=store.get('ui4',true); // the new look (UI v4, test version); Settings → Screen switches back to the old one
+document.documentElement.classList.toggle('ui4',UI4);
 function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]}
 function mix(a,b,t){const A=hexToRgb(a),B=hexToRgb(b);return'#'+A.map((v,i)=>Math.round(lerp(v,B[i],t)).toString(16).padStart(2,'0')).join('')}
 const shade=(c,t)=>t<0?mix(c,'#000000',-t):mix(c,'#ffffff',t);
@@ -1562,8 +1759,8 @@ function renderSugg(){$$('.sugg').forEach(el=>{const f=el.dataset.for,show=sugge
   el.innerHTML=show?suggest.items.map((s,i)=>`<button type="button" class="sugg-item" data-sugg="${i}" data-field="${f}"><span><b>${esc(s.main)}</b><small>${esc(s.secondary)}</small></span>${s.miles!=null?`<em>${s.miles} mi</em>`:''}</button>`).join(''):'';el.hidden=!show})}
 let savingPlace=false;
 const placeLabelOn=(field,p)=>field==='to'?S.toPlace&&S.toPlace.address===S.to&&S.to===p.address:S.fromPlace&&S.fromPlace.address===S.from&&S.from===p.address;
-function placeChips(field){
-  const chips=S.places.map((p,i)=>`<button type="button" class="chip-btn ${placeLabelOn(field,p)?'on':''}" data-place="${i}" data-field="${field}">⭐ ${esc(p.name)}</button>`).join('');
+function placeChips(field,saveOnly){
+  const chips=saveOnly?'':S.places.map((p,i)=>`<button type="button" class="chip-btn ${placeLabelOn(field,p)?'on':''}" data-place="${i}" data-field="${field}">⭐ ${esc(p.name)}</button>`).join('');
   const save=field==='to'&&S.to.trim()&&!S.places.some(p=>p.address===S.to)?(savingPlace?`<div class="row save-place"><input type="text" id="place-name" maxlength="30" placeholder="Name it, e.g. Grandma’s" aria-label="Name for this place"><button type="button" class="btn" data-saveplace="ok">Save</button><button type="button" class="btn ghost" data-saveplace="cancel">Cancel</button></div>`:`<button type="button" class="linkish save-link" data-saveplace="start">⭐ Save this place</button>`):'';
   return (chips?`<div class="chips-row small place-chips">${chips}</div>`:'')+save;
 }
@@ -1992,7 +2189,7 @@ const Loader={on:false,pct:0,t:0,
     this.t=setTimeout(()=>{this.vis=true;el.className='hoot';el.hidden=false;$('.kid-main').classList.add('loading')},delay)},
   set(p){if(!this.on)return;p=Math.max(this.pct,Math.min(99,Math.round(p)));if(p===this.pct)return;this.pct=p;
     $('#k-load .globe').style.setProperty('--fill',(100-p)+'%');$('#k-load-l').textContent=`Getting the story ready · ${p}%`},
-  done(){if(!this.on)return;this.on=false;if(!this.vis){clearTimeout(this.t);return}const el=$('#k-load'),q=calmMotion();$('#k-load .globe').style.setProperty('--fill','0%');$('#k-load-l').textContent='Ready!';
+  done(){if(!this.on)return;this.on=false;if(!this.vis){clearTimeout(this.t);return}const el=$('#k-load'),q=calmMotion();$('#k-load .globe').style.setProperty('--fill','0%');$('#k-load-l').textContent=UI4?'The story is ready! 📖':'Ready!';
     const at=(ms,f)=>{this.t=setTimeout(f,q?0:ms)};
     at(550,()=>{el.classList.add('ready');at(550,()=>{el.classList.add('out');at(330,()=>{el.classList.add('gone');$('.kid-main').classList.remove('loading');at(380,()=>{el.hidden=true})})})})},
   hide(){clearTimeout(this.t);this.on=false;$('#k-load').hidden=true;$('.kid-main').classList.remove('loading')}};
@@ -2765,7 +2962,14 @@ function hud(force){
   set('#k-storystate',!T.running?(T.arrived?'We made it!':'Paused'):nx?`Next part ${nx.road?'on the open road':'at '+lmInfo(nx).name.replace(/^the /,'The ')} · ${mi<1?'nearly there':Math.round(mi)+' mile'+(Math.round(mi)===1?'':'s')}`:'Hoot is reading along');
   const pct=Math.round(T.miles/T.total*100);set('#k-pct',T.arrived?'Arrived! 🎉':pct>=50&&pct<55?'Halfway! ⭐':`${pct}% of the way`);
   set('#k-from',r.from||'Home');set('#k-to',destName(r));
+  if(UI4){set('#u4-pct',$('#k-pct').textContent);u4Hud(r)}
 }
+// New look: the car on the track at the top, and on the winding road of the Map page (landmarks along it as emoji)
+function u4Hud(r){const p=clamp(T.miles/T.total,0,1),road=$('#u4-road');$('#u4-track').style.setProperty('--p',p.toFixed(4));if(!road)return;
+  const L=road.getTotalLength(),at=f=>road.getPointAtLength(L*clamp(f,0,1)),q=at(p);$('#u4-mapcar').setAttribute('transform',`translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})`);
+  const key=has('landmarks')?r.landmarks.map(l=>l.id+(T.milesR>l.mile?'+':'')).join(','):'';
+  if(u4Hud.key!==key){u4Hud.key=key;$('#u4-lms').innerHTML=!key?'':r.landmarks.map(l=>{const f=l.mile/Math.max(.1,r.miles),c=at(f),side=f*7%2<1?-1:1;
+    return`<text x="${(c.x+side*30).toFixed(1)}" y="${(c.y+8).toFixed(1)}" opacity="${T.milesR>l.mile?.5:1}">${lmInfo(l).emoji}</text>`}).join('')}}
 
 /* ================= Spot-it ================= */
 function pickSpotSet(zone,n){
@@ -3062,13 +3266,13 @@ function renderStats(){
   const freeStats=`<div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Longest trip</small><b>${longest?longest+' mi':'–'}</b></div><div class="kpi"><small>On the road</small><b>${road?fmtMins(road):'–'}</b></div></div>
     <div class="card"><h2 class="h">Miles by trip</h2>${last.length?`<div class="vchart" role="img" aria-label="Bar chart of miles for the last ${last.length} trips">${last.map(x=>`<div class="vcol ${x.miles===bestM?'best':''}" title="${esc(x.route)}"><span class="v">${x.miles}</span><span class="b" style="height:${Math.max(2,x.miles/bestM*100)}%"></span><span class="d">${new Date(x.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>`).join('')}</div><p class="note" style="margin-top:8px">Longest trip highlighted. Showing the last ${last.length} trip${last.length>1?'s':''}.</p>`:'<p class="empty">Finish a trip to see it compared here.</p>'}</div>`;
   $('#view-stats').innerHTML=`<div class="stats">
-    <div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Our trips</h1><p>Kept on this phone</p></div>
+    ${UI4?`${U4_ROADHEAD}<div class="u4-title"><h1>Our Trips</h1><p>Kept on this phone</p></div><div class="u4-card">`:`<div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Our trips</h1><p>Kept on this phone</p></div>`}
     ${!has('points')?freeStats:`<div class="tiles4"><div class="kpi"><small>Trips</small><b>${t.length}</b></div><div class="kpi"><small>Miles</small><b>${miles.toLocaleString()}</b></div><div class="kpi"><small>Total points</small><b>${pts.toLocaleString()}</b></div>
     <div class="kpi kpi-more ${seenOpen?'open':''}"><button type="button" class="kpi-tap" data-act="seen" aria-expanded="${seenOpen}"><small>Seen most</small><b>${fav?fav.e:'–'}</b><span class="kpi-chev" aria-hidden="true"></span></button>
     ${seenOpen?`<div class="kpi-list"><h2 class="sr">Most spotted things</h2>${sample?'<span class="sample-tag">Sample data</span>':''}${top.length?top.map(([k,c])=>{const it=ITEMS[k]||{e:'❓',n:k};return`<div class="hbar"><span class="e">${it.e}</span><span class="n">${esc(it.n)}</span><span class="t"><i style="width:${c/max*100}%"></i></span><span class="c">${c}</span></div>`}).join(''):'<p class="empty">Play a round of Spot-it to see what gets spotted most.</p>'}</div>`:''}</div></div>
     <div class="card"><h2 class="h">Score by trip</h2>${last.length?`<div class="vchart" role="img" aria-label="Bar chart of points for the last ${last.length} trips">${last.map(x=>`<div class="vcol ${x.score===bestS?'best':''}" title="${esc(x.route)}"><span class="v">${x.score>=1000?(x.score/1000).toFixed(1)+'k':x.score}</span><span class="b" style="height:${Math.max(2,x.score/bestS*100)}%"></span><span class="d">${new Date(x.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>`).join('')}</div><p class="note" style="margin-top:8px">Best trip highlighted. Showing the last ${last.length} trip${last.length>1?'s':''}.</p>`:'<p class="empty">Finish a trip to see it compared here.</p>'}</div>
     <div class="card"><h2 class="h">Garage progress <span class="sec-sub">unlock by ${metricWord[S.unlockMetric]}</span></h2>${UNLOCKABLE.map((id,i)=>`<div class="gbar"><span>${v>=th[i]?'🔓':'🔒'} ${BODIES[id].label}</span><span class="t"><i style="width:${clamp(v/th[i]*100,0,100)}%"></i></span><span class="c">${Math.min(v,th[i]).toLocaleString()}/${th[i].toLocaleString()}</span></div>`).join('')}</div>`}
-    <div class="confirm">${t.length?'':'<button class="btn ghost" data-act="sample">Load sample history</button>'}${confirmReset?'<span>Delete all trips and stats?</span><button class="btn primary" data-act="reset-yes">Yes, reset</button><button class="btn ghost" data-act="reset-no">Cancel</button>':'<button class="btn ghost" data-act="reset">Reset all stats</button>'}</div>
+    <div class="confirm">${t.length?'':'<button class="btn ghost" data-act="sample">Load sample history</button>'}${confirmReset?'<span>Delete all trips and stats?</span><button class="btn primary" data-act="reset-yes">Yes, reset</button><button class="btn ghost" data-act="reset-no">Cancel</button>':'<button class="btn ghost" data-act="reset">Reset all stats</button>'}</div>${UI4?`</div>${U4_HILLS}`:''}
     <p class="note">Stats are kept on this device. In the Android app they'd live in the phone's local database so they persist between drives.</p></div>`;
 }
 
@@ -3099,6 +3303,9 @@ const SET_GROUPS=Object.fromEntries(Object.entries({
   bonus:{c:'c5',icon:'🎛️',title:'Options',sub:'Games & Spot-it',secs:['age','bonus','spot']},
   trip:{c:'c6',icon:'📍',title:'Places',sub:'Route & saved places',secs:['trip']}})
   .map(([g,v])=>[g,{...v,secs:v.secs.filter(s=>!SEC_NEEDS[s]||has(SEC_NEEDS[s]))}]).filter(([,v])=>v.secs.some(s=>s!=='age')));
+const U4_SET_ICON={kids:'<circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3 19.5a5.5 5.5 0 0 1 11 0M14 19.5a4 4 0 0 1 7.5 0"/>',sound:'<path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>',
+  acc:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',lm:'<path d="M4 5h16v11H9.5L5 20z" fill="currentColor"/>',bonus:'<rect x="2.5" y="7" width="19" height="11" rx="5.5" fill="currentColor"/><path d="M7.5 10.5v4M5.5 12.5h4" stroke="#62A9E3"/><circle cx="16" cy="11" r="1.1" fill="#62A9E3" stroke="none"/><circle cx="18" cy="13.6" r="1.1" fill="#62A9E3" stroke="none"/>',
+  trip:'<path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8.5a4.8 4.8 0 0 1-.5 9.5z" fill="currentColor"/><path d="M12 10v6M9.5 13.5 12 16l2.5-2.5" stroke="#62A9E3"/>'}; // new look's round buttons
 const groupOf=id=>id==='report'?'report':Object.keys(SET_GROUPS).find(g=>SET_GROUPS[g].secs.includes(id))||'trip';
 const REPORT_PANEL={c:'c4',icon:'⚑',title:'Report a problem',sub:'Something not working?',secs:['report']}; // not a tile: the button under the tiles opens it
 const panelOf=id=>SET_GROUPS[id]||(id==='report'?REPORT_PANEL:null);
@@ -3219,7 +3426,7 @@ function renderSettings(){
     ${S.landmark.listen?`<p class="note">The phone’s own speech recognition turns the answer into words (on Android that’s Google’s). ${API.ai&&allowed('aiAnswers')?'Those words, not the recording, are sent to your server so the AI can reply to what was said (you allowed this in Privacy choices).':'The app checks the words itself, so nothing is sent anywhere.'} Nothing is saved.</p><div class="status">${micStatusText()}</div><button class="btn ghost" data-act="testmic">🎤 Test the microphone</button>`:''}
     <button class="btn ghost" data-act="previewlm">▶ Preview next landmark</button>
     <p class="note">Story and fact text is pre-written for this demo. In the app these settings would shape a prompt sent to an AI story and fact writer.</p>`;
-  const accBody=`${range('access.decoSize','Size of the sun, clouds and trees',.6,1.4,.05)}${range('access.decoAmount','How many clouds and trees',.2,1,.05)}${range('access.saturation','Colour brightness',.3,1.2,.05)}${toggle('access.reduceMotion','Calm motion','No bouncing, drifting clouds, stars or confetti')}
+  const accBody=`<label class="tgl" for="f-ui4"><span>New look (try-out)<small>The navy and yellow design. Switch off to go back to the old one.</small></span><input type="checkbox" id="f-ui4" data-act="ui4" ${UI4?'checked':''}><i></i></label>${range('access.decoSize','Size of the sun, clouds and trees',.6,1.4,.05)}${range('access.decoAmount','How many clouds and trees',.2,1,.05)}${range('access.saturation','Colour brightness',.3,1.2,.05)}${toggle('access.reduceMotion','Calm motion','No bouncing, drifting clouds, stars or confetti')}
     <p class="note">Softer colours and fewer, smaller clouds and trees give a calmer, less busy screen. These change the road picture on the trip screen.</p>`;
   const childBody=`<div><span class="lbl">Reset</span>
       <div class="row" style="flex-wrap:wrap">${resetAsk==='settings'?`<span class="note">Reset all settings to how they started? Stats, saved cars and routes are kept.</span><button class="btn primary" data-act="reset-settings">Yes, reset settings</button><button class="btn ghost" data-act="reset-cancel">Cancel</button>`
@@ -3251,6 +3458,14 @@ function renderSettings(){
   if(g){secCards=true;const body=g.secs.map(id=>SECS[id]()).join('');secCards=false;
     $('#view-settings').innerHTML=`<div class="spanel"><div class="sp-head ${g.c}"><button type="button" class="sp-back" data-act="setback" aria-label="Back to Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
       <span class="si" aria-hidden="true">${g.icon}</span><span class="sp-t"><b>${g.title}</b><small>${g.sub}</small></span></div><div class="sp-body">${body}</div></div>${ver}`}
+  else if(UI4){const rep=storyParts(R).some(p=>p.ai)?'data-id="read"':'data-id="report" data-focus="issue-text"',sg=SET_GROUPS.child,
+      round=id=>{const t=SET_GROUPS[id];return`<button class="u4-round" data-act="opensec" data-id="${id}" aria-label="${t.title}: ${t.sub}"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${U4_SET_ICON[id]||U4_SET_ICON.trip}</svg></span>${t.title}</button>`};
+    // New look: Safety and Report a problem as two big tiles, every other page as a round button on the navy panel
+    $('#view-settings').innerHTML=`${U4_ROADHEAD}<div class="u4-title"><h1>Settings</h1><p>Grown-ups only</p></div>
+      <div class="u4-card"><div class="u4-big"><button class="u4-tile safe" data-act="opensec" data-id="child"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.5v6c0 5 3.3 8.6 7.5 10 4.2-1.4 7.5-5 7.5-10v-6z"/></svg><b>${sg.title}</b><small>${sg.sub}</small></button>
+        <button class="u4-tile rep" data-act="opensec" ${rep}><svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 22V3h12l-2.5 4.5L17 12H5"/></svg><b>Report a problem</b><small>${!has('stories')?'Something not working?':'Something in a story not right?'}</small></button></div>
+        <div class="u4-rounds">${Object.keys(SET_GROUPS).filter(id=>id!=='child').map(round).join('')}</div></div>${U4_HILLS}
+      <button class="btn primary wide" data-act="start">Save & start trip</button>${ver}`}
   else{const tile=id=>{const t=SET_GROUPS[id];return`<button class="stile ${t.c}" data-act="opensec" data-id="${id}"><span class="si" aria-hidden="true">${t.icon}</span><b>${t.title}</b><small>${t.sub}</small></button>`};
     $('#view-settings').innerHTML=`<div class="p-head"><div class="p-ava"><svg viewBox="0 0 400 440" width="60" height="66" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg></div><h1>Settings</h1><p>Grown-ups only</p></div>
       <div class="stiles">${Object.keys(SET_GROUPS).map(tile).join('')}</div>
@@ -3374,12 +3589,18 @@ function applyLive(){if(T&&T.running&&S.sound.on&&S.sound.music)Music.start();el
 // The "My car" page in the swipe box: their car, every car (locked ones show what unlocks them), how far it is to the
 // next one, and the colours (if a parent allows "Car colour"). Only unlocked cars can be picked.
 function renderKidCar(){const el=$('#k-car');if(!el)return;const unl=unlockedSet(),m=S.unlockMetric,th=S.thresholds[m],v=metricValue(m),nx=UNLOCKABLE.findIndex(id=>!unl.has(id));
+  const next=nx>=0?`<div class="kc-next">Next to unlock: ${BODIES[UNLOCKABLE[nx]].label} · ${Math.min(v,th[nx]).toLocaleString()} of ${th[nx].toLocaleString()} ${metricWord[m]}<span class="t"><i style="width:${clamp(v/th[nx]*100,0,100)}%"></i></span></div>`:'<div class="kc-next">🏆 Every car is unlocked!</div>';
+  // New look: their car on a stand, ‹ › to go through the cars they've unlocked, the colours below, and Done back to the map
+  if(UI4){const ids=Object.keys(BODIES).filter(id=>BODIES[id].unlock===undefined||unl.has(id)),i=Math.max(0,ids.indexOf(S.car.body)),go=d=>ids[(i+d+ids.length)%ids.length],arw=(d,l,p)=>`<button type="button" class="arw" data-kcar="${go(d)}" aria-label="${l}"><svg viewBox="0 0 24 34" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"/></svg></button>`;
+    el.innerHTML=`<div class="u4-kc"><div class="u4-stage">${ids.length>1?arw(-1,'Previous car','M17 4 5 17l12 13'):'<span></span>'}<div class="u4-plat"><canvas class="kc-hero" data-thumb="car" data-body="${S.car.body}" data-color="${S.car.color}" width="400" height="240" role="img" aria-label="Your car: a ${esc(S.car.color)} ${esc(BODIES[S.car.body].label)}"></canvas></div>${ids.length>1?arw(1,'Next car','M7 4l12 13L7 30'):'<span></span>'}</div>
+      ${S.child.color?`<div class="swatches kc-sw">${Object.entries(COLORS).map(([k,c])=>`<button class="sw ${S.car.color===k?'on':''}" style="background:${c}" data-kcol="${k}" aria-label="${k}" aria-pressed="${S.car.color===k}"></button>`).join('')}</div>`:''}
+      ${next}<button type="button" class="u4-done" data-kdone="1">Done</button></div>`;drawThumbs();return}
   el.innerHTML=`<canvas class="kc-hero" data-thumb="car" data-body="${S.car.body}" data-color="${S.car.color}" width="400" height="240" role="img" aria-label="Your car: a ${esc(S.car.color)} ${esc(BODIES[S.car.body].label)}"></canvas>
     ${nx>=0?`<div class="kc-next">Next to unlock: ${BODIES[UNLOCKABLE[nx]].label} · ${Math.min(v,th[nx]).toLocaleString()} of ${th[nx].toLocaleString()} ${metricWord[m]}<span class="t"><i style="width:${clamp(v/th[nx]*100,0,100)}%"></i></span></div>`:'<div class="kc-next">🏆 Every car is unlocked!</div>'}
     <div class="kc-cars">${Object.entries(BODIES).map(([id,B])=>{const locked=B.unlock!==undefined&&!unl.has(id);return`<button class="tile ${S.car.body===id?'on':''} ${locked?'locked':''}" data-kcar="${id}" aria-pressed="${S.car.body===id}">${locked?'<span class="lock">🔒</span>':''}<canvas data-thumb="car" data-body="${id}" data-locked="${locked}" width="200" height="120"></canvas>${B.label}${locked?`<small>${th[B.unlock].toLocaleString()} ${metricWord[m]}</small>`:''}</button>`}).join('')}</div>
     ${S.child.color?`<div class="swatches kc-sw">${Object.entries(COLORS).map(([k,c])=>`<button class="sw ${S.car.color===k?'on':''}" style="background:${c}" data-kcol="${k}" aria-label="${k}" aria-pressed="${S.car.color===k}"></button>`).join('')}</div>`:''}`;
   drawThumbs()}
-$('#k-car').addEventListener('click',e=>{const c=e.target.closest('[data-kcar]'),k=e.target.closest('[data-kcol]');if(!c&&!k)return;Snd.ready();
+$('#k-car').addEventListener('click',e=>{if(e.target.closest('[data-kdone]')){swipeTo(0);return}const c=e.target.closest('[data-kcar]'),k=e.target.closest('[data-kcol]');if(!c&&!k)return;Snd.ready();
   if(c){const id=c.dataset.kcar;if(BODIES[id].unlock!==undefined&&!unlockedSet().has(id)){Snd.tone(220,.12,'triangle',.12);return}S.car.body=id;Tel.feature('kid_car')}
   if(k)S.car.color=k.dataset.kcol;saveS();renderKidCar()});
 function renderKidTools(){
@@ -3416,26 +3637,31 @@ function renderStart(){
   if(off)startOpen.add('trip'); // no Google routes: the drive time is the one thing to set, so show it
   // the top of the screen is just the logo and the search bar over the mountain; saved places sit behind the bookmark button.
   // Once a destination is in, a "Starting point" bar appears above it (like Citymapper), with the 📍 button for "where I am now".
-  $('#view-start').innerHTML=`
-    <div class="hero ${two?'two':''}">${MOUNTAIN}
-      <div class="hero-bar"><svg class="logo" viewBox="0 0 400 440" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg>
-        ${conn?`<div class="bars">${two?`<div class="search from ${startNudge?'nudge':''}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.8" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="6"/></svg>
+  const bars=conn?`<div class="bars">${two?`<div class="search from ${startNudge?'nudge':''}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.8" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="6"/></svg>
           <label class="bar-lbl" for="s-from">Start</label><input type="text" id="s-from" aria-label="Starting point" data-p="from" value="${esc(S.from)}" autocomplete="off" placeholder="${hereOn()?`📍 Where you are now${S.here.area?` (near ${esc(S.here.area)})`:''}`:noLoc()?'Type an address':'Where from?'}">
           <button type="button" class="icon-btn ib-here ${hereOn()?'on':''}" data-start="here" aria-label="Start from my current location" aria-pressed="${!!hereOn()}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div>`:''}
           <div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <label class="bar-lbl" for="s-to">End</label><input type="text" id="s-to" aria-label="Destination" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="Where to?">
+          <label class="bar-lbl" for="s-to">End</label><input type="text" id="s-to" aria-label="Destination" data-p="to" value="${esc(S.to)}" autocomplete="off" placeholder="${UI4&&!two?'Search destination…':'Where to?'}">
           <button type="button" class="icon-btn ib-saved" data-start="saved" aria-label="Saved places" aria-expanded="${savedOpen}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button></div></div>`
-        :`<div class="search" style="padding:14px 18px;font-weight:600">${off?'🕒 Set the drive time below':'✈️ No-signal trip: set the time below'}</div>`}
-      </div>
-      ${has('profiles')?`<div class="hero-kids ${kids.length>3?'many':''}" role="group" aria-label="Who’s in the story? Tap the children to put them in">${kids.map(k=>{const on=S.kidsIn.includes(k.id);return`<button type="button" class="hk ${on?'in':''}" data-start="kid" data-id="${k.id}" aria-pressed="${on}" aria-label="${esc(k.name)}${on?' is in the story':''}">${kidPic(k)}<span class="hk-n">${esc(k.name.split(' ')[0])}</span></button>`}).join('')}
-        ${kids.length?'':'<button type="button" class="hk" data-start="kids"><span class="hk-plus" aria-hidden="true">+</span><span class="hk-n">Add kids</span></button>'}</div>`:''}
-      <div class="hero-drop">${off?`<div class="here-pill"><p class="note here-msg" role="status">${allowed('maps')?'Google Maps isn’t answering right now, so the car moves by the clock.':'Live routes from Google Maps are off, so the car moves by the clock. <button type="button" class="linkish" data-start="privacy">Turn them on</button>'}</p></div>`:''}${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="from" hidden></div><div class="sugg" data-for="to" hidden></div>
+        :`<div class="search" style="padding:14px 18px;font-weight:600">${off?'🕒 Set the drive time below':'✈️ No-signal trip: set the time below'}</div>`;
+  const kidBtns=!has('profiles')?'':`${kids.map(k=>{const on=S.kidsIn.includes(k.id);return`<button type="button" class="hk ${on?'in':''}" data-start="kid" data-id="${k.id}" aria-pressed="${on}" aria-label="${esc(k.name)}${on?' is in the story':''}">${kidPic(k)}<span class="hk-n">${esc(k.name.split(' ')[0])}</span></button>`}).join('')}
+        ${kids.length?'':'<button type="button" class="hk" data-start="kids"><span class="hk-plus" aria-hidden="true">+</span><span class="hk-n">Add kids</span></button>'}`;
+  const drop=`<div class="hero-drop">${off?`<div class="here-pill"><p class="note here-msg" role="status">${allowed('maps')?'Google Maps isn’t answering right now, so the car moves by the clock.':'Live routes from Google Maps are off, so the car moves by the clock. <button type="button" class="linkish" data-start="privacy">Turn them on</button>'}</p></div>`:''}${conn&&hereMsg?`<div class="here-pill">${hereNote()}</div>`:''}${startMsg?`<div class="here-pill"><p class="s-msg ${startMsg.startsWith('!')?'err':''}" id="s-msg" role="status">${esc(startMsg.replace(/^!/,''))}</p></div>`:''}<div class="sugg" data-for="from" hidden></div><div class="sugg" data-for="to" hidden></div>
         ${needStart()&&S.places.length&&!savedOpen?placeChips('from'):''}
         ${savedOpen&&conn?`<div class="saved-panel"><span class="lbl">Saved places</span>${placeChips('to')||'<p class="note">None yet. Type where you’re going, then save it.</p>'}
           ${routes.length?`<span class="lbl" style="margin-top:10px">Saved trips</span><div class="chips-row small">${routes.map(r=>`<button type="button" class="chip-btn ${S.route&&S.route.savedFrom===r.id&&S.tripMode==='connected'?'on':''}" data-start="route" data-id="${r.id}">${esc(r.name)}</button>`).join('')}</div>`:''}</div>`:''}
-      </div>
-      ${fresh&&S.route&&conn?`<div class="hero-msg"><span>Route ready: <b>${S.route.miles} miles · ${fmtMins(S.route.mins)}</b>${S.route.landmarks.length?` · ${S.route.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`:''}</span></div>`:''}
-    </div>
+      </div>`;
+  const ready=fresh&&S.route&&conn?`<div class="hero-msg"><span>Route ready: <b>${S.route.miles} miles · ${fmtMins(S.route.mins)}</b>${S.route.landmarks.length?` · ${S.route.landmarks.map(l=>lmInfo(l).emoji).join(' ')}`:''}</span></div>`:'';
+  const go=`<button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':UI4?(S.child.lock?'Start Journey & Lock Screen 🚗':'Start Journey 🚗'):teen?'Start trip':'Let’s go! 🚗'}</button>`;
+  // New look: orange search bar, a yellow card (who's in the car, saved places), the road with the car, then the Start button
+  $('#view-start').innerHTML=(UI4?`<div class="u4-start"><div class="u4-top">${bars}${drop}</div>
+      <div class="u4-card">${has('profiles')?`<h2 class="u4-h">Who’s in the car?</h2><div class="u4-who" role="group" aria-label="Who’s in the story? Tap the children to put them in">${kidBtns}</div>`:''}
+        <h2 class="u4-h">Saved Places</h2>${u4Places(conn)}</div>
+      <div class="u4-scenery u4-bleed">${U4_SCENERY}</div>${ready}</div>${go}${U4_HILLS}`
+    :`<div class="hero ${two?'two':''}">${MOUNTAIN}
+      <div class="hero-bar"><svg class="logo" viewBox="0 0 400 440" role="img" aria-label="AWTY"><use href="#awty-logo"/></svg>${bars}</div>
+      ${has('profiles')?`<div class="hero-kids ${kids.length>3?'many':''}" role="group" aria-label="Who’s in the story? Tap the children to put them in">${kidBtns}</div>`:''}
+      ${drop}${ready}</div>`)+`
     <div class="start-rows">
     ${conn?'':fold('trip','Trip details',`${off?'Drive time':'No signal'} · ${fmtMins(S.offlineMins)}`,`
       <div class="grid2">${select('offlineMins','How long is the drive?',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1 hr 30'],[120,'2 hours'],[150,'2 hr 30'],[180,'3 hours'],[240,'4 hours'],[300,'5 hours'],[360,'6 hours']])}</div>
@@ -3465,7 +3691,7 @@ function renderStart(){
       ${leftOut().length?`<p class="status" id="s-leftout">We’ll leave out ${leftOut().map(v=>`“${esc(v)}”`).join(', ')} from the stories, as ${leftOut().length>1?'they aren’t':'it isn’t'} suitable for young children.</p>`:''}
       ${(window.SpeechRecognition||window.webkitSpeechRecognition)?toggle('landmark.listen','🎤 Listen for their answers','After each question the app listens and says if they got it right. The phone will ask to use the microphone.')+(S.landmark.listen&&micState==='denied'?`<div class="status">${micStatusText()}</div>`:''):''}`)}
     </div>
-    <button class="btn primary wide go" id="s-go" ${startBusy?'disabled':''}>${startBusy?'Getting ready…':teen?'Start trip':'Let’s go! 🚗'}</button>
+    ${UI4?'':go}
     ${S.demoMode&&!CORE_ONLY?`<div class="card">${toggle('demoMode','Demo driving is on','The car drives by itself for testing. Turn off for a real trip so it follows the GPS.')}</div>`:''}
     <button class="linkish" id="s-more">More settings</button>`;
   renderSugg();downArrow();planEarly();
@@ -3492,6 +3718,19 @@ const MOUNTAIN=`<svg class="mtn" viewBox="0 0 390 880" preserveAspectRatio="xMid
   <g class="climb"><g transform="translate(-19 -22) scale(.6)"><path d="M14 18 Q18 5 31 5 L39 5 Q50 6 54 18 Z" fill="#E8453C" stroke="#14203F" stroke-width="3" stroke-linejoin="round"/><path d="M20 17 Q23 9 30 9 L30 17 Z M34 9 L38 9 Q45 10 48 17 L34 17 Z" fill="#CDEBFF"/><rect x="4" y="16" width="56" height="15" rx="7.5" fill="#E8453C" stroke="#14203F" stroke-width="3"/><rect x="10" y="23" width="36" height="3" rx="1.5" fill="#FFD23F"/><circle cx="18" cy="31" r="7" fill="#14203F"/><circle cx="46" cy="31" r="7" fill="#14203F"/></g>
     <animateMotion dur="16s" repeatCount="indefinite" path="${ROAD_UP}"/></g>
 </svg>`;
+// New look (UI v4) pictures: rolling hills, the road with the car (Search), the road strip (Stats, Settings), saved-place icons
+const U4_CAR='<svg class="u4-car" viewBox="0 0 120 64" aria-hidden="true"><use href="#u4-car"/></svg>';
+const U4_TREES=`<g fill="#F07A3A"><ellipse cx="34" cy="52" rx="13" ry="22"/><ellipse cx="372" cy="58" rx="10" ry="17"/><path d="M110 104 l-6 -16 l10 10 l3 -18 l6 18 l8 -12 l-4 18z"/></g><path d="M34 70 V100M372 72 V96M350 66 V100" stroke="#3B6DB3" stroke-width="3"/><ellipse cx="350" cy="46" rx="12" ry="22" fill="#8EC5F0"/>`;
+const U4_HILLS=`<svg class="u4-hills u4-bleed" viewBox="0 0 400 110" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path d="M0 62 Q60 34 130 56 T260 50 T400 42 V110 H0Z" fill="#F7C548"/><path d="M0 84 Q80 58 170 80 T400 72 V110 H0Z" fill="#EBA531"/>${U4_TREES}<ellipse cx="62" cy="104" rx="56" ry="22" fill="#3B6DB3"/><ellipse cx="330" cy="102" rx="64" ry="24" fill="#3B6DB3"/></svg>`;
+const U4_SCENERY=`<svg class="bg" viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path d="M0 70 Q70 40 150 66 T300 58 T400 50 V150 H0Z" fill="#EBA531"/><ellipse cx="90" cy="92" rx="70" ry="22" fill="#3B6DB3"/><ellipse cx="320" cy="88" rx="80" ry="24" fill="#3B6DB3"/>
+  <g transform="translate(0 6)">${U4_TREES}</g><rect y="100" width="400" height="50" fill="#14244F"/><path d="M0 126 H400" stroke="#FFFFFF" stroke-width="4" stroke-dasharray="34 18"/></svg>${U4_CAR}`;
+const U4_ROADHEAD=`<div class="u4-roadhead u4-bleed u4-only">${U4_CAR}</div>`;
+const U4_PLACE={home:'<path d="M2.5 11.5 12 3.5l9.5 8M5 9.6V20.5h5v-6h4v6h5V9.6M16 5.6V3.5h2.2v4"/>',school:'<path d="M2.5 20.5h19M4.5 20.5v-9h15v9M9.5 20.5v-4h5v4M12 11.5V3l4 1.5-4 1.5M7 14h1.5M15.5 14H17"/><circle cx="12" cy="13.6" r="1.6"/>',
+  gran:'<circle cx="12" cy="13" r="7.5"/><circle cx="9.2" cy="12.4" r="1.7"/><circle cx="14.8" cy="12.4" r="1.7"/><path d="M10.9 12.4h2.2M9.5 16.2q2.5 1.8 5 0M5.5 10q6.5-7 13 0"/><circle cx="12" cy="3.6" r="1.6"/>',pin:'<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'};
+const placeKind=n=>/home|house/i.test(n)?'home':/school|nursery|college/i.test(n)?'school':/gran|nan|grand/i.test(n)?'gran':'pin';
+// Saved places as big tiles (tapping one sets it as the destination, like the chips); "Save this place" sits under them
+function u4Places(conn){const t=S.places.map((p,i)=>`<button type="button" class="u4-place ${placeLabelOn('to',p)?'on':''}" data-place="${i}" data-field="to"><span class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${U4_PLACE[placeKind(p.name)]}</svg></span><b>${esc(p.name)}</b></button>`).join('');
+  return(t?`<div class="u4-places">${t}</div>`:`<p class="u4-empty">None yet. ${conn?'Type where you’re going, then tap “⭐ Save this place”.':'Saved places need live routes from Google Maps.'}</p>`)+(conn&&!savedOpen?placeChips('to',true):'')}
 // The greeting, one sentence at a time, so the storyteller voice can start on the first while she makes the rest.
 function greetLines(r=T.route){
   const who=kidNames(),reason=prof('reason');
@@ -3808,6 +4047,7 @@ VS.addEventListener('click',e=>{
   if(a==='opensec'){const id=b.dataset.id,g=panelOf(id)?id:groupOf(id);openPanel(g,b,id,b.dataset.focus);return}
   if(a==='kidedit'){showKids('edit',b.dataset.id);return}
   if(a==='setback'){closePanel();return}
+  if(a==='ui4'){UI4=b.checked;store.set('ui4',UI4);document.documentElement.classList.toggle('ui4',UI4);renderSettings();if(T)hud(true);return}
   if(a==='changepin'){pinMsg='';changePin();return}
   if(a==='here'){useHere(renderSettings);return}
   if(a==='issue'){sendIssue();return}

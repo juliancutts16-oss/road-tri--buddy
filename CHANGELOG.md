@@ -5,6 +5,8 @@ See `RELEASING.md` for the step-by-step.
 
 ## Unreleased
 _Changes waiting for the next release go here. Deploy only when the owner says so._
+- Started the new Flutter version of AWTY (it has its own private GitHub repo, `awty-flutter`, and its own changelog). The web app is unchanged.
+- Safety rulebook, step 1: today's child-safety word lists, AI rules and reading limits are now also written down in one master file (`netlify/lib/safety-rules.json`), with example sentences to test them (`safety-tests.json`). A copy is published at `/safety-rules.json` so the Flutter app can fetch updates later. Nothing uses it yet, so the server and the web app behave exactly as before; a checking tool on this PC proves the rulebook blocks and allows exactly the same sentences as the server, web app and Flutter app do today.
 
 ## 0.3.2 (fixes)
 - Fixed: after starting a new trip, the kids' screen could be unlocked without the PIN if it had been typed in the last 5 minutes. Now the trip screen always needs the PIN again when it locks. (Added to 0.3.2 after its first upload, keeping the same number.)

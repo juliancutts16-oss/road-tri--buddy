@@ -1,4 +1,4 @@
-// Runs once a day on Netlify's scheduler. Deletes usage events older than 90 days, and issue and story reports older
+// Runs once a day on Netlify's scheduler. Deletes usage events and AI safety-check results older than 90 days, and issue and story reports older
 // than 180 days, so the retention periods in the privacy policy hold even if nobody opens the dashboard.
 // Scheduled functions only run on the live site, so it tidies the test site's stats store too.
 import { getStore } from "@netlify/blobs";
@@ -11,9 +11,10 @@ export default async () => {
   const now = Date.now();
   for (const name of STATS_STORES) {
     const store = getStore(name);
-    const [ev, issues, reports] = await Promise.all([store.list({ prefix: "ev/" }), store.list({ prefix: "issues/" }), store.list({ prefix: "reports/" })]);
+    const [ev, issues, reports, checks] = await Promise.all(["ev/", "issues/", "reports/", "checks/"].map((prefix) => store.list({ prefix })));
     const old = [
       ...ev.blobs.filter((b) => keyDay(b.key, 2) < now - 90 * DAY),
+      ...checks.blobs.filter((b) => keyDay(b.key, 1) < now - 90 * DAY), // AI safety-check results
       ...issues.blobs.filter((b) => keyDay(b.key, 1) < now - 180 * DAY),
       ...reports.blobs.filter((b) => keyDay(b.key, 1) < now - 180 * DAY), // story reports, kept as long as issue reports
     ];

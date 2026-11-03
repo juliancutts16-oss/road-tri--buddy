@@ -98,7 +98,7 @@ async function findLandmarks(key, encoded, pts, cum, totalMiles) {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": key,
       "X-Goog-FieldMask":
-        "places.displayName,places.location,places.types,places.primaryTypeDisplayName,places.editorialSummary,places.userRatingCount",
+        "places.id,places.displayName,places.location,places.types,places.primaryTypeDisplayName,places.editorialSummary,places.userRatingCount",
     },
     body: JSON.stringify({
       textQuery: "famous landmarks and tourist attractions",
@@ -124,6 +124,7 @@ async function findLandmarks(key, encoded, pts, cum, totalMiles) {
     found.push({
       mile: +cum[best].toFixed(1),
       name: clip(p.displayName?.text, 80),
+      ...(/^[A-Za-z0-9_-]{10,300}$/.test(p.id || "") ? { placeId: p.id } : {}), // Google's ID for it, so its saved facts can be found (fact library)
       kind,
       emoji,
       summary: clip(p.editorialSummary?.text, 300),

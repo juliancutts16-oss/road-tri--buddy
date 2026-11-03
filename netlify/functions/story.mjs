@@ -7,10 +7,14 @@
 // Every piece is checked before it is sent back: a word filter, a reading-level check for the age, and a
 // separate AI review against the age rulebook. If it fails, it's rewritten once with the problems pointed out;
 // if it fails again (or there isn't time), the app is told to use its built-in story instead.
+// Plain fun facts that pass are saved in the fact library (lib/fact-library.mjs) and given to the next family passing.
+// Every check's outcome is saved for the developer dashboard (never the text itself, only what was wrong):
+//   checks/<yyyy-mm-dd>/<random>   in Netlify Blobs (store "awty-stats", or "awty-stats-test"), deleted after 90 days
 import Anthropic from "@anthropic-ai/sdk";
-import { json, checkPasscode, featureOff, readBody, clip } from "../lib/common.mjs";
+import { json, checkPasscode, featureOff, readBody, clip, statsStore } from "../lib/common.mjs";
 import { AGE_RULES, ALWAYS_RULES, FACT_RULES, blockedWords, readingIssues, lengthRule, safeDetail } from "../lib/safety.mjs";
 import { pickIdea } from "../lib/ideas.mjs";
+import { fromLibrary, addToLibrary, libraryKey, placeIdOk, setIdOk, SET_SIZE } from "../lib/fact-library.mjs";
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the server's environment
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
@@ -118,7 +122,20 @@ const cleanChoice = (c) => {
   return options.length === 2 ? { question: clip(c.question, 240), options } : null;
 };
 
-export default async (req) => {
+// Saves how one request went through the checks: from the library, passed, passed on the phone's second ask
+// ("rewrite"), rejected (the phone usually asks again) or failed on the second ask.
+// Place names are swapped for [place], so the record never shows where a family drove.
+async function saveCheck(context, rec, places) {
+  const hide = (s) => places.reduce((t, p) => (p ? t.split(p).join("[place]") : t), String(s));
+  rec.tries = rec.tries.map((t) => ({ by: t.by, problems: t.problems.map((p) => clip(hide(p), 200)) }));
+  try {
+    await statsStore(context).setJSON(`checks/${new Date(rec.at).toISOString().slice(0, 10)}/${Math.random().toString(36).slice(2, 10)}`, rec);
+  } catch (e) {
+    console.log(JSON.stringify({ event: "check-not-saved", error: String(e && e.message) }));
+  }
+}
+
+export default async (req, context) => {
   const off = featureOff("ai-stories");
   if (off) return off;
   const denied = checkPasscode(req);
@@ -189,6 +206,12 @@ export default async (req) => {
     : "";
   // Rewriting only the beginning or the end of a story that already exists: keep its hero, goal and problem.
   const keepBible = mode === "intro" && ["intro", "ending"].includes(body.redo) ? clip(body.bible, 600) : "";
+  // The fact library: plain fun facts (nothing personal, not a rewrite after a report) for a place Google gave an ID.
+  // A full set of facts is written so it suits any number a parent picks, and trimmed to what was asked for.
+  const library = mode === "landmark" && type === "fact" && placeIdOk(body.placeId) && !personal && !avoidNote
+    ? libraryKey(body.placeId, ageKey, rich) : "";
+  const heard = (Array.isArray(body.heard) ? body.heard : []).filter(setIdOk).slice(0, 20);
+  const count = library ? SET_SIZE : n;
 
   let prompt, schema, withChoice = false, withHelp = false, idea = null;
   if (mode === "intro") {
@@ -240,7 +263,7 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
     const about = `The place is ${name} (a ${kind}).${summary ? ` Google Maps describes it as: "${summary}"` : ""}`;
     const task =
       type === "fact"
-        ? `Give exactly ${n} fun facts about it, one per sentence. Only state things you are confident are true. If you know little about this exact place, give true facts about this kind of place instead and say so naturally, for example "Places like this…".`
+        ? `Give exactly ${count} fun facts about it, one per sentence. Only state things you are confident are true. If you know little about this exact place, give true facts about this kind of place instead and say so naturally, for example "Places like this…".${library ? " Put the most interesting facts first, because sometimes only the first three are read. The question, word and quiz must come from the first three facts." : ""}`
         : `Write a made-up story of exactly ${n} sentences in which this place plays a part. It must have a clear beginning (${animal ? "the hero" : pick(SPARKS.hero)}, with a fresh name, and a goal to ${pick(SPARKS.quest)}), a middle (a fun challenge at this place) and an end (the goal reached happily through the hero's own idea), finishing by linking it to the family driving past right now.`;
     prompt = `${about}\n\n${task}\n${level}${type === "story" ? `\n${CRAFT}` : ""}${aboutKids}${type === "story" ? soundsNote : ""}\n\n${EXTRAS}`;
   }
@@ -267,7 +290,7 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
       if (!intro.length) return null;
       return { payload: { intro, ending, bible, choice, ...(idea ? { idea: idea.id } : {}) }, heard: [...intro, ...ending, ...choiceText], extra: [bible] };
     }
-    const sentences = cleanList(data.sentences, n);
+    const sentences = cleanList(data.sentences, count);
     if (!sentences.length) return null;
     const payload = { sentences, question: clip(data.question, 300), word: clip(data.word, 40), quiz: cleanQuiz(data.quiz) };
     if (mode === "chapter") Object.assign(payload, { choice, ...(withHelp ? { helpAsk: clip(data.helpAsk, 300), helpThanks: clip(data.helpThanks, 200), helpAt } : {}) });
@@ -284,18 +307,50 @@ ${EXTRAS}${withChoice ? `\n${CHOICE_NOTE} It is asked at the very end of this pa
   const feedback = fix.length ? `\n\nYour previous attempt was rejected for these reasons. Write it again and fix every one:\n- ${fix.join("\n- ")}` : "";
   try {
     const started = Date.now();
-    let problems;
+    // What this request's check found, and which check caught it ("writer", "words", "reading", "review" or "time"), for the dashboard
+    const tries = [];
+    const places = [name, clip(body.from, 80), clip(body.to, 80), clip(body.prev, 80), clip(body.next, 80), ...cleanList(body.stops, 10, 80)].filter((s) => s.length > 2);
+    const record = (result) => saveCheck(context, {
+      at: started, mode, type, age: ageKey, kind: mode === "intro" ? "" : road ? "road" : kind.toLowerCase().replace(/[^a-z_ ]/g, ""),
+      result, secs: Math.round((Date.now() - started) / 100) / 10, tries,
+    }, places);
+    // Facts saved from an earlier trip that this phone hasn't heard: straight away, already checked
+    if (library && !fix.length) {
+      const set = await fromLibrary(context, library, heard).catch(() => null);
+      if (set) {
+        await record("library");
+        return json({ sentences: set.sentences.slice(0, n), question: set.question, word: set.word, quiz: set.quiz, setId: set.id });
+      }
+    }
+    let problems, by = "writer";
     const out = await write(feedback);
     if (!out) problems = ["the writer declined"];
     else {
       // 1) quick checks on the server: banned words and reading level for the age
-      problems = [...blockedWords([...out.heard, ...out.extra].join(" ")), ...readingIssues(out.heard, ageKey, rich)];
+      const words = blockedWords([...out.heard, ...out.extra].join(" "));
+      problems = [...words, ...readingIssues(out.heard, ageKey, rich)];
+      by = words.length ? "words" : "reading";
       // 2) a separate AI review against the age rulebook (only if the quick checks passed and there's time)
-      if (!problems.length) problems = Date.now() - started < REVIEW_BY ? await aiReview([...out.heard, ...out.extra].filter(Boolean).join("\n"), ageKey, type) : ["no time left to review it"];
-      if (!problems.length) return json(out.payload);
+      if (!problems.length) {
+        by = Date.now() - started < REVIEW_BY ? "review" : "time";
+        problems = by === "review" ? await aiReview([...out.heard, ...out.extra].filter(Boolean).join("\n"), ageKey, type) : ["no time left to review it"];
+      }
+      if (!problems.length) {
+        await record(fix.length ? "rewrite" : "first");
+        if (!library) return json(out.payload);
+        // save the full set for the next family, then send this phone the number of facts it asked for
+        const { sentences, question, word, quiz } = out.payload;
+        const setId = await addToLibrary(context, library, { sentences, question, word, quiz }).catch((e) => {
+          console.log(JSON.stringify({ event: "fact-not-saved", error: String(e && e.message) }));
+          return "";
+        });
+        return json({ ...out.payload, sentences: sentences.slice(0, n), ...(setId ? { setId } : {}) });
+      }
     }
     // only the reasons, the age group and whether this was the rewrite: never the story text, names or places
     console.log(JSON.stringify({ event: "story-rejected", mode, ageKey, type, rewrite: fix.length > 0, problems })); // shows in Netlify's function logs
+    tries.push({ by, problems });
+    await record(fix.length ? "failed" : "rejected"); // "rejected": the phone usually asks once more with the reasons
     return json({ error: "The story didn't pass the safety checks, so the built-in story will be used.", problems }, 422);
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) return json({ error: "The server’s Anthropic API key was rejected." }, 502);

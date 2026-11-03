@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "about": "AWTY master child-safety rulebook. Change rules here only, raise version by 1, add test sentences to safety-tests.json, then run tools/sync-safety.ps1. Stage 1: these are exactly today's lists from safety.mjs; nothing reads this file yet.",
+  "howToRead": {
+    "prepare": "Before checking story, fact, answer or parent text: replace every {placeholder} with a space, then turn curly apostrophes into straight ones (see prepareText). Place names and types are checked as they are.",
+    "words": "A word list becomes one pattern: \\b(word1|word2|...)\\b. A * at the end means any letters, digits or underscores (\\w*). Whole words only.",
+    "patterns": "If wholeWords is true, the patterns are joined the same way as words: \\b(p1|p2|...)\\b. If it is false, each pattern is used exactly as written. {moves} stands for the moves list, joined with |.",
+    "case": "Matching ignores letter case unless the group says ignoreCase: false.",
+    "regex": "Patterns use the JavaScript regular expression rules (no u flag), which Dart and .NET (ECMAScript mode) follow the same way."
+  },
+  "prepareText": [
+    { "find": "\\{[^}]*\\}", "replace": " " },
+    { "find": "’", "replace": "'" }
+  ],
+  "moves": {
+    "note": "Physical actions and loud noises the children must never be asked to copy in the car. Used by copy-me and body-order.",
+    "words": ["kick*", "stamp*", "stomp*", "jump*", "bounc*", "wriggl*", "wiggl*", "clap*", "bang*", "drum*", "tap*", "knock*", "reach*", "grab*", "touch*", "press*", "push*", "pull*", "open*", "unbuckl*", "undo*", "climb*", "stand up", "throw*", "hit", "punch*", "shake*", "wave", "waving", "shout*", "scream*", "yell*", "roar*"]
+  },
+  "groups": [
+    {
+      "id": "blocked",
+      "note": "Words that should never appear in a story read to a young child.",
+      "appliesTo": ["story", "fact", "answer", "parentText"],
+      "words": ["kill", "kills", "killed", "killing", "killer", "murder*", "dead", "death", "deaths", "die", "dies", "died", "dying", "blood*", "gun", "guns", "rifle", "rifles", "pistol", "pistols", "bomb", "bombs", "bombing", "stab*", "shoot", "shoots", "shooting", "war", "wars", "weapon", "weapons", "knife", "knives", "corpse", "corpses", "grave", "graves", "graveyard", "graveyards", "cemeter*", "coffin", "coffins", "funeral", "funerals", "ghost", "ghosts", "zombie", "zombies", "monster", "monsters", "demon", "demons", "devil", "devils", "hell", "vampire", "vampires", "nightmare", "nightmares", "terrif*", "horror", "kidnap*", "stranger", "strangers", "poison*", "drown*", "beer", "wine", "vodka", "alcohol", "drunk", "cigarette", "cigarettes", "vape", "vaping", "drug", "drugs", "sex*", "naked", "stupid", "idiot", "idiots", "dumb", "hate", "hates", "hated", "damn", "crap", "fart", "farts", "farting", "poo", "pee"]
+    },
+    {
+      "id": "unsafe-acts",
+      "note": "Unsafe things a child might copy in a car: unbuckling, opening windows or doors, waving at strangers, distracting the driver.",
+      "appliesTo": ["story", "fact", "answer", "parentText"],
+      "wholeWords": true,
+      "patterns": [
+        "unbuckl\\w*",
+        "seat ?belts? (off|undone)",
+        "took (off )?(his|her|their|its) seat ?belt",
+        "open(ed|s|ing)? the (car )?window",
+        "open(ed|s|ing)? the car door",
+        "wav(e|es|ed|ing) (to|at) (the )?(people|person|anyone|someone|strangers?|drivers?|lorry drivers?|other cars?)",
+        "distract(ed|ing|s)? the driver",
+        "stick(ing)? (his|her|their|its) head out"
+      ]
+    },
+    {
+      "id": "copy-me",
+      "note": "Asking the children to copy a physical action (\"can you kick like Pip?\", \"let's jump!\"). Deliberately strict: a story that trips it is rewritten, then swapped for the built-in story.",
+      "appliesTo": ["story", "fact", "answer", "parentText"],
+      "wholeWords": false,
+      "patterns": [
+        "\\b(can you|could you|will you|would you|you can|you could|you should|now you|everyone|let's|let us|try to|join in|copy|do it too|with me)\\b[^.!?]{0,30}\\b({moves})\\b"
+      ]
+    },
+    {
+      "id": "body-order",
+      "note": "A sentence that starts by telling the children to move part of their body or the car (\"Stamp your feet!\").",
+      "appliesTo": ["story", "fact", "answer", "parentText"],
+      "wholeWords": false,
+      "patterns": [
+        "(^|[.!?]\\s*)(now\\s+|quick(ly)?,?\\s+|go on,?\\s+)?({moves})\\b[^.!?]{0,25}\\b(your|the seat|the window|the door|the car|feet|legs|hands|arms)\\b"
+      ]
+    },
+    {
+      "id": "bad-place-types",
+      "note": "Google place types that never become story stops. Exact lower-case type names, so letter case counts.",
+      "appliesTo": ["placeType"],
+      "ignoreCase": false,
+      "words": ["bar", "night_club", "casino", "liquor_store", "cemetery", "funeral_home", "prison", "correctional", "hospital", "police", "courthouse", "adult", "tobacco", "cannabis", "wine_bar", "pub"]
+    },
+    {
+      "id": "bad-place-names",
+      "note": "Place names that never become story stops: pubs, cemeteries, prisons, hospitals, battlefields and the like.",
+      "appliesTo": ["placeName"],
+      "words": ["pub", "inn", "tavern", "bar", "brewery", "distillery", "nightclub", "casino", "cemetery", "graveyard", "crematorium", "prison", "hmp", "gaol", "jail", "hospital", "hospice", "asylum", "morgue", "memorial", "battlefield", "battle of", "gallows", "execution", "war museum", "dungeon"]
+    }
+  ],
+  "ai": {
+    "note": "Instructions given to the AI writer (and to the reviewer that checks its work).",
+    "ageRules": {
+      "4-5": "Ages 4 to 5: very short sentences (about 8 to 10 words) using everyday words a four-year-old knows. Problems are tiny and cosy, for example a cake that keeps wobbling, a song nobody can remember or a kite stuck in a tree. Only kind characters; no baddies at all.",
+      "6-7": "Ages 6 to 7: short sentences (about 10 to 14 words). A few new words are fine if the story makes their meaning clear. Small adventures and gentle surprises. Characters can be cheeky but never mean.",
+      "8+": "Ages 8 to 12: longer sentences and richer vocabulary are fine. Bigger quests and puzzles are fine, but never real danger. A rival is allowed only if they become friends by the end."
+    },
+    "alwaysRules": "Rules for every age:\n- Never include injury, illness, death, monsters, ghosts, anyone getting lost or being scared, strangers, weapons or fighting, romance, brand names, food or allergy dangers, toilet humour, or anyone being mean or left out.\n- Never show behaviour a child might copy that is unsafe, especially in a car: unbuckling a seatbelt, distracting the driver, opening windows, throwing things, climbing, wandering off, talking to strangers, going near water or roads alone, or eating things they don't know.\n- Always show kindness, teamwork and good manners.\n- The children are strapped into car seats. When the story asks them to do something, it may only ask them to look out of the window, listen, say something in a normal voice, count, sing quietly or imagine.\n- Never ask, dare or encourage them to do anything with their bodies: no kicking, stamping, jumping, bouncing, wriggling, clapping, banging, tapping, reaching, grabbing, touching, pressing, pushing, pulling, opening, unbuckling, climbing, standing up or throwing, and no shouting or loud noises that could startle the driver. Never ask them to talk to or wave at anyone outside the car.\n- The hero may run, jump or kick a ball in the story world, but never suggest the children copy it (nothing like \"kick like our hero!\" or \"can you jump too?\").",
+    "factRules": "For fun facts: only facts that are true and cheerful. Leave out anything upsetting, such as wars, battles, deaths, disasters, crimes or punishments."
+  },
+  "reading": {
+    "note": "Reading level per age group: average and longest sentence (in words), how long a word must be to count as long, and the largest share of long words allowed.",
+    "4-5": { "avg": 11, "max": 16, "longLen": 9, "longShare": 0.08 },
+    "6-7": { "avg": 15, "max": 22, "longLen": 10, "longShare": 0.12 },
+    "8+": { "avg": 22, "max": 32, "longLen": 12, "longShare": 0.2 }
+  }
+}

@@ -51,13 +51,23 @@ export default async (req, context) => {
   }));
   reports.sort((a, b) => b.at - a.at);
 
+  // ---- AI safety checks: how each story part and fun fact got on (and delete ones older than 90 days)
+  const checkList = await store.list({ prefix: "checks/" });
+  const checkRecs = [];
+  await Promise.all(checkList.blobs.map(async (b) => {
+    if (keyDay(b.key, 1) < now - 90 * DAY) { await store.delete(b.key); return; }
+    const it = await store.get(b.key, { type: "json" });
+    if (it) checkRecs.push(it);
+  }));
+  checkRecs.sort((a, b) => b.at - a.at);
+
   // ---- work out the numbers
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : null);
   const tripsByDay = {}, features = {}, games = {}, crashes = {}, versions = {}, platforms = {}, ages = {}, modes = {};
   let started = 0, finished = 0, withStart = 0, withFinish = 0, secondTrip = 0, eligibleSecond = 0;
   let active30 = 0, finishes30 = 0, active7 = 0;
   const ratings = [];
-  const voiceEv = [], voiceRtf = [], voiceTrips = []; // the storyteller voice: every wait, each install's latest speed, trips read by Alice
+  const voiceEv = [], voiceRtf = [], voiceTrips = []; // the storyteller voice: every wait, each install's latest speed, trips read by Emma
   for (const [, rec] of installs) {
     const ev = rec.events.sort((a, b) => a.at - b.at);
     versions[rec.v || "?"] = (versions[rec.v || "?"] || 0) + 1;
@@ -111,6 +121,24 @@ export default async (req, context) => {
     recent: voiceEv.filter((e) => e.w !== "load").sort((a, b) => b.at - a.at).slice(0, 40)
       .map(({ at, w, s, rtf, q: left, iso, cores, v, platform }) => ({ at, w, s, rtf, left, iso, cores, v, platform })),
   };
+  // Each request is one attempt: a first ask comes from the library, passes ("first") or is rejected; a rejected one is
+  // usually asked again by the phone, which then passes ("rewrite") or fails. Shares are out of the first asks.
+  const checkGroup = (c) => (c.mode === "intro" ? "opening" : c.mode === "chapter" ? "chapter" : c.type === "fact" ? "fact" : "landmarkStory");
+  const checkGroups = {}, caughtBy = {};
+  for (const c of checkRecs) {
+    const g = checkGroups[checkGroup(c)] ||= { asks: 0, library: 0, first: 0, rejected: 0, rewrite: 0, failed: 0, secs: [] };
+    if (["library", "first", "rejected", "rewrite", "failed"].includes(c.result)) g[c.result]++;
+    if (["library", "first", "rejected"].includes(c.result)) { g.asks++; g.secs.push(c.secs); }
+    for (const t of c.tries || []) caughtBy[t.by] = (caughtBy[t.by] || 0) + 1;
+  }
+  const checks = {
+    groups: Object.fromEntries(Object.entries(checkGroups).map(([k, g]) => [k, {
+      count: g.asks, libraryPct: pct(g.library, g.asks), firstPct: pct(g.first, g.asks), rewritePct: pct(g.rewrite, g.asks), failedPct: pct(g.failed, g.asks),
+      secsMedian: q(g.secs, 0.5), secsP90: q(g.secs, 0.9),
+    }])),
+    caughtBy,
+    recent: checkRecs.filter((c) => (c.tries || []).length).slice(0, 60).map((c) => ({ ...c, group: checkGroup(c) })),
+  };
   const days = [];
   for (let i = 29; i >= 0; i--) { const d = new Date(now - i * DAY).toISOString().slice(0, 10); days.push({ day: d, trips: tripsByDay[d] || 0 }); }
 
@@ -127,7 +155,7 @@ export default async (req, context) => {
       recommendCount: ratings.length,
     },
     tripsByDay: days,
-    features, games, ages, modes, versions, platforms, voice,
+    features, games, ages, modes, versions, platforms, voice, checks,
     crashes: Object.values(crashes).map((c) => ({ ...c, versions: Object.keys(c.versions) })).sort((a, b) => b.count - a.count).slice(0, 50),
     issues: issues.slice(0, 100),
     reports: reports.slice(0, 100),

@@ -1,5 +1,6 @@
 # Netlify reads this when you connect the project.
-# The app itself is the "public" folder; the secret-key helpers are in netlify/functions.
+# The "public" folder is the website (home page, privacy policy, sounds for the Flutter app); the server helpers
+# that hold the secret keys are in netlify/functions.
 [build]
   publish = "public"
   functions = "netlify/functions"
@@ -7,15 +8,7 @@
 [functions]
   node_bundler = "esbuild"
 
-# Lets the storyteller voice use several of the phone's processor cores (about 1.6x faster). "credentialless"
-# still lets Google Fonts and the voice files load from other sites.
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "credentialless"
-
-# Make sure phones always pick up new versions of the app and its offline worker.
+# Make sure phones always pick up the latest home page and clean-up helper (sw.js).
 [[headers]]
   for = "/sw.js"
   [headers.values]

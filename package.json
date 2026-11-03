@@ -2,7 +2,7 @@
   "name": "awty",
   "version": "0.3.2",
   "private": true,
-  "description": "AWTY – Are We There Yet?: road-trip app for kids, plus small server functions for Google Maps, AI stories, usage stats and the developer dashboard.",
+  "description": "The server for AWTY – Are We There Yet?, a road-trip app for kids: Google Maps routes, AI stories, usage stats and the developer dashboard.",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

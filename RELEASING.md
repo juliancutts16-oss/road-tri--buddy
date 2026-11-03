@@ -1,4 +1,4 @@
-# How to make a release
+# How to make a server release
 
 ## Version numbers
 | Change | Example |
@@ -8,22 +8,14 @@
 | Play Store launch | → **1.0.0** |
 
 ## Checklist
-1. **Set the number in two places**
-   - `public/index.html`: search for `APP_VERSION='` and change it.
-   - `package.json`: change `"version"`.
-   - The offline copy (`sw.js`) follows automatically. Don't edit it.
+1. **Set the number**: `package.json`, change `"version"`.
 2. **Update `CHANGELOG.md`**: rename "Unreleased" to the new number and start a fresh, empty "Unreleased" section above it.
-3. **Keep a copy on your computer**: copy `public`, `netlify`, `netlify.toml`, `package.json`, `CHANGELOG.md` into `releases/<number>/` (e.g. `releases/0.2.0/`). Or run:
-   ```
-   powershell -ExecutionPolicy Bypass -File tools\snapshot-release.ps1
-   ```
-4. **Upload**: say "deploy" in the hub session. It shows you what's changing and, once you say yes, pushes it as one commit with Git, and Netlify then builds automatically. The manual way still works: drag the `public` and `netlify` folders (plus `package.json` and `CHANGELOG.md` if they changed) into the repository in a **single commit**, so Netlify only builds once. Use a commit message like `Release 0.2.0`.
-5. **Check it's live**: open the site, go to Settings, and check the bottom says the new version.
-6. *(Optional)* On GitHub: **Releases → Draft a new release**, with tag `v0.2.0` and the changelog section pasted in.
-7. **APK (only when you rebuild it in PWABuilder)**:
-   - Set **Version name** to the same number (0.2.0).
-   - Raise **Version code** by 1 each time (1, 2, 3…).
-   - Always sign with the **same keystore** from the `google play` folder.
+3. **Safety rulebook**: if `netlify/lib/safety-rules.json` changed, run `tools\sync-safety.ps1` on this computer and check it says "All OK".
+4. **Upload**: say "deploy" in the Release hub session. It shows you what's changing and, once you say yes, pushes it as one commit, and Netlify then builds automatically. Use a commit message like `Release 0.4.0`.
+5. **Check it's live**: open the site's `/api/health` address and check the server answers, then try a trip in the app.
+6. *(Optional)* On GitHub: **Releases → Draft a new release**, with tag `v0.4.0` and the changelog section pasted in.
+
+The app itself is released separately: see `RELEASING.md` in the `awty-flutter` repository.
 
 ## Never upload to GitHub
-`keys.txt`, `google play`, `.claude`, `planning`, `backups`, `releases`, `tools`, `todo`.
+`keys.txt`, `google play`, `.claude`, `planning`, `tools`, `mascots`, `sounds-inbox`.

@@ -40,6 +40,7 @@
       <li>AWTY never asks for your name.</li>
       <li>A grown-up chooses what AWTY is allowed to do. You can ask them about it any time.</li>
       <li>When you see the green <b>Location on</b> sign, AWTY is using the phone to know where the car is, so your car on the screen can move with the real one.</li>
+      <li>Emma, who tells you fun facts, lives inside the phone. Nothing she says to you is sent anywhere.</li>
       <li>AWTY never listens. It doesn't use the microphone at all.</li>
       <li>There are no adverts, and we never sell anything about you.</li>
     </ul>
@@ -52,13 +53,14 @@
     <li>AWTY Free doesn't ask for children's names. Settings, stats and saved trips are kept on your phone, not on our servers.</li>
     <li>Some features need to send limited information online. A parent chooses which ones when first opening the app, and can change this at any time in Settings → Data &amp; services.</li>
     <li>AWTY Free doesn't use the microphone, and doesn't use AI.</li>
+    <li>Emma, the storyteller voice who reads AWTY's built-in fun facts, runs on the phone itself: what she reads is never sent anywhere.</li>
   </ul>
 
   <h2>Who we are</h2>
   <p>AWTY is provided by [company name], [registered address], company number [number] ("we", "us"). For any privacy question, email <b>[privacy email address]</b>.</p>
 
   <h2>What stays on your phone</h2>
-  <p>The age group, settings, trip stats, saved places and routes and backups are stored in the app on your device. We can't see them. Deleting the app, or using Settings → Parent controls → Clear everything on this phone, removes them.</p>
+  <p>The age group, settings, trip stats, saved places and routes and backups, Emma's voice once downloaded, with everything she reads, and the numbers of AWTY's built-in fun facts already read out (so new ones come first) are stored in the app on your device. We can't see them. Deleting the app, or using Settings → Parent controls → Clear everything on this phone, removes them.</p>
 
   <h2>What may be sent online, and why</h2>
   <div class="tbl"><table>
@@ -68,6 +70,7 @@
       <tr><td><b>Use this phone's location</b> (off unless chosen)</td><td>Only if you use "Use my current location" with live routes: your position <b>rounded to about 1 km</b> as the starting point. For "places near you" suggestions, a position rounded to about 10 km. The exact GPS position used to move the car stays on the phone</td><td>Our server, which passes it to Google Maps Platform</td><td>To plan a route from where you are, and to show nearby places first</td></tr>
       <tr><td><b>Help improve AWTY</b> (usage stats, off unless chosen)</td><td>A random ID for this installation (not linked to you, your family or the phone), the app version, the device type (Android, iPhone, iPad, computer) and events: app opened; trip started or finished (demo, GPS, timed or offline; length in miles and minutes, rounded; the age group and display style chosen); which features were used; error messages when the app crashes (cleaned of any personal details); and, if you answer it, a 0–10 "would you recommend AWTY?" score. <b>Never</b> names, places or locations</td><td>Our own server, stored with Netlify Blobs</td><td>To see whether AWTY works well for families (for example, how many trips are finished) and to find and fix crashes. Kept for <b>90 days</b>, then deleted automatically</td></tr>
       <tr><td><b>Issue reports</b> (only when a parent sends one)</td><td>The kind of issue, the description you type (email addresses, phone numbers and postcodes are removed automatically), the app version and device type. Sent even if usage stats are off, because you chose to send it</td><td>Our own server, stored with Netlify Blobs</td><td>To fix problems you tell us about. Kept for <b>180 days</b></td></tr>
+      <tr><td><b>Downloading Emma</b> (only when a parent taps "Download Emma")</td><td>Nothing about you or your children. Like any download, the request comes from your phone's internet address</td><td>GitHub, where the voice (Kokoro, by the sherpa-onnx project) is published</td><td>To get the voice onto the phone once. After that, Emma works with no signal and nothing she reads leaves the phone</td></tr>
     </tbody></table></div>
   <p>If a parent turns these off, AWTY still works: the trip moves by the journey time instead.</p>
 
@@ -89,6 +92,7 @@
   <ul>
     <li><b>Netlify</b>: hosts the app and our server functions, and stores usage stats and issue reports (Netlify Blobs). Like most hosts, it keeps short-term technical logs (such as IP addresses) for security. We don't store IP addresses with usage stats.</li>
     <li><b>Google Maps Platform</b>: routes and place suggestions.</li>
+    <li><b>GitHub</b>: where Emma's voice is downloaded from, once, if a parent chooses to.</li>
     <li><b>Google Play / Apple App Store</b>: app downloads and, in future, subscriptions. Payments are handled by them, not by us.</li>
   </ul>
   <p>Apart from usage stats and issue reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
@@ -106,7 +110,7 @@
   <p>AWTY is for passengers. The driver should never use the app while driving.</p>
 
   <h2>Changes</h2>
-  <p>If we change this policy, we'll update the date above and, for important changes, ask parents to review their choices in the app. This policy covers AWTY Free. If we add paid extras later (such as stories, a storyteller voice or games), we'll add them here first and ask parents to choose again before anything new is sent.</p>
+  <p>If we change this policy, we'll update the date above and, for important changes, ask parents to review their choices in the app. This policy covers AWTY Free. If we add paid extras later (such as stories or games), we'll add them here first and ask parents to choose again before anything new is sent.</p>
 </main>
 </body>
 </html>

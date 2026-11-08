@@ -52,10 +52,14 @@ const READING = {
   "8+": { avg: 22, max: 32, longLen: 12, longShare: 0.2 },
 };
 // The writer's limit, told to it up front: a little under what the check allows, so a good attempt passes first time.
-export function lengthRule(ageKey, rich) {
+// For ages 4 to 5 (simple words) the AI reviewer holds sentences to AGE_RULES' "about 8 to 10 words", stricter than
+// the word count, so the writer is told 9 and never more than 12 (8 Nov 2026: most first tries failed on length).
+// facts: a fun fact may be two short sentences, so each sentence is counted on its own.
+export function lengthRule(ageKey, rich, facts = false) {
   const r = READING[ageKey] || READING["6-7"], loosen = rich ? 1.3 : 1;
-  const avg = Math.round(r.avg * loosen * 0.8), max = Math.round(r.max * loosen * 0.8);
-  return `Sentence length (this is checked by counting words, and longer ones are rejected): each item in a list is ONE sentence. Keep sentences to about ${avg} words, and never more than ${max}. If a thought needs more words, split it into two sentences. Dialogue counts too: keep what characters say short.`;
+  const young = ageKey === "4-5" && !rich;
+  const avg = young ? 9 : Math.round(r.avg * loosen * 0.8), max = young ? 12 : Math.round(r.max * loosen * 0.8);
+  return `Sentence length (this is checked by counting words, and longer ones are rejected): ${facts ? "count each sentence on its own; two short sentences are better than one long one" : "each item in a list is ONE sentence"}. Keep sentences to about ${avg} words, and never more than ${max}. If a thought needs more words, split it into two sentences. Dialogue counts too: keep what characters say short.${young ? ` The "question" and the quiz question must be just as short.` : ""}`;
 }
 export function readingIssues(sentences, ageKey, rich) {
   const r = READING[ageKey] || READING["6-7"], loosen = rich ? 1.3 : 1;

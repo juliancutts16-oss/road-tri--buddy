@@ -148,7 +148,7 @@ export default async (req, context) => {
 
   const level = (rich
     ? `Use rich, interesting vocabulary for a confident child aged ${age}.`
-    : `Use simple, short words for a child aged ${age}.`) + `\n${AGE_RULES[ageKey]}\n${lengthRule(ageKey, rich)}${type === "fact" && mode === "landmark" ? `\n${FACT_RULES}` : ""}`;
+    : `Use simple, short words for a child aged ${age}.`) + `\n${AGE_RULES[ageKey]}\n${lengthRule(ageKey, rich, type === "fact" && mode === "landmark")}${type === "fact" && mode === "landmark" ? `\n${FACT_RULES}` : ""}`;
 
   // Optional details the parent typed on the start screen, to make it feel made for these children.
   // Anything unsuitable is dropped here as well as on the phone.

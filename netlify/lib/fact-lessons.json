@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "about": "Lessons for the AI fun-facts writer, learned from facts that failed the safety checks. Each one is approved by a person before it goes in (the AI never changes its own rules). They only help the writer get it right first time: every fact is still checked in full, and the checks never change because of this file. To add a lesson: see a common reason on the dashboard's 'AI safety checks' card, add it here with a 'Not' and an 'Instead' example, and raise version by 1. How it works: planning/fact-library/LEARNING.md.",
+  "lessons": [
+    {
+      "id": "short-sentences",
+      "from": "156 of 215 built-in facts in round 1 (7 Nov 2026) failed the reading check for ages 4 to 5",
+      "ages": ["4-5"],
+      "rule": "For ages 4 to 5, keep each sentence to about 9 words. If a fact needs more, make it two short sentences.",
+      "avoid": "A baby kangaroo is called a joey, and it is as small as a jelly bean when it is born.",
+      "instead": "A baby kangaroo is called a joey. When it is born, it is as small as a jelly bean."
+    },
+    {
+      "id": "long-words",
+      "from": "round 1: 'elephants', 'butterflies', 'hummingbirds', 'snowflakes' and 'fingerprints' each failed a short fact for ages 4 to 5",
+      "ages": ["4-5"],
+      "rule": "For ages 4 to 5, the reading check counts every word of 9 or more letters as hard (even everyday ones like elephants or butterflies), and allows only about 1 in 12 words. Use at most one long word in a fact, give it a few short words around it, and say the long word once only.",
+      "avoid": "Hummingbirds are the only birds that can fly backwards.",
+      "instead": "A hummingbird can hover in one spot in the air. It flaps its wings super fast to do it."
+    },
+    {
+      "id": "long-words-older",
+      "from": "round 1: 41 of 215 facts failed the reading check for ages 6 to 7, many for one word such as 'butterflies', 'crocodiles', 'snowflakes' or 'strawberries'",
+      "ages": ["6-7"],
+      "rule": "For ages 6 to 7, words of 10 or more letters count as hard, and only about 1 word in 8 may be one. Prefer the shorter word, and keep sentences to about 12 words.",
+      "avoid": "Crocodiles can't stick their tongues out.",
+      "instead": "A crocodile can't stick its tongue out. Its tongue is joined to the bottom of its mouth."
+    },
+    {
+      "id": "plain-words-older",
+      "from": "round 1: the fact using the space station's full official name failed the reading check for ages 4 to 5",
+      "ages": ["4-5", "6-7"],
+      "rule": "Use the everyday name for things, not the official long one.",
+      "avoid": "The International Space Station orbits the Earth approximately sixteen times every day.",
+      "instead": "The big space station goes round the Earth about sixteen times a day."
+    },
+    {
+      "id": "innocent-blocked-words",
+      "from": "round 1: 'blood', 'died', 'dead', 'terrific', 'shooting stars' and 'murder' (a group of crows) were all caught by the word filter",
+      "rule": "The word filter blocks some words even when they are harmless, so never use them: blood, dead, died, die, death, terrific, terrifying, shooting or shoot, war, murder, ghost, monster, poison, hate, stupid, poo, pee. Use another way to say it.",
+      "avoid": "Shooting stars are tiny bits of space dust. Octopuses have blue blood. The dinosaurs died out long ago.",
+      "instead": "A falling star is a tiny bit of space dust glowing in the sky. An octopus has three hearts. Dinosaurs lived a very long time ago."
+    },
+    {
+      "id": "no-everyone-moves",
+      "from": "round 1: 'Everyone loves to jump in muddy puddles' and 'Can you jump like a kangaroo?' were caught",
+      "rule": "Never put 'everyone', 'let's', 'you can', 'can you' or 'try to' in the same sentence as a movement word (jump, clap, kick, wave, shake, touch, stamp, roar, open, reach). Even a plain statement like 'everyone loves to jump' is caught. Never start a sentence with a movement word followed by 'your'.",
+      "avoid": "Can you jump like a kangaroo? Clap your hands if you've seen a rainbow!",
+      "instead": "A red kangaroo can leap further than a car is long."
+    },
+    {
+      "id": "only-look-listen",
+      "from": "round 1: 'Try humming while you hold your nose' was rejected by the review",
+      "rule": "Facts never ask the children to do anything with their bodies, not even something small like holding their nose. They may only be asked to look out of the window, listen, count, say something or imagine. A fact on its own, with nothing to do, is best.",
+      "avoid": "Try humming while you hold your nose: you can't do it!",
+      "instead": "You blink about fifteen times every minute."
+    },
+    {
+      "id": "check-myths",
+      "from": "round 1: 15 facts were myths, not sure or not quite true (cows and stairs, the Great Wall from space, snails sleeping three years, a pencil's 35-mile line, a newborn panda smaller than a mouse)",
+      "rule": "Many popular 'fun facts' are myths. Only give a fact you are sure is true. If it's a famous surprising claim, double-check it in your head: if experts disagree or it's only repeated online, leave it out. Be careful with British English, too (we say 'one hundred and one').",
+      "avoid": "Cows can walk upstairs but not downstairs. You can see the Great Wall of China from space.",
+      "instead": "Goldfish can remember things for months, not just a few seconds."
+    },
+    {
+      "id": "gentle-animals",
+      "from": "round 1: big teeth, an electric shock knocking a horse over, a giant storm, and a plant eating flies were rejected for young children",
+      "rule": "Say what animals and nature do that is clever, cosy or funny. Leave out hunting, eating other animals, stings, shocks, sharp teeth, losing body parts, and big storms or dangers.",
+      "avoid": "A hippo's yawn shows off its enormous, dangerous teeth. If a starfish loses an arm, it grows a new one.",
+      "instead": "Hippos make their own sunscreen! A starfish can grow a brand new arm."
+    },
+    {
+      "id": "no-romance-brands-allergies",
+      "from": "round 1: penguins choosing who to marry (romance), LEGO and Velcro (brand names), and peanuts (a serious allergy) were rejected",
+      "rule": "No romance or marrying, no brand or trade names (say what the thing is instead, for example 'hook-and-loop strips' or 'plastic bricks'), and no facts about eating nuts or other foods children are often allergic to.",
+      "avoid": "Velcro was invented after a man saw seeds stuck to his dog's fur.",
+      "instead": "Bubbly plastic for wrapping parcels was first made for walls. It was meant to be a bumpy wallpaper!"
+    },
+    {
+      "id": "no-sad-or-dated",
+      "from": "round 1: a fact about one very old living tortoise (it may stop being true, and it's a sad thought) was rejected",
+      "rule": "Avoid facts that could make a child think of someone dying or getting old and ill, or that might stop being true soon (one animal's age, a record that may be broken). Say what is true of the kind of animal instead.",
+      "avoid": "A tortoise called Jonathan is more than one hundred and ninety years old.",
+      "instead": "A tortoise can live for more than one hundred years. That's even longer than most people!"
+    }
+  ],
+  "goodExamples": [
+    "Sea otters hold hands while they sleep. That way, they don't float apart.",
+    "A day on Venus is longer than a year on Venus!",
+    "Saturn is a giant planet, but it is very light for its size. It could float in a giant bath!",
+    "Goats have funny eyes. The dark middle part is shaped like a letterbox!",
+    "Big Ben is not the name of the tower. It is the name of the giant bell inside!",
+    "Hardly any words rhyme with orange. But a hill in Wales called the Blorenge does!",
+    "The Eiffel Tower grows a little taller in summer. Its metal stretches in the heat!",
+    "Bananas are a kind of berry, believe it or not. But strawberries are not berries at all!",
+    "Stonehenge is very old. Its oldest part was built before the great pyramids of Egypt!",
+    "Cat's eyes are little shiny studs in the middle of the road. A man called Percy Shaw invented them!",
+    "A rainbow is really a whole circle. From the ground, we only see part of it.",
+    "Squirrels bury nuts and forget some of them. Those nuts can grow into new trees!"
+  ]
+}

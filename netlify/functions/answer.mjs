@@ -41,7 +41,7 @@ export default async (req) => {
   const answers = (Array.isArray(body.answers) ? body.answers : []).map((a) => clip(a, 60)).filter(Boolean).slice(0, 5);
   const heard = clip(body.heard, 200);
   const alts = (Array.isArray(body.alts) ? body.alts : []).map((a) => clip(a, 200)).filter(Boolean).slice(0, 3);
-  const names = clip(body.names, 80);
+  const names = clip(body.names, 80) === "{NAMES}" ? "{NAMES}" : ""; // only the placeholder: a real name is ignored, never sent to the AI
   const ageKey = AGE_RULES[body.age] ? body.age : "6-7";
   const age = AGE_WORDS[ageKey];
   if (!heard) return json({ error: "Nothing was heard." }, 400);
@@ -64,7 +64,7 @@ export default async (req) => {
       messages: [
         {
           role: "user",
-          content: `${task}\nThe listener is aged ${age}. ${AGE_RULES[ageKey]}${names === "{NAMES}" ? " The children's names are private: if you use their names, write exactly {NAMES} and the app fills them in." : names ? ` The children are called ${names}.` : ""}\nWhat the child said (best guess first, alternatives after): ${[heard, ...alts].map((a) => `"${a}"`).join(" / ")}`,
+          content: `${task}\nThe listener is aged ${age}. ${AGE_RULES[ageKey]}${names ? " The children's names are private: if you use their names, write exactly {NAMES} and the app fills them in." : ""}\nWhat the child said (best guess first, alternatives after): ${[heard, ...alts].map((a) => `"${a}"`).join(" / ")}`,
         },
       ],
     });

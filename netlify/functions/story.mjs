@@ -150,14 +150,14 @@ export default async (req) => {
   // Optional details the parent typed on the start screen, to make it feel made for these children.
   // Anything unsuitable is dropped here as well as on the phone.
   const k = body.kids && typeof body.kids === "object" ? body.kids : {};
-  const names = clip(k.names, 80), animal = safeDetail(clip(k.animal, 40)), buddy = clip(k.buddy, 40), reason = safeDetail(clip(k.reason, 100));
+  // The app sends {NAMES} and {BUDDY} instead of real names, so children's names never leave the phone.
+  // Anything else in those boxes (a real name from an old app) is ignored, so it never reaches the AI.
+  const names = clip(k.names, 80) === "{NAMES}" ? "{NAMES}" : "", buddy = clip(k.buddy, 40) === "{BUDDY}" ? "{BUDDY}" : "";
+  const animal = safeDetail(clip(k.animal, 40)), reason = safeDetail(clip(k.reason, 100));
   const likes = clip(k.likes, 160).split(",").map((s) => safeDetail(s.trim())).filter(Boolean).join(", ");
   const isStory = mode !== "landmark" || type === "story";
-  // The app sends {NAMES} and {BUDDY} instead of real names, so children's names never leave the phone.
-  const namesLine = names === "{NAMES}"
-    ? `The children's names are kept private. Wherever you would say their names, write exactly {NAMES} (with the curly brackets) and the app will fill them in. Do this now and then, warmly.`
-    : `The children listening are called ${names}. Mention them by name now and then, warmly.`;
-  const buddyName = buddy === "{BUDDY}" ? "{BUDDY} (write exactly {BUDDY} for its name; the app fills it in)" : buddy;
+  const namesLine = `The children's names are kept private. Wherever you would say their names, write exactly {NAMES} (with the curly brackets) and the app will fill them in. Do this now and then, warmly.`;
+  const buddyName = "{BUDDY} (write exactly {BUDDY} for its name; the app fills it in)";
   const personal = [
     names && namesLine,
     animal && (isStory ? `Their favourite animal is a ${animal}; make it the story's hero.` : `Their favourite animal is a ${animal}; mention it only if it fits a true fact naturally.`),

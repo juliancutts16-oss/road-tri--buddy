@@ -14,7 +14,7 @@ const VOICE_WAITS = new Set(["load", "start", "opening", "chapter", "line"]);
 const MODES = new Set(["demo", "gps", "timer", "offline"]);
 const AGES = new Set(["4-5", "6-7", "8+"]);
 const PLATFORMS = new Set(["android", "iphone", "ipad", "desktop", "other"]);
-const ISSUE_CATS = new Set(["broke", "story", "maps", "other"]);
+const ISSUE_CATS = new Set(["broke", "story", "maps", "other", "idea"]); // "idea": Settings → Suggest a feature
 const day = (t) => new Date(t).toISOString().slice(0, 10);
 const rand = () => Math.random().toString(36).slice(2, 10);
 const num = (v, max) => (Number.isFinite(+v) ? Math.max(0, Math.min(max, Math.round(+v * 10) / 10)) : undefined);

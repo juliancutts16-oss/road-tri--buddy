@@ -6,28 +6,28 @@
 <title>AWTY Privacy Policy</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="icon-192.png">
-<style>
-  :root{--bg:#F5F7FC;--surface:#FFFFFF;--ink:#14203F;--muted:#56627F;--line:#D9E0EF;--blue:#1E3A8A;--note:#FFF3C4}
-  @media (prefers-color-scheme:dark){:root{--bg:#0E1426;--surface:#161E36;--ink:#E9EEFB;--muted:#9BA6C4;--line:#2A3558;--blue:#9DB6FF;--note:#3A3214}}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 Georgia,'Times New Roman',Times,serif}
-  h1,h2,th{font-family:Georgia,'Times New Roman',Times,serif;font-weight:700}
-  main{max-width:760px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
-  h1{font-size:2rem;line-height:1.15;margin:0 0 4px;color:var(--blue)}
-  h2{font-size:1.2rem;margin:32px 0 8px}
-  p,li{max-width:68ch}
-  .muted{color:var(--muted)}
-  .draft{background:var(--note);border-radius:10px;padding:12px 14px;margin:16px 0}
-  table{border-collapse:collapse;width:100%;font-size:.95rem}
-  .tbl{overflow-x:auto}
-  th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
-  th{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-  a{color:var(--blue)}
-  .kids{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 18px}
-</style>
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-<main>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="AWTY home"><img src="img/logo.svg" alt="" width="40" height="40"><b>AWTY</b></a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="./#inside">What's inside</a></li>
+        <li><a href="promise.html">Our promise</a></li>
+        <li><a href="coming-up.html">Coming up</a></li>
+        <li><a href="help.html">Help</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn-go" href="download.html">Download</a>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<div class="wrap narrow">
   <h1>AWTY Privacy Policy</h1>
   <p class="muted">AWTY – Are We There Yet? · Last updated: [date]</p>
 
@@ -69,7 +69,7 @@
       <tr><td><b>Live routes from Google Maps</b></td><td>The starting point and destination you choose; text typed into the start and destination boxes for suggestions</td><td>Our server (hosted by Netlify), which passes it to Google Maps Platform</td><td>To plan the route and estimate the journey time</td></tr>
       <tr><td><b>Use this phone's location</b> (off unless chosen)</td><td>Only if you use "Use my current location" with live routes: your position <b>rounded to about 1 km</b> as the starting point. For "places near you" suggestions, a position rounded to about 10 km. The exact GPS position used to move the car stays on the phone</td><td>Our server, which passes it to Google Maps Platform</td><td>To plan a route from where you are, and to show nearby places first</td></tr>
       <tr><td><b>Help improve AWTY</b> (usage stats, off unless chosen)</td><td>A random ID for this installation (not linked to you, your family or the phone), the app version, the device type (Android, iPhone, iPad, computer) and events: app opened; trip started or finished (demo, GPS, timed or offline; length in miles and minutes, rounded; the age group and display style chosen); which features were used; error messages when the app crashes (cleaned of any personal details); and, if you answer it, a 0–10 "would you recommend AWTY?" score. <b>Never</b> names, places or locations</td><td>Our own server, stored with Netlify Blobs</td><td>To see whether AWTY works well for families (for example, how many trips are finished) and to find and fix crashes. Kept for <b>90 days</b>, then deleted automatically</td></tr>
-      <tr><td><b>Issue reports</b> (only when a parent sends one)</td><td>The kind of issue, the description you type (email addresses, phone numbers and postcodes are removed automatically), the app version and device type. Sent even if usage stats are off, because you chose to send it</td><td>Our own server, stored with Netlify Blobs</td><td>To fix problems you tell us about. Kept for <b>180 days</b></td></tr>
+      <tr><td><b>Issue reports and feature ideas</b> (only when a parent sends one)</td><td>The kind of issue (or that it’s an idea), what you type (email addresses, phone numbers and postcodes are removed automatically), the app version and device type. Sent even if usage stats are off, because you chose to send it</td><td>Our own server, stored with Netlify Blobs</td><td>To fix problems and consider ideas you tell us about. Kept for <b>180 days</b></td></tr>
       <tr><td><b>Downloading Emma</b> (once, by herself, the first time the phone is on Wi-Fi after the privacy choices, or when a parent taps "Download Emma now")</td><td>Nothing about you or your children. Like any download, the request comes from your phone's internet address</td><td>GitHub, where the voice (Kokoro, by the sherpa-onnx project) is published</td><td>To get the voice onto the phone once. After that, Emma works with no signal and nothing she reads leaves the phone</td></tr>
     </tbody></table></div>
   <p>If a parent turns these off, AWTY still works: the trip moves by the journey time instead.</p>
@@ -97,6 +97,9 @@
   </ul>
   <p>Apart from usage stats and issue reports (above), our server passes requests on and does not store them. [Confirm and state any log retention period.]</p>
 
+  <h2 id="website">On this website</h2>
+  <p>This website has no adverts, no cookies and no tracking tools. Two forms on it ask for your email address, and are sent only when you press their button: <b>Tell me when it's ready</b> (your email address only) and <b>Contact us</b> (your email address and your message). They're stored by Netlify (Netlify Forms), which checks them for spam with Akismet. We use your email address only to tell you when AWTY is ready, or to reply to your message, and for nothing else. [Confirm how long these are kept.] To have yours deleted sooner, email [privacy email address]. The website's safety report shows only totals for the last 30 days, never anything about a family.</p>
+
   <h2>Children</h2>
   <p>AWTY is designed for children aged about 4 to 12 using it with a parent or carer. We follow the UK Age Appropriate Design Code (the Children's Code): high-privacy settings by default, collecting as little as possible, no nudges to share more, and a grown-up check before settings, purchases and links that leave the app. [If offered in the US, add a COPPA section covering parental consent and parents' rights.]</p>
 
@@ -111,6 +114,22 @@
 
   <h2>Changes</h2>
   <p>If we change this policy, we'll update the date above and, for important changes, ask parents to review their choices in the app. This policy covers AWTY Free. If we add paid extras later (such as stories or games), we'll add them here first and ask parents to choose again before anything new is sent.</p>
+</div>
 </main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span class="small">© 2026 AWTY · Are We There Yet?</span>
+    <ul>
+      <li><a href="promise.html">Our promise</a></li>
+      <li><a href="coming-up.html">Coming up</a></li>
+      <li><a href="download.html">Download</a></li>
+      <li><a href="help.html">Help</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="privacy.html">Privacy policy</a></li>
+      <li><a href="terms.html">Terms of use</a></li>
+    </ul>
+  </div>
+</footer>
 </body>
 </html>

@@ -90,7 +90,7 @@ button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line
     <section class="card"><h2>AI safety checks</h2><p class="muted" style="font-size:.85rem;margin:0 0 8px">How the AI's fun facts and story parts got through the safety checks. "From the library" means fun facts already checked and saved on an earlier trip, given out straight away. A rejected one is usually asked for once more by the phone, with the reasons; if that fails too, the phone uses its built-in version. Only what was wrong is kept, never the text, and place names show as [place].</p>
       <div class="tbl" id="checkgroups"></div><h2 style="margin-top:14px">Caught by</h2><div id="checkby"></div><h2 style="margin-top:14px">Latest rejections</h2><div class="tbl" id="checkrecent"></div></section>
     <section class="card"><h2>Story reports</h2><p class="muted" style="font-size:.85rem;margin:0 0 8px">AI-written story parts a parent flagged with "Report a problem". On the phone that part was swapped for the built-in story straight away and a new version was written. Names show as {NAMES} / {BUDDY} and the destination as {DEST}.</p><div class="tbl" id="reports"></div></section>
-    <section class="card"><h2>Issue reports from parents</h2><div class="tbl" id="issues"></div></section>
+    <section class="card"><h2>Issue reports and feature ideas from parents</h2><div class="tbl" id="issues"></div></section>
     <p class="muted" style="font-size:.85rem;margin-top:16px">Usage events and safety-check results are kept for 90 days and issue and story reports for 180 days; older ones are deleted automatically when this page loads. Only installs whose parents switched on "Help improve AWTY" are counted.</p>
   </div>
 </main>
@@ -101,7 +101,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let key='';try{key=localStorage.getItem('awty.statsKey')||''}catch(e){}
 const FEATURE_NAMES={spot:'Spot-it round',story_time:'Story time button',mic:'Listen for answers',landmark:'Landmark story/fact',bonus_yes:'Bonus game accepted',bonus_no:'Bonus game skipped',map:'Journey map',here:'Use my current location',saved_place:'Saved place used',kid_car:'My car page (car picked)',read_story:'Read the story (parents)',music:'Background music'};
 const GAME_NAMES={bubbles:'Bubble Pop',colours:'Colour Cars',count:'Count with Me',pairs3:'Memory Match',coinroad:'Coin Road',traffic:'Traffic Lights',letters:'Missing Letter',sums:'Car Sums',racer:'Neon Racer',pairs6:'Memory Grid',tables:'Times Table Turbo',scramble:'Word Scramble'};
-const ISSUE_NAMES={broke:'Something broke',story:'A story wasn’t right',maps:'Maps or location',other:'Something else'};
+const ISSUE_NAMES={broke:'Something broke',story:'A story wasn’t right',maps:'Maps or location',other:'Something else',idea:'💡 Feature idea'};
 const REPORT_NAMES={scary:'Scary or upsetting',age:'Not right for their age',unsafe:'Shows unsafe behaviour',other:'Something else'};
 function bars(obj,names={}){const e=Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]);if(!e.length)return'<p class="empty">Nothing yet.</p>';const max=e[0][1];
   return e.map(([k,v])=>`<div class="hbar"><span class="n">${esc(names[k]||k)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="c">${v}</span></div>`).join('')}

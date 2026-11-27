@@ -1,4 +1,59 @@
-# AWTY – Are We There Yet? (server)
+# AWTY ("Are We There Yet?")
+
+AWTY is a road-trip app for children that I am designing and building myself, using AI coding tools (Claude), without a software development background. It is in development: version 0.4, being prepared for a Google Play launch. It has not been released and has no users yet.
+
+The app tells children stories and fun facts about the landmarks they pass on a journey, alongside a live route and an "are we there yet?" countdown.
+
+## About this repository
+
+This repository is the **server** behind AWTY. The **Android app** itself is built in Flutter and kept in a separate, private repository while it is in development. I am happy to show the app working, or to walk through how it is built, on request.
+
+The server sits between the app and the paid services it uses, so that the secret API keys never sit on the phone, and so that every AI-written story is checked before a child sees it.
+
+## Where to look
+
+| What | Where |
+|---|---|
+| The child-safety checks every AI story and fact goes through | `netlify/lib/safety.mjs` |
+| The written safety rulebook and its test sentences | `netlify/lib/safety-rules.json`, `netlify/lib/safety-tests.json` |
+| The server helpers the app calls (route, places, stories, vehicle lookup, usage stats) | `netlify/functions/` |
+| Release history | `CHANGELOG.md` |
+| The release checklist | `RELEASING.md` |
+
+## What the app does
+
+- **Android app** built in Flutter (private repository).
+- **Google Maps Routes and Places APIs** for the route, landmarks along the way and destination suggestions.
+- **DVLA vehicle lookup**, so the app can show the family's car by its number plate.
+- **Claude** writes the stories and fun facts about each landmark.
+
+## Child safety
+
+- Every AI-written story and fact passes server-side safety checks against a written safety rulebook, which has its own set of test sentences.
+- Children's names are never sent to the AI.
+- Grown-up settings sit behind a parent PIN.
+- Usage stats are opt-in only, and are deleted after 90 days.
+- The server only answers the app: every request needs a passcode.
+
+## How I run it
+
+- A three-tier plan: Free, plus £2.99 and £5.99 monthly subscriptions.
+- A feature roadmap, numbered releases with a changelog, and a release checklist.
+- A separate test server, so testing never touches the live service.
+- A developer dashboard that tracks usage and the results of the AI safety checks.
+- A website with a privacy policy.
+
+## How it is built
+
+I design the app and build it with AI coding tools, using Claude to write the code.
+
+© 2026 Julian Cutts. All rights reserved. This code is shared to show my work and may not be reused.
+
+---
+
+*The setup guide for running the server on Netlify follows below.*
+
+# Server setup guide
 
 The server for **AWTY**, a road-trip app for children. The app itself is a Flutter app (Android first) in its own private repository, `awty-flutter`. This repository holds the small server it talks to, hosted on Netlify, which keeps the secret keys off the phone.
 
